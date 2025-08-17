@@ -13,9 +13,11 @@ from .models import Payment
 from django.db.models import Sum, F, DecimalField # <-- 1. Add F and DecimalField
 from django.db.models.functions import Coalesce
 # Import the new models
-from .models import ExpenseCategory, Expense,Purchase, PurchaseItem, Supplier
+# Import the new models
+from .models import ExpenseCategory, Expense,Purchase, PurchaseItem, Supplier, BankAccount
 # Import the new serializers
-from .serializers import ExpenseCategorySerializer, ExpenseSerializer,PurchaseReadSerializer, PurchaseWriteSerializer
+# Import the new serializers
+from .serializers import ExpenseCategorySerializer, ExpenseSerializer,PurchaseReadSerializer, PurchaseWriteSerializer, BankAccountSerializer
 from rest_framework.filters import SearchFilter
 
 
@@ -229,6 +231,17 @@ class SupplierViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return self.request.user.suppliers.all().order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class BankAccountViewSet(viewsets.ModelViewSet):
+    serializer_class = BankAccountSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.bank_accounts.all().order_by('name')
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

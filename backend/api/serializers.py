@@ -2,7 +2,19 @@
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Customer, ExpenseCategory,Sale, Payment, Product, SaleItem,Supplier, Expense,Purchase, PurchaseItem
+from .models import (
+    Customer,
+    ExpenseCategory,
+    Sale,
+    Payment,
+    Product,
+    SaleItem,
+    Supplier,
+    Expense,
+    Purchase,
+    PurchaseItem,
+    BankAccount,
+)
 from rest_framework.validators import UniqueValidator
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,11 +46,23 @@ class SaleSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
-    
+    account_name = serializers.CharField(source='account.name', read_only=True)
+
     class Meta:
         model = Payment
-        fields = ['id', 'payment_date', 'amount', 'method', 'notes', 'created_at', 'created_by', 'customer']
-        read_only_fields = ['created_by', 'customer']
+        fields = [
+            'id',
+            'payment_date',
+            'amount',
+            'method',
+            'notes',
+            'account',
+            'account_name',
+            'created_at',
+            'created_by',
+            'customer',
+        ]
+        read_only_fields = ['created_by', 'customer', 'account_name']
 
 class ProductSerializer(serializers.ModelSerializer):
     sku = serializers.CharField(
@@ -110,11 +134,21 @@ class ExpenseCategorySerializer(serializers.ModelSerializer):
 class ExpenseSerializer(serializers.ModelSerializer):
     # This makes the category name appear in the API response, which is more useful than just the ID.
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    account_name = serializers.CharField(source='account.name', read_only=True)
 
     class Meta:
         model = Expense
-        fields = ['id', 'category', 'category_name', 'amount', 'expense_date', 'description']
-        read_only_fields = ['created_by']
+        fields = [
+            'id',
+            'category',
+            'category_name',
+            'amount',
+            'expense_date',
+            'description',
+            'account',
+            'account_name',
+        ]
+        read_only_fields = ['created_by', 'account_name']
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -144,3 +178,10 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = ['supplier_id', 'purchase_date', 'bill_number', 'items']
+
+
+class BankAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BankAccount
+        fields = ['id', 'name', 'balance']
+        read_only_fields = ['balance', 'created_by']
