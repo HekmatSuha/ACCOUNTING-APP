@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 from .views import CustomerViewSet, dashboard_summary, ProductViewSet,SaleViewSet, SupplierViewSet,PaymentViewSet,PurchaseViewSet
+from .views import BankAccountViewSet
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register(r'customers', CustomerViewSet, basename='customer')
 router.register(r'products', ProductViewSet, basename='product')
 router.register(r'sales', SaleViewSet, basename='sale')
 router.register(r'suppliers', SupplierViewSet, basename='supplier')
+router.register(r'accounts', BankAccountViewSet, basename='account')
 # Create a nested router for payments under sales
 sales_router = routers.NestedSimpleRouter(router, r'sales', lookup='sale')
 sales_router.register(r'payments', PaymentViewSet, basename='sale-payments')
