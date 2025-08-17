@@ -449,7 +449,7 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         total_purchase_amount = 0
         for item_data in items_data:
             product = Product.objects.get(id=item_data['product_id'], created_by=self.request.user)
-            
+
             purchase_item = PurchaseItem.objects.create(
                 purchase=purchase,
                 product=product,
@@ -462,14 +462,16 @@ class PurchaseViewSet(viewsets.ModelViewSet):
             product.save()
             
             total_purchase_amount += purchase_item.line_total
-        
+
         purchase.total_amount = total_purchase_amount
         purchase.save()
 
+        # Update the supplier's open balance
+        supplier.open_balance += total_purchase_amount
+        supplier.save()
 
-
-@transaction.atomic
-def destroy(self, request, *args, **kwargs):
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
         """
         Custom logic to handle deleting a purchase.
         This will revert the stock increase.
@@ -479,25 +481,43 @@ def destroy(self, request, *args, **kwargs):
         # Restore the stock for each item in the purchase
         for item in purchase.items.all():
             product = item.product
-            product.stock_quantity -= item.quantity # Decrease stock
+            product.stock_quantity -= item.quantity  # Decrease stock
             product.save()
-        
+
+        # Update supplier balance
+        purchase.supplier.open_balance -= purchase.total_amount
+        purchase.supplier.save()
+
         # Finally, delete the purchase itself
         purchase.delete()
-        
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-@transaction.atomic
-def update(self, request, *args, **kwargs):
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
         """
         Custom logic to handle updating a purchase.
         """
         purchase = self.get_object()
         serializer = self.get_serializer(purchase, data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        items_data = serializer.validated_data.pop('items')
-        
+
+        validated_data = serializer.validated_data
+        items_data = validated_data.pop('items')
+        supplier_id = validated_data.pop('supplier_id', purchase.supplier.id)
+
+        # Revert old supplier balance
+        old_supplier = purchase.supplier
+        old_supplier.open_balance -= purchase.total_amount
+        old_supplier.save()
+
+        # If supplier changed, update purchase.supplier
+        if supplier_id != old_supplier.id:
+            supplier = Supplier.objects.get(id=supplier_id, created_by=self.request.user)
+            purchase.supplier = supplier
+        else:
+            supplier = old_supplier
+
         # --- 1. Revert old stock quantities ---
         for item in purchase.items.all():
             item.product.stock_quantity -= item.quantity
@@ -505,22 +525,27 @@ def update(self, request, *args, **kwargs):
 
         # --- 2. Delete old purchase items ---
         purchase.items.all().delete()
-        
+
         # --- 3. Create new purchase items and calculate new total ---
         new_total_amount = 0
         for item_data in items_data:
             product = item_data.pop('product')
             purchase_item = PurchaseItem.objects.create(purchase=purchase, product=product, **item_data)
-            
+
             # Increase stock for the new item
             product.stock_quantity += purchase_item.quantity
             product.save()
-            
+
             new_total_amount += purchase_item.line_total
-        
-        # --- 4. Update the purchase's total amount ---
+
+        # --- 4. Update the purchase and supplier balance ---
         purchase.total_amount = new_total_amount
+        purchase.purchase_date = validated_data.get('purchase_date', purchase.purchase_date)
+        purchase.bill_number = validated_data.get('bill_number', purchase.bill_number)
         purchase.save()
+
+        supplier.open_balance += new_total_amount
+        supplier.save()
 
         # Use the ReadSerializer to return the updated data
         read_serializer = PurchaseReadSerializer(purchase)
