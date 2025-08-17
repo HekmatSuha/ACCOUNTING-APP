@@ -55,6 +55,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='Cash')
     notes = models.TextField(blank=True, null=True)
+    account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -62,6 +63,31 @@ class Payment(models.Model):
         if self.sale_id:
             return f"Payment of {self.amount} for Sale #{self.sale.id}"
         return f"Payment of {self.amount} from {self.customer.name}"
+
+    def save(self, *args, **kwargs):
+        if self.account_id:
+            if self.pk:
+                old = Payment.objects.get(pk=self.pk)
+                if old.account_id != self.account_id:
+                    if old.account_id:
+                        old.account.balance -= old.amount
+                        old.account.save()
+                    self.account.balance += self.amount
+                    self.account.save()
+                else:
+                    delta = self.amount - old.amount
+                    self.account.balance += delta
+                    self.account.save()
+            else:
+                self.account.balance += self.amount
+                self.account.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.account_id:
+            self.account.balance -= self.amount
+            self.account.save()
+        super().delete(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -111,6 +137,16 @@ class Supplier(models.Model):
         return self.name
 
 
+class BankAccount(models.Model):
+    name = models.CharField(max_length=255)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 # backend/api/models.py
 from django.db import models
 from django.contrib.auth.models import User
@@ -135,11 +171,37 @@ class Expense(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     expense_date = models.DateField()
     description = models.TextField(blank=True, null=True)
+    account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='expenses', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expenses')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Expense of {self.amount} on {self.expense_date}"
+
+    def save(self, *args, **kwargs):
+        if self.account_id:
+            if self.pk:
+                old = Expense.objects.get(pk=self.pk)
+                if old.account_id != self.account_id:
+                    if old.account_id:
+                        old.account.balance += old.amount
+                        old.account.save()
+                    self.account.balance -= self.amount
+                    self.account.save()
+                else:
+                    delta = self.amount - old.amount
+                    self.account.balance -= delta
+                    self.account.save()
+            else:
+                self.account.balance -= self.amount
+                self.account.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.account_id:
+            self.account.balance += self.amount
+            self.account.save()
+        super().delete(*args, **kwargs)
     
 
 
