@@ -41,22 +41,28 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_by', 'customer']
 
 class ProductSerializer(serializers.ModelSerializer):
-    # 2. ADD THIS CUSTOM SKU FIELD VALIDATOR
-    # This overrides the default field to provide a better error message.
     sku = serializers.CharField(
         max_length=100,
-        validators=[
-            UniqueValidator(
-                queryset=Product.objects.all(),
-                message='A product with this SKU already exists. Please use a different one.'
-            )
-        ]
+        required=False,
+        allow_blank=True,
+        allow_null=True,
     )
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'sku', 'purchase_price', 'sale_price', 'stock_quantity']
         read_only_fields = ['created_by']
+
+    def validate_sku(self, value):
+        if not value:
+            return None
+        user = self.context['request'].user
+        qs = Product.objects.filter(created_by=user, sku=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('A product with this SKU already exists.')
+        return value
 
 class SaleItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)

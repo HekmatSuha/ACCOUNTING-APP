@@ -16,8 +16,8 @@ The fix adds proper validation in the ProductSerializer to prevent duplicate SKU
 4. Handling both create and update operations correctly
 
 ## Testing Checklist
-- [ ] Test creating product with duplicate SKU - should return 400 with clear error
-- [ ] Test creating product with unique SKU - should succeed
-- [ ] Test creating product with blank SKU - should succeed
-- [ ] Test updating product with existing SKU - should succeed if it's the same product
-- [ ] Test updating product with different existing SKU - should fail with clear error
+- [x] Test creating product with duplicate SKU - should return 400 with clear error
+- [x] Test creating product with unique SKU - should succeed
+- [x] Test creating product with blank SKU - should succeed
+- [x] Test updating product with existing SKU - should succeed if it's the same product
+- [x] Test updating product with different existing SKU - should fail with clear error
