@@ -73,14 +73,19 @@ function AppLayout({ children }) {
             <div className="flex-grow-1 d-flex flex-column">
                 <div className="d-flex justify-content-between align-items-center border-bottom p-3">
                     <Button
-                        variant="outline-secondary"
+                        variant="light"
                         size="sm"
+                        className="border-0 shadow-none"
                         onClick={() => setCollapsed(!collapsed)}
                     >
                         {collapsed ? <ChevronRight /> : <ChevronLeft />}
                     </Button>
                     <Dropdown align="end">
-                        <Dropdown.Toggle variant="outline-secondary" id="user-dropdown">
+                        <Dropdown.Toggle
+                            variant="light"
+                            id="user-dropdown"
+                            className="border-0 bg-transparent d-flex align-items-center"
+                        >
                             <PersonCircle size={32} className="me-2" />
                             {username}
                         </Dropdown.Toggle>
