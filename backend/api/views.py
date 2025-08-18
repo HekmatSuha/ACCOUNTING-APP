@@ -133,105 +133,17 @@ class SaleViewSet(viewsets.ModelViewSet):
         return Sale.objects.filter(created_by=self.request.user).order_by('-sale_date')
 
     def perform_create(self, serializer):
-        validated_data = serializer.validated_data
-        items_data = validated_data.pop('items')
-        customer_id = validated_data.pop('customer_id')
-        
-        try:
-            with transaction.atomic():
-                customer = Customer.objects.get(id=customer_id, created_by=self.request.user)
-                
-                sale = Sale.objects.create(
-                    created_by=self.request.user,
-                    customer=customer,
-                    **validated_data
-                )
-                
-                total_sale_amount = 0
-                for item_data in items_data:
-                    product = Product.objects.get(id=item_data['product_id'], created_by=self.request.user)
-                    
-                    sale_item = SaleItem.objects.create(
-                        sale=sale,
-                        product=product,
-                        quantity=item_data['quantity'],
-                        unit_price=item_data['unit_price']
-                    )
-                    
-                    product.stock_quantity = F('stock_quantity') - sale_item.quantity
-                    product.save()
-                    
-                    total_sale_amount += sale_item.line_total
-                
-                sale.total_amount = total_sale_amount
-                sale.save()
-
-                customer.open_balance = F('open_balance') + total_sale_amount
-                customer.save()
-        
-        except (Customer.DoesNotExist, Product.DoesNotExist) as e:
-            raise serializers.ValidationError(f"Invalid data provided: {e}")
-        except Exception as e:
-            raise serializers.ValidationError(f"An error occurred: {e}")
+        serializer.save()
 
     @transaction.atomic
-    def destroy(self, request, *args, **kwargs):
-        sale = self.get_object()
+    def perform_destroy(self, instance):
+        customer = instance.customer
+        Customer.objects.filter(id=customer.id).update(open_balance=F('open_balance') - instance.total_amount)
 
-        customer = sale.customer
-        customer.open_balance = F('open_balance') - sale.total_amount
-        customer.save()
-
-        for item in sale.items.all():
-            product = item.product
-            product.stock_quantity = F('stock_quantity') + item.quantity
-            product.save()
-
-        sale.delete()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @transaction.atomic
-    def update(self, request, *args, **kwargs):
-        sale = self.get_object()
-        serializer = self.get_serializer(sale, data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        validated_data = serializer.validated_data
-        items_data = validated_data.pop('items')
-
-        # Revert old transaction data
-        sale.customer.open_balance = F('open_balance') - sale.total_amount
-        sale.customer.save()
-        for item in sale.items.all():
-            item.product.stock_quantity = F('stock_quantity') + item.quantity
-            item.product.save()
-
-        sale.items.all().delete()
+        for item in instance.items.all():
+            Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
         
-        new_total_amount = 0
-        for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'], created_by=self.request.user)
-            sale_item = SaleItem.objects.create(
-                sale=sale,
-                product=product,
-                quantity=item_data['quantity'],
-                unit_price=item_data['unit_price']
-            )
-
-            product.stock_quantity = F('stock_quantity') - sale_item.quantity
-            product.save()
-
-            new_total_amount += sale_item.line_total
-
-        sale.total_amount = new_total_amount
-        sale.save()
-
-        sale.customer.open_balance = F('open_balance') + new_total_amount
-        sale.customer.save()
-
-        read_serializer = SaleReadSerializer(sale)
-        return Response(read_serializer.data)
+        instance.delete()
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
@@ -356,107 +268,15 @@ class PurchaseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return self.request.user.purchases.all().order_by('-purchase_date')
 
-    @transaction.atomic
     def perform_create(self, serializer):
-        validated_data = serializer.validated_data
-        items_data = validated_data.pop('items')
-        supplier_id = validated_data.pop('supplier_id')
-        
-        supplier = Supplier.objects.get(id=supplier_id, created_by=self.request.user)
-        
-        purchase = Purchase.objects.create(
-            created_by=self.request.user,
-            supplier=supplier,
-            **validated_data
-        )
-        
-        total_purchase_amount = 0
-        for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'], created_by=self.request.user)
-
-            purchase_item = PurchaseItem.objects.create(
-                purchase=purchase,
-                product=product,
-                quantity=item_data['quantity'],
-                unit_price=item_data['unit_price']
-            )
-            
-            product.stock_quantity = F('stock_quantity') + purchase_item.quantity
-            product.save()
-            
-            total_purchase_amount += purchase_item.line_total
-
-        purchase.total_amount = total_purchase_amount
-        purchase.save()
-
-        if not purchase.account_id:
-            supplier.open_balance = F('open_balance') + total_purchase_amount
-            supplier.save()
+        serializer.save()
 
     @transaction.atomic
-    def destroy(self, request, *args, **kwargs):
-        purchase = self.get_object()
+    def perform_destroy(self, instance):
+        for item in instance.items.all():
+            Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') - item.quantity)
 
-        for item in purchase.items.all():
-            product = item.product
-            product.stock_quantity = F('stock_quantity') - item.quantity
-            product.save()
+        if not instance.account_id:
+            Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') - instance.total_amount)
 
-        if not purchase.account_id:
-            purchase.supplier.open_balance = F('open_balance') - purchase.total_amount
-            purchase.supplier.save()
-
-        purchase.delete()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @transaction.atomic
-    def update(self, request, *args, **kwargs):
-        purchase = self.get_object()
-        serializer = self.get_serializer(purchase, data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        validated_data = serializer.validated_data
-        items_data = validated_data.pop('items')
-        supplier_id = validated_data.pop('supplier_id', purchase.supplier.id)
-
-        old_supplier = purchase.supplier
-        if purchase.account_id is None:
-            old_supplier.open_balance = F('open_balance') - purchase.total_amount
-            old_supplier.save()
-
-        if supplier_id != old_supplier.id:
-            supplier = Supplier.objects.get(id=supplier_id, created_by=self.request.user)
-            purchase.supplier = supplier
-        else:
-            supplier = old_supplier
-
-        for item in purchase.items.all():
-            item.product.stock_quantity = F('stock_quantity') - item.quantity
-            item.product.save()
-
-        purchase.items.all().delete()
-
-        new_total_amount = 0
-        for item_data in items_data:
-            product_id = item_data.pop('product_id')
-            product = Product.objects.get(id=product_id, created_by=self.request.user)
-            purchase_item = PurchaseItem.objects.create(purchase=purchase, product=product, **item_data)
-
-            product.stock_quantity = F('stock_quantity') + purchase_item.quantity
-            product.save()
-
-            new_total_amount += purchase_item.line_total
-
-        purchase.total_amount = new_total_amount
-        purchase.purchase_date = validated_data.get('purchase_date', purchase.purchase_date)
-        purchase.bill_number = validated_data.get('bill_number', purchase.bill_number)
-        purchase.account = validated_data.get('account', purchase.account)
-        purchase.save()
-
-        if purchase.account_id is None:
-            supplier.open_balance = F('open_balance') + new_total_amount
-            supplier.save()
-
-        read_serializer = PurchaseReadSerializer(purchase)
-        return Response(read_serializer.data)
+        instance.delete()
