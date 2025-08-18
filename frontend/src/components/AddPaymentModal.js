@@ -1,6 +1,6 @@
 // frontend/src/components/AddPaymentModal.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 
@@ -19,7 +19,21 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('Cash');
     const [notes, setNotes] = useState('');
+    const [accounts, setAccounts] = useState([]);
+    const [account, setAccount] = useState('');
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        const fetchAccounts = async () => {
+            try {
+                const res = await axiosInstance.get('/accounts/');
+                setAccounts(res.data);
+            } catch (err) {
+                console.error('Failed to fetch accounts:', err);
+            }
+        };
+        fetchAccounts();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -38,6 +52,10 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
             notes,
         };
 
+        if (account) {
+            paymentData.account = account;
+        }
+
         try {
             await axiosInstance.post(`/sales/${saleId}/payments/`, paymentData);
             onPaymentAdded();
@@ -45,6 +63,7 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
             // Clear form for next time
             setAmount('');
             setNotes('');
+            setAccount('');
             setPaymentDate(getTodayDate()); // Reset date to today
         } catch (err) {
             console.error('Failed to add payment:', err);
@@ -89,6 +108,18 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                             <option value="Cash">Cash</option>
                             <option value="Bank">Bank Transfer</option>
                             <option value="Card">Credit/Debit Card</option>
+                        </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-3" controlId="paymentAccount">
+                        <Form.Label>Account</Form.Label>
+                        <Form.Select
+                            value={account}
+                            onChange={(e) => setAccount(e.target.value)}
+                        >
+                            <option value="">No Account</option>
+                            {accounts.map((acc) => (
+                                <option key={acc.id} value={acc.id}>{acc.name}</option>
+                            ))}
                         </Form.Select>
                     </Form.Group>
                     <Form.Group className="mb-3" controlId="paymentNotes">
