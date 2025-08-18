@@ -29,6 +29,7 @@ function AppLayout({ children }) {
                             <Nav.Link as={NavLink} to="/expenses">Expenses</Nav.Link>
                             <Nav.Link as={NavLink} to="/inventory">Inventory</Nav.Link>
                             <Nav.Link as={NavLink} to="/reports/profit-loss">Profit & Loss</Nav.Link>
+                            <Nav.Link as={NavLink} to="/accounts">Bank Accounts</Nav.Link>
                         </Nav>
                         <Button variant="outline-light" onClick={handleLogout}>Logout</Button>
                     </Navbar.Collapse>
