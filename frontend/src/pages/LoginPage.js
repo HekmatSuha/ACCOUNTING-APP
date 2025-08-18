@@ -22,7 +22,8 @@ function LoginPage() {
             const response = await axios.post(`${API_URL}/token/`, { username, password });
             localStorage.setItem('accessToken', response.data.access);
             localStorage.setItem('refreshToken', response.data.refresh);
-            navigate('/dashboard'); 
+            localStorage.setItem('username', username);
+            navigate('/dashboard');
         } catch (err) {
             setError('Login failed. Please check your username and password.');
             console.error('Login failed:', err);
