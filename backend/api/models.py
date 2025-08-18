@@ -1,5 +1,6 @@
 # backend/api/models.py
-from django.db import models
+from django.db import models, transaction
+from django.db.models import F
 from django.contrib.auth.models import User
 from decimal import Decimal
 
@@ -40,6 +41,16 @@ class Sale(models.Model):
         return f"Sale #{self.id} for {self.customer.name}"
 
 
+class BankAccount(models.Model):
+    name = models.CharField(max_length=255)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Payment(models.Model):
     PAYMENT_METHODS = [
         ('Cash', 'Cash'),
@@ -56,7 +67,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='Cash')
     notes = models.TextField(blank=True, null=True)
-    account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
+    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -66,29 +77,29 @@ class Payment(models.Model):
         return f"Payment of {self.amount} from {self.customer.name}"
 
     def save(self, *args, **kwargs):
-        if self.account_id:
+        with transaction.atomic():
             if self.pk:
                 old = Payment.objects.get(pk=self.pk)
+                # If account has changed
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        old.account.balance -= old.amount
-                        old.account.save()
-                    self.account.balance += self.amount
-                    self.account.save()
-                else:
+                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.amount)
+                    if self.account_id:
+                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+                # If account is the same, just update with the delta
+                elif self.account_id:
                     delta = self.amount - old.amount
-                    self.account.balance += delta
-                    self.account.save()
-            else:
-                self.account.balance += self.amount
-                self.account.save()
-        super().save(*args, **kwargs)
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + delta)
+            # New payment
+            elif self.account_id:
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+            super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.account_id:
-            self.account.balance -= self.amount
-            self.account.save()
-        super().delete(*args, **kwargs)
+        with transaction.atomic():
+            if self.account_id:
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+            super().delete(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -138,22 +149,6 @@ class Supplier(models.Model):
         return self.name
 
 
-class BankAccount(models.Model):
-    name = models.CharField(max_length=255)
-    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
-
-# backend/api/models.py
-from django.db import models
-from django.contrib.auth.models import User
-
-# ... (all other models like Customer, Sale, Product are here) ...
-
 class ExpenseCategory(models.Model):
     name = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expense_categories')
@@ -180,29 +175,29 @@ class Expense(models.Model):
         return f"Expense of {self.amount} on {self.expense_date}"
 
     def save(self, *args, **kwargs):
-        if self.account_id:
+        with transaction.atomic():
             if self.pk:
                 old = Expense.objects.get(pk=self.pk)
+                # If account has changed
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        old.account.balance += old.amount
-                        old.account.save()
-                    self.account.balance -= self.amount
-                    self.account.save()
-                else:
+                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') + old.amount)
+                    if self.account_id:
+                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+                # If account is the same, just update with the delta
+                elif self.account_id:
                     delta = self.amount - old.amount
-                    self.account.balance -= delta
-                    self.account.save()
-            else:
-                self.account.balance -= self.amount
-                self.account.save()
-        super().save(*args, **kwargs)
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - delta)
+            # New expense
+            elif self.account_id:
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+            super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.account_id:
-            self.account.balance += self.amount
-            self.account.save()
-        super().delete(*args, **kwargs)
+        with transaction.atomic():
+            if self.account_id:
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+            super().delete(*args, **kwargs)
     
 
 
@@ -219,31 +214,28 @@ class Purchase(models.Model):
         return f"Purchase #{self.id} from {self.supplier.name}"
 
     def save(self, *args, **kwargs):
-        current_total = Decimal(self.total_amount)
-        if self.account_id:
+        with transaction.atomic():
+            current_total = Decimal(self.total_amount)
             if self.pk:
                 old = Purchase.objects.get(pk=self.pk)
                 old_total = Decimal(old.total_amount)
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        old.account.balance = Decimal(old.account.balance) + old_total
-                        old.account.save()
-                    self.account.balance = Decimal(self.account.balance) - current_total
-                    self.account.save()
-                else:
+                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') + old_total)
+                    if self.account_id:
+                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - current_total)
+                elif self.account_id:
                     delta = current_total - old_total
-                    self.account.balance = Decimal(self.account.balance) - delta
-                    self.account.save()
-            else:
-                self.account.balance = Decimal(self.account.balance) - current_total
-                self.account.save()
-        super().save(*args, **kwargs)
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - delta)
+            elif self.account_id:
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - current_total)
+            super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.account_id:
-            self.account.balance = Decimal(self.account.balance) + Decimal(self.total_amount)
-            self.account.save()
-        super().delete(*args, **kwargs)
+        with transaction.atomic():
+            if self.account_id:
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + Decimal(self.total_amount))
+            super().delete(*args, **kwargs)
 
 class PurchaseItem(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')

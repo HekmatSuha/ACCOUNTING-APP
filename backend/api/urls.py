@@ -26,7 +26,6 @@ router.register(r'purchases', PurchaseViewSet, basename='purchase')
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
-    path('register/', CreateUserView.as_view(), name='register'),
     path('token/', TokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
