@@ -13,12 +13,14 @@ function EditPurchasePage() {
     // Data state
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
+    const [accounts, setAccounts] = useState([]);
 
     // Form state
     const [formData, setFormData] = useState({
         supplier_id: '',
         purchase_date: '',
         bill_number: '',
+        account: '',
         items: []
     });
 
@@ -29,20 +31,23 @@ function EditPurchasePage() {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [suppliersRes, productsRes, purchaseRes] = await Promise.all([
+                const [suppliersRes, productsRes, accountsRes, purchaseRes] = await Promise.all([
                     axiosInstance.get('/suppliers/'),
                     axiosInstance.get('/products/'),
+                    axiosInstance.get('/accounts/'),
                     axiosInstance.get(`/purchases/${id}/`)
                 ]);
 
                 setSuppliers(suppliersRes.data);
                 setProducts(productsRes.data);
+                setAccounts(accountsRes.data);
 
                 const purchaseData = purchaseRes.data;
                 setFormData({
                     supplier_id: purchaseData.supplier,
                     purchase_date: purchaseData.purchase_date,
                     bill_number: purchaseData.bill_number || '',
+                    account: purchaseData.account || '',
                     items: purchaseData.items.map(item => ({
                         product_id: item.product.id,
                         quantity: item.quantity,
@@ -97,6 +102,7 @@ function EditPurchasePage() {
         const dataToSubmit = {
             ...formData,
             supplier_id: parseInt(formData.supplier_id),
+            account: formData.account ? parseInt(formData.account) : null,
             items: formData.items.map(item => ({
                 ...item,
                 product_id: parseInt(item.product_id),
@@ -142,6 +148,17 @@ function EditPurchasePage() {
                             <Form.Group className="mb-3">
                                 <Form.Label>Bill / Invoice #</Form.Label>
                                 <Form.Control type="text" name="bill_number" value={formData.bill_number} onChange={handleInputChange} />
+                            </Form.Group>
+                        </Col>
+                    </Row>
+                    <Row>
+                        <Col md={4}>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Account</Form.Label>
+                                <Form.Select name="account" value={formData.account} onChange={handleInputChange}>
+                                    <option value="">No Account</option>
+                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </Form.Select>
                             </Form.Group>
                         </Col>
                     </Row>

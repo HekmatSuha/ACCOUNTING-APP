@@ -167,9 +167,10 @@ class PurchaseItemWriteSerializer(serializers.ModelSerializer):
 class PurchaseReadSerializer(serializers.ModelSerializer):
     items = PurchaseItemSerializer(many=True, read_only=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    account_name = serializers.CharField(source='account.name', read_only=True, allow_null=True)
     class Meta:
         model = Purchase
-        fields = ['id', 'supplier', 'supplier_name', 'purchase_date', 'bill_number', 'total_amount', 'items']
+        fields = ['id', 'supplier', 'supplier_name', 'purchase_date', 'bill_number', 'total_amount', 'account', 'account_name', 'items']
 
 # For creating/writing a purchase
 class PurchaseWriteSerializer(serializers.ModelSerializer):
@@ -177,7 +178,7 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
     supplier_id = serializers.IntegerField()
     class Meta:
         model = Purchase
-        fields = ['supplier_id', 'purchase_date', 'bill_number', 'items']
+        fields = ['supplier_id', 'purchase_date', 'bill_number', 'account', 'items']
 
 
 class BankAccountSerializer(serializers.ModelSerializer):
