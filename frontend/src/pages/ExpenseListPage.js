@@ -84,6 +84,7 @@ const getTodayDate = () => {
 function ExpenseListPage() {
     const [expenses, setExpenses] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [accounts, setAccounts] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentExpense, setCurrentExpense] = useState(null);
@@ -92,21 +93,24 @@ function ExpenseListPage() {
         amount: '',
         expense_date: getTodayDate(),
         description: '',
-        category: ''
+        category: '',
+        account: ''
     });
     const [error, setError] = useState('');
 
     const fetchData = async () => {
         try {
-            const [expensesRes, categoriesRes] = await Promise.all([
+            const [expensesRes, categoriesRes, accountsRes] = await Promise.all([
                 axiosInstance.get('/expenses/'),
-                axiosInstance.get('/expense-categories/')
+                axiosInstance.get('/expense-categories/'),
+                axiosInstance.get('/accounts/')
             ]);
             setExpenses(expensesRes.data);
             setCategories(categoriesRes.data);
+            setAccounts(accountsRes.data);
         } catch (error) {
             console.error('Failed to fetch data:', error);
-            setError('Could not fetch expenses or categories.');
+            setError('Could not fetch expenses, categories, or accounts.');
         }
     };
 
@@ -126,7 +130,8 @@ function ExpenseListPage() {
                 amount: expense.amount,
                 expense_date: expense.expense_date,
                 description: expense.description || '',
-                category: expense.category || ''
+                category: expense.category || '',
+                account: expense.account || ''
             });
         } else {
             setIsEditing(false);
@@ -135,7 +140,8 @@ function ExpenseListPage() {
                 amount: '',
                 expense_date: getTodayDate(),
                 description: '',
-                category: ''
+                category: '',
+                account: ''
             });
         }
         setShowModal(true);
@@ -148,7 +154,11 @@ function ExpenseListPage() {
         e.preventDefault();
         const url = isEditing ? `/expenses/${currentExpense.id}/` : '/expenses/';
         const method = isEditing ? 'put' : 'post';
-        const dataToSubmit = { ...formData, category: formData.category ? parseInt(formData.category) : null };
+        const dataToSubmit = {
+            ...formData,
+            category: formData.category ? parseInt(formData.category) : null,
+            account: formData.account ? parseInt(formData.account) : null,
+        };
 
         try {
             await axiosInstance[method](url, dataToSubmit);
@@ -193,6 +203,7 @@ function ExpenseListPage() {
                             <tr>
                                 <th>Date</th>
                                 <th>Category</th>
+                                <th>Account</th>
                                 <th>Description</th>
                                 <th>Amount</th>
                                 <th>Actions</th>
@@ -203,6 +214,7 @@ function ExpenseListPage() {
                                 <tr key={expense.id}>
                                     <td>{expense.expense_date}</td>
                                     <td>{expense.category_name || 'Uncategorized'}</td>
+                                    <td>{expense.account_name || 'N/A'}</td>
                                     <td>{expense.description}</td>
                                     <td>${parseFloat(expense.amount).toFixed(2)}</td>
                                     <td>
@@ -243,6 +255,15 @@ function ExpenseListPage() {
                                 <option value="">Uncategorized</option>
                                 {categories.map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Account</Form.Label>
+                            <Form.Select name="account" value={formData.account} onChange={handleInputChange}>
+                                <option value="">No Account</option>
+                                {accounts.map(acc => (
+                                    <option key={acc.id} value={acc.id}>{acc.name}</option>
                                 ))}
                             </Form.Select>
                         </Form.Group>

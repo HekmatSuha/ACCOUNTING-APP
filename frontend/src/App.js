@@ -17,12 +17,13 @@ import SupplierListPage from './pages/SupplierListPage';
 import SaleListPage from './pages/SaleListPage'; // <-- Import
 import NewSalePage from './pages/NewSalePage';   // <-- Import
 import SaleDetailPage from './pages/SaleDetailPage';
-import ExpenseListPage from './pages/ExpenseListPage'; 
+import ExpenseListPage from './pages/ExpenseListPage';
 import ProfitLossPage from './pages/ProfitLossPage';
 import EditSalePage from './pages/EditSalePage';
 import PurchaseListPage from './pages/PurchaseListPage';
 import PurchaseDetailPage from './pages/PurchaseDetailPage';
-import EditPurchasePage from './pages/EditPurchasePage'; 
+import EditPurchasePage from './pages/EditPurchasePage';
+import BankAccountListPage from './pages/BankAccountListPage';
 
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
                   <Route path="purchases" element={<PurchaseListPage />} /> {/* <-- Add Route */}
                   <Route path="purchases/:id" element={<PurchaseDetailPage />} /> {/* <-- Add Route */}
                   <Route path="purchases/:id/edit" element={<EditPurchasePage />} /> {/* <-- Add Route */}
+                  <Route path="accounts" element={<BankAccountListPage />} />
 
                 </Routes>
 
