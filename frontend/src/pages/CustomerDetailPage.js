@@ -1,0 +1,124 @@
+// frontend/src/pages/CustomerDetailPage.js
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axiosInstance from '../utils/axiosInstance';
+import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar } from 'react-bootstrap';
+import { PersonCircle, Cash, Tag, Hammer } from 'react-bootstrap-icons';
+
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
+function CustomerDetailPage() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const fetchDetails = async () => {
+            try {
+                // Use our new custom API endpoint
+                const response = await axiosInstance.get(`/customers/${id}/details/`);
+                setData(response.data);
+            } catch (err) {
+                setError('Failed to fetch customer details.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDetails();
+    }, [id]);
+    
+    const formatCurrency = (amount, currency) => {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount);
+    };
+
+    if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
+    if (error) return <Alert variant="danger">{error}</Alert>;
+
+    const { customer, sales, payments, summary } = data;
+
+    return (
+        <Container fluid>
+            {/* Customer Header */}
+            <Card className="mb-3" style={{ background: '#f5f5f5' }}>
+                <Card.Body className="d-flex align-items-center">
+                    {customer.image ? (
+                        <img src={`${API_BASE_URL}${customer.image}`} alt={customer.name} className="rounded-circle me-3" style={{ width: '60px', height: '60px' }} />
+                    ) : (
+                        <PersonCircle size={60} className="me-3 text-secondary" />
+                    )}
+                    <h2 className="mb-0">{customer.name}</h2>
+                    <Button variant="info" className="ms-auto" onClick={() => navigate(`/customers/edit/${id}`)}>Edit Customer</Button>
+                </Card.Body>
+            </Card>
+
+            {/* Summary Cards */}
+            <Row className="mb-3">
+                <Col><Card bg="danger" text="white"><Card.Body><Card.Title>Open Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.open_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
+                <Col><Card bg="info" text="white"><Card.Body><Card.Title>Check Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.check_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
+                <Col><Card bg="info" text="white"><Card.Body><Card.Title>Note Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.note_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
+                <Col><Card bg="success" text="white"><Card.Body><Card.Title>Turnover</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.turnover, customer.currency)}</Card.Text></Card.Body></Card></Col>
+            </Row>
+
+            {/* Action Buttons */}
+            <ButtonToolbar className="mb-3">
+                <Button variant="primary" className="me-2" onClick={() => navigate(`/customers/${customer.id}/new-sale`)}>Make Sale</Button>
+                <Button variant="secondary" className="me-2">Prepare Offer</Button>
+                <Button variant="success" className="me-2">Collection / Payment</Button>
+            </ButtonToolbar>
+
+            {/* Transaction Lists */}
+            <Row>
+                <Col md={6}>
+                    <Card>
+                        <Card.Header as="h5">Previous Sales</Card.Header>
+                        <Card.Body>
+                            <Accordion>
+                                {sales.map((sale, index) => (
+                                    <Accordion.Item eventKey={index.toString()} key={sale.id}>
+                                        <Accordion.Header>
+                                            <div className="d-flex justify-content-between w-100 pe-3">
+                                                <span>{new Date(sale.sale_date).toLocaleDateString()}</span>
+                                                <strong>{formatCurrency(sale.total_amount, customer.currency)}</strong>
+                                            </div>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                            <strong>Details:</strong> {sale.details || 'No details provided.'}
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                ))}
+                            </Accordion>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={6}>
+                     <Card>
+                        <Card.Header as="h5">Previous Payments</Card.Header>
+                        <Card.Body>
+                            <Accordion>
+                                {payments.map((payment, index) => (
+                                    <Accordion.Item eventKey={index.toString()} key={payment.id}>
+                                        <Accordion.Header>
+                                            <div className="d-flex justify-content-between w-100 pe-3">
+                                                <span>{new Date(payment.payment_date).toLocaleDateString()}</span>
+                                                <span>{payment.method}</span>
+                                                <strong>{formatCurrency(payment.amount, customer.currency)}</strong>
+                                            </div>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                             <strong>Notes:</strong> {payment.notes || 'No notes provided.'}
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                ))}
+                            </Accordion>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </Container>
+    );
+}
+
+export default CustomerDetailPage;
