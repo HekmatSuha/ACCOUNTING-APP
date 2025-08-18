@@ -1,6 +1,6 @@
 // frontend/src/components/AppLayout.js
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Nav, Button } from 'react-bootstrap';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
@@ -12,11 +12,15 @@ import {
     CreditCard,
     BoxSeam,
     BarChart,
-    Bank
+    Bank,
+    BoxArrowRight,
+    ChevronLeft,
+    ChevronRight
 } from 'react-bootstrap-icons';
 
 function AppLayout({ children }) {
     const navigate = useNavigate();
+    const [collapsed, setCollapsed] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
@@ -24,46 +28,65 @@ function AppLayout({ children }) {
         navigate('/login');
     };
 
+    const linkClass = `text-white d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'} mb-2`;
+    const iconClass = collapsed ? '' : 'me-2';
+
     return (
         <div className="d-flex">
-            <div className="bg-dark text-white d-flex flex-column p-3" style={{ minWidth: '250px', minHeight: '100vh' }}>
-                <h4 className="mb-4">MyAccountingApp</h4>
+            <div
+                className="bg-dark text-white d-flex flex-column p-3"
+                style={{ width: collapsed ? '80px' : '250px', minHeight: '100vh', transition: 'width 0.3s' }}
+            >
+                <Button
+                    variant="outline-light"
+                    size="sm"
+                    onClick={() => setCollapsed(!collapsed)}
+                    className="align-self-end mb-3"
+                >
+                    {collapsed ? <ChevronRight /> : <ChevronLeft />}
+                </Button>
+                {!collapsed && <h4 className="mb-4">MyAccountingApp</h4>}
                 <Nav className="flex-column mb-auto">
-                    <Nav.Link as={NavLink} to="/dashboard" className="text-white d-flex align-items-center mb-2">
-                        <Speedometer2 className="me-2" /> Dashboard
+                    <Nav.Link as={NavLink} to="/dashboard" className={linkClass}>
+                        <Speedometer2 className={iconClass} /> {!collapsed && 'Dashboard'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/customers" className="text-white d-flex align-items-center mb-2">
-                        <People className="me-2" /> Customers
+                    <Nav.Link as={NavLink} to="/customers" className={linkClass}>
+                        <People className={iconClass} /> {!collapsed && 'Customers'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/suppliers" className="text-white d-flex align-items-center mb-2">
-                        <Truck className="me-2" /> Suppliers
+                    <Nav.Link as={NavLink} to="/suppliers" className={linkClass}>
+                        <Truck className={iconClass} /> {!collapsed && 'Suppliers'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/sales" className="text-white d-flex align-items-center mb-2">
-                        <Receipt className="me-2" /> Sales
+                    <Nav.Link as={NavLink} to="/sales" className={linkClass}>
+                        <Receipt className={iconClass} /> {!collapsed && 'Sales'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/purchases" className="text-white d-flex align-items-center mb-2">
-                        <Cart className="me-2" /> Purchases
+                    <Nav.Link as={NavLink} to="/purchases" className={linkClass}>
+                        <Cart className={iconClass} /> {!collapsed && 'Purchases'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/expenses" className="text-white d-flex align-items-center mb-2">
-                        <CreditCard className="me-2" /> Expenses
+                    <Nav.Link as={NavLink} to="/expenses" className={linkClass}>
+                        <CreditCard className={iconClass} /> {!collapsed && 'Expenses'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/inventory" className="text-white d-flex align-items-center mb-2">
-                        <BoxSeam className="me-2" /> Inventory
+                    <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
+                        <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/reports/profit-loss" className="text-white d-flex align-items-center mb-2">
-                        <BarChart className="me-2" /> Profit &amp; Loss
+                    <Nav.Link as={NavLink} to="/reports/profit-loss" className={linkClass}>
+                        <BarChart className={iconClass} /> {!collapsed && 'Profit & Loss'}
                     </Nav.Link>
-                    <Nav.Link as={NavLink} to="/accounts" className="text-white d-flex align-items-center mb-2">
-                        <Bank className="me-2" /> Bank Accounts
+                    <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
+                        <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
                     </Nav.Link>
                 </Nav>
-                <Button variant="outline-light" onClick={handleLogout} className="mt-auto">Logout</Button>
+                <Button
+                    variant="outline-light"
+                    onClick={handleLogout}
+                    className={`mt-auto d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'}`}
+                >
+                    <BoxArrowRight className={iconClass} /> {!collapsed && 'Logout'}
+                </Button>
             </div>
-            <div className="flex-grow-1 p-4">
-                {children}
-            </div>
+            <div className="flex-grow-1 p-4">{children}</div>
         </div>
     );
 }
 
 export default AppLayout;
+
