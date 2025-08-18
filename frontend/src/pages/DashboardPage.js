@@ -10,17 +10,15 @@ import { FaUsers, FaDollarSign, FaBoxOpen, FaCreditCard } from 'react-icons/fa';
 
 // A reusable component for our summary cards
 const SummaryCard = ({ title, value, icon, color }) => (
-    <Card className={`mb-4 shadow-sm bg-${color} text-white`}>
-        <Card.Body>
-            <Row>
-                <Col xs={3} className="d-flex align-items-center justify-content-center">
-                    {icon}
-                </Col>
-                <Col xs={9}>
-                    <h5 className="card-title">{title}</h5>
-                    <h3 className="card-text">{value}</h3>
-                </Col>
-            </Row>
+    <Card className={`shadow-sm bg-${color} text-white`}>
+        <Card.Body className="d-flex align-items-center">
+            <div className="me-3">
+                {icon}
+            </div>
+            <div>
+                <h5 className="mb-1">{title}</h5>
+                <h3 className="mb-0">{value}</h3>
+            </div>
         </Card.Body>
     </Card>
 );
@@ -59,7 +57,7 @@ function DashboardPage() {
         <div>
             <h2 className="mb-4">Dashboard</h2>
             {summary && (
-                <Row>
+                <Row className="g-4">
                     <Col md={6} lg={4}>
                         <SummaryCard
                             title="Total Receivables"
