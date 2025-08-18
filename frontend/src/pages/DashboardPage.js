@@ -4,7 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { FaUsers, FaDollarSign, FaBoxOpen, FaCreditCard } from 'react-icons/fa';
+import { Bar } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+} from 'chart.js';
 // frontend/src/pages/DashboardPage.js
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 
 
@@ -27,6 +39,29 @@ function DashboardPage() {
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const barData = summary ? {
+        labels: ['Receivables', 'Stock Value', 'Expenses'],
+        datasets: [
+            {
+                label: 'Amount ($)',
+                data: [
+                    parseFloat(summary.total_receivables),
+                    parseFloat(summary.stock_value),
+                    parseFloat(summary.expenses)
+                ],
+                backgroundColor: ['#0d6efd', '#0dcaf0', '#dc3545'],
+            },
+        ],
+    } : null;
+
+    const barOptions = {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Financial Overview' },
+        },
+    };
 
     useEffect(() => {
         const fetchSummaryData = async () => {
@@ -57,42 +92,48 @@ function DashboardPage() {
         <div>
             <h2 className="mb-4">Dashboard</h2>
             {summary && (
-                <Row className="g-4">
-                    <Col md={6} lg={4}>
-                        <SummaryCard
-                            title="Total Receivables"
-                            value={`$${parseFloat(summary.total_receivables).toFixed(2)}`}
-                            icon={<FaDollarSign size={50} />}
-                            color="primary"
-                        />
-                    </Col>
-                    <Col md={6} lg={4}>
-                        <SummaryCard
-                            title="Total Customers"
-                            value={summary.customer_count}
-                            icon={<FaUsers size={50} />}
-                            color="success"
-                        />
-                    </Col>
-                    <Col md={6} lg={4}>
-                        <SummaryCard
-                            title="Stock Value"
-                            value={`$${parseFloat(summary.stock_value).toFixed(2)}`}
-                            icon={<FaBoxOpen size={50} />}
-                            color="info"
-                        />
-                    </Col>
-                    <Col md={6} lg={4}>
-                        <SummaryCard
-                            title="Total Expenses"
-                            value={`$${parseFloat(summary.expenses).toFixed(2)}`}
-                            icon={<FaCreditCard size={50} />}
-                            color="danger"
-                        />
-                    </Col>
-                </Row>
+                <>
+                    <Row className="g-4">
+                        <Col md={6} lg={4}>
+                            <SummaryCard
+                                title="Total Receivables"
+                                value={`$${parseFloat(summary.total_receivables).toFixed(2)}`}
+                                icon={<FaDollarSign size={50} />}
+                                color="primary"
+                            />
+                        </Col>
+                        <Col md={6} lg={4}>
+                            <SummaryCard
+                                title="Total Customers"
+                                value={summary.customer_count}
+                                icon={<FaUsers size={50} />}
+                                color="success"
+                            />
+                        </Col>
+                        <Col md={6} lg={4}>
+                            <SummaryCard
+                                title="Stock Value"
+                                value={`$${parseFloat(summary.stock_value).toFixed(2)}`}
+                                icon={<FaBoxOpen size={50} />}
+                                color="info"
+                            />
+                        </Col>
+                        <Col md={6} lg={4}>
+                            <SummaryCard
+                                title="Total Expenses"
+                                value={`$${parseFloat(summary.expenses).toFixed(2)}`}
+                                icon={<FaCreditCard size={50} />}
+                                color="danger"
+                            />
+                        </Col>
+                    </Row>
+                    {barData && (
+                        <div className="mt-5">
+                            <Bar data={barData} options={barOptions} />
+                        </div>
+                    )}
+                </>
             )}
-            {/* We can add charts or recent activity lists here in the future */}
         </div>
     );
 }
