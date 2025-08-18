@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from .models import BankAccount, Customer, Expense, Payment, Product
+from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem
 from .serializers import ProductSerializer
 
 
@@ -95,4 +95,34 @@ class BankAccountTransactionTest(TestCase):
         )
         self.account.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal('-50.00'))
+
+
+class PurchaseAccountTransactionTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='u2', password='pw')
+        self.account = BankAccount.objects.create(name='Main', created_by=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.product = Product.objects.create(name='P', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
+
+    def test_purchase_updates_account_balance(self):
+        purchase = Purchase.objects.create(
+            supplier=self.supplier,
+            purchase_date=date.today(),
+            account=self.account,
+            created_by=self.user,
+        )
+        PurchaseItem.objects.create(
+            purchase=purchase,
+            product=self.product,
+            quantity=Decimal('2'),
+            unit_price=Decimal('5.00'),
+        )
+        purchase.total_amount = Decimal('10.00')
+        purchase.save()
+
+        self.account.refresh_from_db()
+        self.supplier.refresh_from_db()
+
+        self.assertEqual(self.account.balance, Decimal('-10.00'))
+        self.assertEqual(self.supplier.open_balance, Decimal('0.00'))
 
