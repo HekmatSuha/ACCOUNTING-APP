@@ -1,5 +1,5 @@
 // frontend/src/pages/DashboardPage.js
-
+import './DashboardPage.css';
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
@@ -22,9 +22,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 // A reusable component for our summary cards
 const SummaryCard = ({ title, value, icon, color }) => (
-    <Card className={`shadow-sm bg-${color} text-white`}>
-        <Card.Body className="d-flex align-items-center">
-            <div className="me-3">
+    <Card className={`summary-card shadow-sm bg-${color} text-white`}>
+        <Card.Body>
+            <div className="icon">
                 {icon}
             </div>
             <div>
@@ -128,7 +128,7 @@ function DashboardPage() {
                         </Col>
                     </Row>
                     {barData && (
-                        <div className="mt-5">
+                        <div className="chart-container mt-5">
                             <Bar data={barData} options={barOptions} />
                         </div>
                     )}
