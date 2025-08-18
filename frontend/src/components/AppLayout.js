@@ -15,12 +15,14 @@ import {
     Bank,
     BoxArrowRight,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    PersonCircle
 } from 'react-bootstrap-icons';
 
 function AppLayout({ children }) {
     const navigate = useNavigate();
     const [collapsed, setCollapsed] = useState(false);
+    const username = localStorage.getItem('username') || 'User';
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
@@ -37,14 +39,6 @@ function AppLayout({ children }) {
                 className="bg-dark text-white d-flex flex-column p-3"
                 style={{ width: collapsed ? '80px' : '250px', minHeight: '100vh', transition: 'width 0.3s' }}
             >
-                <Button
-                    variant="outline-light"
-                    size="sm"
-                    onClick={() => setCollapsed(!collapsed)}
-                    className="align-self-end mb-3"
-                >
-                    {collapsed ? <ChevronRight /> : <ChevronLeft />}
-                </Button>
                 {!collapsed && <h4 className="mb-4">MyAccountingApp</h4>}
                 <Nav className="flex-column mb-auto">
                     <Nav.Link as={NavLink} to="/dashboard" className={linkClass}>
@@ -75,15 +69,27 @@ function AppLayout({ children }) {
                         <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
                     </Nav.Link>
                 </Nav>
-                <Button
-                    variant="outline-light"
-                    onClick={handleLogout}
-                    className={`mt-auto d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'}`}
-                >
-                    <BoxArrowRight className={iconClass} /> {!collapsed && 'Logout'}
-                </Button>
             </div>
-            <div className="flex-grow-1 p-4">{children}</div>
+            <div className="flex-grow-1 d-flex flex-column">
+                <div className="d-flex justify-content-between align-items-center border-bottom p-3">
+                    <div className="d-flex align-items-center">
+                        <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => setCollapsed(!collapsed)}
+                            className="me-3"
+                        >
+                            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+                        </Button>
+                        <PersonCircle size={32} className="me-2" />
+                        <span>{username}</span>
+                    </div>
+                    <Button variant="outline-danger" onClick={handleLogout}>
+                        <BoxArrowRight className="me-1" /> Logout
+                    </Button>
+                </div>
+                <div className="p-4 flex-grow-1">{children}</div>
+            </div>
         </div>
     );
 }
