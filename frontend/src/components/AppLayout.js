@@ -1,7 +1,7 @@
 // frontend/src/components/AppLayout.js
 
 import React, { useState } from 'react';
-import { Nav, Button } from 'react-bootstrap';
+import { Nav, Button, Dropdown } from 'react-bootstrap';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     Speedometer2,
@@ -72,21 +72,24 @@ function AppLayout({ children }) {
             </div>
             <div className="flex-grow-1 d-flex flex-column">
                 <div className="d-flex justify-content-between align-items-center border-bottom p-3">
-                    <div className="d-flex align-items-center">
-                        <Button
-                            variant="outline-secondary"
-                            size="sm"
-                            onClick={() => setCollapsed(!collapsed)}
-                            className="me-3"
-                        >
-                            {collapsed ? <ChevronRight /> : <ChevronLeft />}
-                        </Button>
-                        <PersonCircle size={32} className="me-2" />
-                        <span>{username}</span>
-                    </div>
-                    <Button variant="outline-danger" onClick={handleLogout}>
-                        <BoxArrowRight className="me-1" /> Logout
+                    <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => setCollapsed(!collapsed)}
+                    >
+                        {collapsed ? <ChevronRight /> : <ChevronLeft />}
                     </Button>
+                    <Dropdown align="end">
+                        <Dropdown.Toggle variant="outline-secondary" id="user-dropdown">
+                            <PersonCircle size={32} className="me-2" />
+                            {username}
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                            <Dropdown.Item onClick={handleLogout}>
+                                <BoxArrowRight className="me-2" /> Logout
+                            </Dropdown.Item>
+                        </Dropdown.Menu>
+                    </Dropdown>
                 </div>
                 <div className="p-4 flex-grow-1">{children}</div>
             </div>
