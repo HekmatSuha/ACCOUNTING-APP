@@ -1,5 +1,6 @@
 # backend/api/serializers.py
-
+from django.db import transaction
+from django.db.models import F
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import (
@@ -116,7 +117,82 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sale
-        fields = ['customer_id', 'sale_date', 'items']
+        fields = ['customer_id', 'sale_date', 'items', 'invoice_number', 'details']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        customer_id = validated_data.pop('customer_id')
+        created_by = self.context['request'].user
+
+        with transaction.atomic():
+            customer = Customer.objects.get(id=customer_id, created_by=created_by)
+
+            sale = Sale.objects.create(
+                created_by=created_by,
+                customer=customer,
+                **validated_data
+            )
+
+            total_sale_amount = 0
+            for item_data in items_data:
+                product_id = item_data.pop('product_id')
+                product = Product.objects.get(id=product_id, created_by=created_by)
+
+                sale_item = SaleItem.objects.create(
+                    sale=sale,
+                    product=product,
+                    **item_data
+                )
+
+                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') - sale_item.quantity)
+
+                total_sale_amount += sale_item.line_total
+
+            sale.total_amount = total_sale_amount
+            sale.save()
+
+            Customer.objects.filter(id=customer.id).update(open_balance=F('open_balance') + total_sale_amount)
+
+        return sale
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items')
+
+        with transaction.atomic():
+            # Revert old transaction data
+            instance.customer.open_balance = F('open_balance') - instance.total_amount
+            instance.customer.save()
+            for item in instance.items.all():
+                Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
+
+            instance.items.all().delete()
+
+            # Create new items
+            new_total_amount = 0
+            for item_data in items_data:
+                product_id = item_data.pop('product_id')
+                product = Product.objects.get(id=product_id, created_by=self.context['request'].user)
+
+                sale_item = SaleItem.objects.create(
+                    sale=instance,
+                    product=product,
+                    **item_data
+                )
+
+                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') - sale_item.quantity)
+
+                new_total_amount += sale_item.line_total
+
+            instance.total_amount = new_total_amount
+            instance.sale_date = validated_data.get('sale_date', instance.sale_date)
+            instance.invoice_number = validated_data.get('invoice_number', instance.invoice_number)
+            instance.details = validated_data.get('details', instance.details)
+            instance.save()
+
+            instance.customer.open_balance = F('open_balance') + new_total_amount
+            instance.customer.save()
+
+        return instance
 
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
@@ -179,6 +255,84 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
         fields = ['supplier_id', 'purchase_date', 'bill_number', 'account', 'items']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        supplier_id = validated_data.pop('supplier_id')
+        created_by = self.context['request'].user
+
+        with transaction.atomic():
+            supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
+
+            purchase = Purchase.objects.create(
+                created_by=created_by,
+                supplier=supplier,
+                **validated_data
+            )
+
+            total_purchase_amount = 0
+            for item_data in items_data:
+                product_id = item_data.pop('product_id')
+                product = Product.objects.get(id=product_id, created_by=created_by)
+
+                purchase_item = PurchaseItem.objects.create(
+                    purchase=purchase,
+                    product=product,
+                    **item_data
+                )
+
+                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') + purchase_item.quantity)
+
+                total_purchase_amount += purchase_item.line_total
+
+            purchase.total_amount = total_purchase_amount
+            purchase.save()
+
+            if not purchase.account_id:
+                Supplier.objects.filter(id=supplier.id).update(open_balance=F('open_balance') + total_purchase_amount)
+
+        return purchase
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items')
+        supplier_id = validated_data.pop('supplier_id', instance.supplier.id)
+
+        with transaction.atomic():
+            old_supplier = instance.supplier
+            if not instance.account_id:
+                Supplier.objects.filter(id=old_supplier.id).update(open_balance=F('open_balance') - instance.total_amount)
+
+            if supplier_id != old_supplier.id:
+                supplier = Supplier.objects.get(id=supplier_id, created_by=self.context['request'].user)
+                instance.supplier = supplier
+            else:
+                supplier = old_supplier
+
+            for item in instance.items.all():
+                Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') - item.quantity)
+
+            instance.items.all().delete()
+
+            new_total_amount = 0
+            for item_data in items_data:
+                product_id = item_data.pop('product_id')
+                product = Product.objects.get(id=product_id, created_by=self.context['request'].user)
+                purchase_item = PurchaseItem.objects.create(purchase=instance, product=product, **item_data)
+
+                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') + purchase_item.quantity)
+
+                new_total_amount += purchase_item.line_total
+
+            instance.total_amount = new_total_amount
+            instance.purchase_date = validated_data.get('purchase_date', instance.purchase_date)
+            instance.bill_number = validated_data.get('bill_number', instance.bill_number)
+            instance.account = validated_data.get('account', instance.account)
+            instance.save()
+
+            if not instance.account_id:
+                Supplier.objects.filter(id=supplier.id).update(open_balance=F('open_balance') + new_total_amount)
+
+        return instance
 
 
 class BankAccountSerializer(serializers.ModelSerializer):
