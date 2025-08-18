@@ -19,6 +19,7 @@ function PurchaseListPage() {
     const [purchases, setPurchases] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
+    const [accounts, setAccounts] = useState([]);
 
     // Modal & form state
     const [showModal, setShowModal] = useState(false);
@@ -26,6 +27,7 @@ function PurchaseListPage() {
         supplier_id: '',
         purchase_date: getTodayDate(),
         bill_number: '',
+        account: '',
         items: [{ product_id: '', quantity: 1, unit_price: '' }]
     });
 
@@ -35,14 +37,16 @@ function PurchaseListPage() {
 
     const fetchData = async () => {
         try {
-            const [purchasesRes, suppliersRes, productsRes] = await Promise.all([
+            const [purchasesRes, suppliersRes, productsRes, accountsRes] = await Promise.all([
                 axiosInstance.get('/purchases/'),
                 axiosInstance.get('/suppliers/'),
-                axiosInstance.get('/products/')
+                axiosInstance.get('/products/'),
+                axiosInstance.get('/accounts/')
             ]);
             setPurchases(purchasesRes.data);
             setSuppliers(suppliersRes.data);
             setProducts(productsRes.data);
+            setAccounts(accountsRes.data);
         } catch (err) {
             setError('Could not fetch initial data.');
             console.error(err);
@@ -60,6 +64,7 @@ function PurchaseListPage() {
             supplier_id: '',
             purchase_date: getTodayDate(),
             bill_number: '',
+            account: '',
             items: [{ product_id: '', quantity: 1, unit_price: '' }]
         });
         setShowModal(true);
@@ -106,6 +111,7 @@ function PurchaseListPage() {
         const dataToSubmit = {
             ...formData,
             supplier_id: parseInt(formData.supplier_id, 10),
+            account: formData.account ? parseInt(formData.account, 10) : null,
             items: formData.items.map(item => ({
                 product_id: parseInt(item.product_id, 10),
                 quantity: parseFloat(item.quantity),
@@ -153,6 +159,7 @@ function PurchaseListPage() {
                                 <th>Date</th>
                                 <th>Supplier</th>
                                 <th>Bill #</th>
+                                <th>Account</th>
                                 <th>Total Amount</th>
                                 <th>Actions</th>
                             </tr>
@@ -163,6 +170,7 @@ function PurchaseListPage() {
                                     <td>{purchase.purchase_date}</td>
                                     <td>{purchase.supplier_name}</td>
                                     <td>{purchase.bill_number || 'N/A'}</td>
+                                    <td>{purchase.account_name || 'N/A'}</td>
                                     <td>${parseFloat(purchase.total_amount).toFixed(2)}</td>
                                     <td>
                                         <Button as={Link} to={`/purchases/${purchase.id}`} variant="info" size="sm">View</Button>
@@ -201,6 +209,17 @@ function PurchaseListPage() {
                                 <Form.Group className="mb-3">
                                     <Form.Label>Bill / Invoice #</Form.Label>
                                     <Form.Control type="text" name="bill_number" value={formData.bill_number} onChange={handleInputChange} />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <Row>
+                            <Col md={4}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Account</Form.Label>
+                                    <Form.Select name="account" value={formData.account} onChange={handleInputChange}>
+                                        <option value="">No Account</option>
+                                        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                    </Form.Select>
                                 </Form.Group>
                             </Col>
                         </Row>

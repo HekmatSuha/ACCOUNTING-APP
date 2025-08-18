@@ -53,6 +53,7 @@ function PurchaseDetailPage() {
                             <Col><strong>Supplier:</strong> {purchase.supplier_name}</Col>
                             <Col><strong>Date:</strong> {purchase.purchase_date}</Col>
                             <Col><strong>Bill #:</strong> {purchase.bill_number || 'N/A'}</Col>
+                            <Col><strong>Account:</strong> {purchase.account_name || 'N/A'}</Col>
                         </Row>
                         <h5>Items Purchased</h5>
                         <Table striped bordered>

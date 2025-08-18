@@ -1,6 +1,7 @@
 # backend/api/models.py
 from django.db import models
 from django.contrib.auth.models import User
+from decimal import Decimal
 
 class Customer(models.Model):
     CURRENCY_CHOICES = [
@@ -210,11 +211,39 @@ class Purchase(models.Model):
     purchase_date = models.DateField()
     bill_number = models.CharField(max_length=50, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Purchase #{self.id} from {self.supplier.name}"
+
+    def save(self, *args, **kwargs):
+        current_total = Decimal(self.total_amount)
+        if self.account_id:
+            if self.pk:
+                old = Purchase.objects.get(pk=self.pk)
+                old_total = Decimal(old.total_amount)
+                if old.account_id != self.account_id:
+                    if old.account_id:
+                        old.account.balance = Decimal(old.account.balance) + old_total
+                        old.account.save()
+                    self.account.balance = Decimal(self.account.balance) - current_total
+                    self.account.save()
+                else:
+                    delta = current_total - old_total
+                    self.account.balance = Decimal(self.account.balance) - delta
+                    self.account.save()
+            else:
+                self.account.balance = Decimal(self.account.balance) - current_total
+                self.account.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.account_id:
+            self.account.balance = Decimal(self.account.balance) + Decimal(self.total_amount)
+            self.account.save()
+        super().delete(*args, **kwargs)
 
 class PurchaseItem(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')
