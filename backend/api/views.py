@@ -478,10 +478,10 @@ class PurchaseViewSet(viewsets.ModelViewSet):
 
         purchase.total_amount = total_purchase_amount
         purchase.save()
-
-        # Update the supplier's open balance
-        supplier.open_balance += total_purchase_amount
-        supplier.save()
+        # Update the supplier's open balance only if unpaid
+        if not purchase.account_id:
+            supplier.open_balance += total_purchase_amount
+            supplier.save()
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
@@ -497,9 +497,10 @@ class PurchaseViewSet(viewsets.ModelViewSet):
             product.stock_quantity -= item.quantity  # Decrease stock
             product.save()
 
-        # Update supplier balance
-        purchase.supplier.open_balance -= purchase.total_amount
-        purchase.supplier.save()
+        # Update supplier balance if it was unpaid
+        if not purchase.account_id:
+            purchase.supplier.open_balance -= purchase.total_amount
+            purchase.supplier.save()
 
         # Finally, delete the purchase itself
         purchase.delete()
@@ -519,10 +520,11 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         items_data = validated_data.pop('items')
         supplier_id = validated_data.pop('supplier_id', purchase.supplier.id)
 
-        # Revert old supplier balance
+        # Revert old supplier balance if it was unpaid
         old_supplier = purchase.supplier
-        old_supplier.open_balance -= purchase.total_amount
-        old_supplier.save()
+        if purchase.account_id is None:
+            old_supplier.open_balance -= purchase.total_amount
+            old_supplier.save()
 
         # If supplier changed, update purchase.supplier
         if supplier_id != old_supplier.id:
@@ -555,10 +557,12 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         purchase.total_amount = new_total_amount
         purchase.purchase_date = validated_data.get('purchase_date', purchase.purchase_date)
         purchase.bill_number = validated_data.get('bill_number', purchase.bill_number)
+        purchase.account = validated_data.get('account', purchase.account)
         purchase.save()
 
-        supplier.open_balance += new_total_amount
-        supplier.save()
+        if purchase.account_id is None:
+            supplier.open_balance += new_total_amount
+            supplier.save()
 
         # Use the ReadSerializer to return the updated data
         read_serializer = PurchaseReadSerializer(purchase)
