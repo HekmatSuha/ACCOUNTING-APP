@@ -257,6 +257,27 @@ def profit_and_loss_report(request):
     return Response(report_data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def sales_report(request):
+    """
+    Provides a sales report for a given date range.
+    """
+    user = request.user
+
+    start_date_str = request.query_params.get('start_date', '2000-01-01')
+    end_date_str = request.query_params.get('end_date', date.today().strftime('%Y-%m-%d'))
+
+    sales_in_range = Sale.objects.filter(
+        created_by=user,
+        sale_date__range=[start_date_str, end_date_str]
+    ).order_by('-sale_date')
+
+    serializer = SaleReadSerializer(sales_in_range, many=True)
+
+    return Response(serializer.data)
+
+
 class PurchaseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 

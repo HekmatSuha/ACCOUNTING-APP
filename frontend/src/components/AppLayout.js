@@ -65,6 +65,9 @@ function AppLayout({ children }) {
                     <Nav.Link as={NavLink} to="/reports/profit-loss" className={linkClass}>
                         <BarChart className={iconClass} /> {!collapsed && 'Profit & Loss'}
                     </Nav.Link>
+                    <Nav.Link as={NavLink} to="/reports/sales" className={linkClass}>
+                        <BarChart className={iconClass} /> {!collapsed && 'Sales Report'}
+                    </Nav.Link>
                     <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
                         <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
                     </Nav.Link>

@@ -19,6 +19,7 @@ import NewSalePage from './pages/NewSalePage';   // <-- Import
 import SaleDetailPage from './pages/SaleDetailPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ProfitLossPage from './pages/ProfitLossPage';
+import SalesReportPage from './pages/SalesReportPage';
 import EditSalePage from './pages/EditSalePage';
 import PurchaseListPage from './pages/PurchaseListPage';
 import PurchaseDetailPage from './pages/PurchaseDetailPage';
@@ -55,7 +56,8 @@ function App() {
                   <Route path="sales/new" element={<NewSalePage />} />
                   <Route path="sales/:id" element={<SaleDetailPage />} />
                   <Route path="expenses" element={<ExpenseListPage />} /> {/* <-- Add Route */}
-                  <Route path="reports/profit-loss" element={<ProfitLossPage />} /> {/* <-- Add Route */}
+                  <Route path="reports/profit-loss" element={<ProfitLossPage />} />
+                  <Route path="reports/sales" element={<SalesReportPage />} />
                   <Route path="sales/:id/edit" element={<EditSalePage />} /> {/* <-- Add Route */}
                   <Route path="purchases" element={<PurchaseListPage />} /> {/* <-- Add Route */}
                   <Route path="purchases/:id" element={<PurchaseDetailPage />} /> {/* <-- Add Route */}
