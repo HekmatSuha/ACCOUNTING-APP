@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 # --- Import the router and the viewset ---
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
-from .views import CustomerViewSet, dashboard_summary, ProductViewSet,SaleViewSet, SupplierViewSet,PaymentViewSet,PurchaseViewSet
+from .views import CustomerViewSet, dashboard_summary, ProductViewSet,SaleViewSet, SupplierViewSet,PaymentViewSet,PurchaseViewSet, CustomerPaymentViewSet
 from .views import BankAccountViewSet
 
 # Create a router and register our viewsets with it.
@@ -19,6 +19,11 @@ router.register(r'accounts', BankAccountViewSet, basename='account')
 # Create a nested router for payments under sales
 sales_router = routers.NestedSimpleRouter(router, r'sales', lookup='sale')
 sales_router.register(r'payments', PaymentViewSet, basename='sale-payments')
+
+# Create a nested router for payments under customers
+customers_router = routers.NestedSimpleRouter(router, r'customers', lookup='customer')
+customers_router.register(r'payments', CustomerPaymentViewSet, basename='customer-payments')
+
 router.register(r'expense-categories', ExpenseCategoryViewSet, basename='expense-category') # <-- Add this
 router.register(r'expenses', ExpenseViewSet, basename='expense')
 router.register(r'purchases', PurchaseViewSet, basename='purchase')
@@ -37,4 +42,5 @@ urlpatterns = [
     # --- Add the router's URLs ---
     path('', include(router.urls)),
     path('', include(sales_router.urls)),
+    path('', include(customers_router.urls)),
 ]

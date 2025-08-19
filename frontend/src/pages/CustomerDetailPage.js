@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer } from 'react-bootstrap-icons';
+import CustomerPaymentModal from '../components/CustomerPaymentModal';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -14,21 +15,27 @@ function CustomerDetailPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+    const fetchDetails = async () => {
+        try {
+            // Use our new custom API endpoint
+            const response = await axiosInstance.get(`/customers/${id}/details/`);
+            setData(response.data);
+        } catch (err) {
+            setError('Failed to fetch customer details.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchDetails = async () => {
-            try {
-                // Use our new custom API endpoint
-                const response = await axiosInstance.get(`/customers/${id}/details/`);
-                setData(response.data);
-            } catch (err) {
-                setError('Failed to fetch customer details.');
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchDetails();
     }, [id]);
+
+    const handlePaymentAdded = () => {
+        fetchDetails(); // Refresh data after payment
+    };
     
     const formatCurrency = (amount, currency) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount);
@@ -65,9 +72,16 @@ function CustomerDetailPage() {
             {/* Action Buttons */}
             <ButtonToolbar className="mb-3">
                 <Button variant="primary" className="me-2" onClick={() => navigate(`/customers/${customer.id}/new-sale`)}>Make Sale</Button>
-                <Button variant="secondary" className="me-2">Prepare Offer</Button>
-                <Button variant="success" className="me-2">Collection / Payment</Button>
+                <Button variant="secondary" className="me-2" disabled>Prepare Offer</Button>
+                <Button variant="success" className="me-2" onClick={() => setShowPaymentModal(true)}>Collection / Payment</Button>
             </ButtonToolbar>
+
+            <CustomerPaymentModal
+                show={showPaymentModal}
+                handleClose={() => setShowPaymentModal(false)}
+                customerId={id}
+                onPaymentAdded={handlePaymentAdded}
+            />
 
             {/* Transaction Lists */}
             <Row>
