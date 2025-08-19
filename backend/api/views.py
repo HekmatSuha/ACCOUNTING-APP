@@ -10,8 +10,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
 from rest_framework.exceptions import NotFound
+from .activity_logger import log_activity
 
 from .models import (
+    Activity,
     Customer,
     Product,
     Sale,
@@ -25,6 +27,7 @@ from .models import (
     BankAccount,
 )
 from .serializers import (
+    ActivitySerializer,
     UserSerializer,
     CustomerSerializer,
     SupplierSerializer,
@@ -86,7 +89,48 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return self.request.user.customers.all().order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
+
+
+class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ActivitySerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None  # Or a custom pagination class
+
+    def get_queryset(self):
+        return self.request.user.activities.all().order_by('-timestamp')
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        activity = self.get_object()
+        if activity.action_type != 'deleted' or not activity.object_repr:
+            return Response({'status': 'error', 'message': 'This action cannot be undone.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                # The object_repr is a serialized list of one object
+                deserialized_obj = list(serializers.deserialize('json', activity.object_repr))[0]
+                deserialized_obj.object.save()
+
+                # Optional: Create a new activity log for the restoration
+                log_activity(request.user, 'restored', deserialized_obj.object)
+
+                # Mark the original 'deleted' activity as "undone"
+                activity.description = f"(Restored) {activity.description}"
+                activity.save()
+
+            return Response({'status': 'success', 'message': 'Object restored successfully.'})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
@@ -118,7 +162,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         return self.request.user.products.all().order_by('name')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 class SaleViewSet(viewsets.ModelViewSet):
@@ -133,10 +186,16 @@ class SaleViewSet(viewsets.ModelViewSet):
         return Sale.objects.filter(created_by=self.request.user).order_by('-sale_date')
 
     def perform_create(self, serializer):
-        serializer.save()
+        instance = serializer.save()
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
 
     @transaction.atomic
     def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
         customer = instance.customer
         Customer.objects.filter(id=customer.id).update(open_balance=F('open_balance') - instance.total_amount)
 
@@ -154,7 +213,16 @@ class SupplierViewSet(viewsets.ModelViewSet):
         return self.request.user.suppliers.all().order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 class BankAccountViewSet(viewsets.ModelViewSet):
@@ -165,7 +233,16 @@ class BankAccountViewSet(viewsets.ModelViewSet):
         return self.request.user.bank_accounts.all().order_by('name')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -182,13 +259,22 @@ class PaymentViewSet(viewsets.ModelViewSet):
         sale_pk = self.kwargs.get('sale_pk')
         try:
             sale = Sale.objects.get(pk=sale_pk, created_by=self.request.user)
-            serializer.save(
-                created_by=self.request.user, 
+            instance = serializer.save(
+                created_by=self.request.user,
                 sale=sale,
                 customer=sale.customer
             )
+            log_activity(self.request.user, 'created', instance)
         except Sale.DoesNotExist:
             raise NotFound(detail="Sale not found.")
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 class CustomerPaymentViewSet(viewsets.ModelViewSet):
@@ -203,12 +289,21 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
         customer_pk = self.kwargs.get('customer_pk')
         try:
             customer = Customer.objects.get(pk=customer_pk, created_by=self.request.user)
-            serializer.save(
+            instance = serializer.save(
                 created_by=self.request.user,
                 customer=customer
             )
+            log_activity(self.request.user, 'created', instance)
         except Customer.DoesNotExist:
             raise NotFound(detail="Customer not found.")
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 class ExpenseCategoryViewSet(viewsets.ModelViewSet):
@@ -219,7 +314,16 @@ class ExpenseCategoryViewSet(viewsets.ModelViewSet):
         return self.request.user.expense_categories.all().order_by('name')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 class ExpenseViewSet(viewsets.ModelViewSet):
@@ -230,7 +334,16 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         return self.request.user.expenses.all().order_by('-expense_date')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
 
 
 @api_view(['GET'])
@@ -310,10 +423,16 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         return self.request.user.purchases.all().order_by('-purchase_date')
 
     def perform_create(self, serializer):
-        serializer.save()
+        instance = serializer.save()
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
 
     @transaction.atomic
     def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
         for item in instance.items.all():
             Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') - item.quantity)
 
