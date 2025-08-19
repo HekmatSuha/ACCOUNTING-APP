@@ -137,12 +137,22 @@ function CustomerDetailPage() {
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(payment.payment_date).toLocaleDateString()}</span>
                                                 <span>{payment.method}</span>
-                                                {payment.account_name && <span className="text-muted">({payment.account_name})</span>}
                                                 <strong>{formatCurrency(payment.amount, customer.currency)}</strong>
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
-                                             <strong>Notes:</strong> {payment.notes || 'No notes provided.'}
+                                            <Table borderless size="sm" className="mb-0">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="fw-bold">Account</td>
+                                                        <td>{payment.account_name || 'N/A'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="fw-bold">Notes</td>
+                                                        <td>{payment.notes || 'No notes provided.'}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </Table>
                                         </Accordion.Body>
                                     </Accordion.Item>
                                 ))}
