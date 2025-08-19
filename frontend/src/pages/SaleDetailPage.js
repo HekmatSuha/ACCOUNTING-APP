@@ -115,8 +115,8 @@ function SaleDetailPage() {
                         {/* --- NEW PAYMENT HISTORY SECTION --- */}
                         <Row className="mt-4">
                             <Col md={8}>
-                                <h5>Payment History</h5>
-                                <Table bordered size="sm">
+                                  <h5>Payment History</h5>
+                                  <Table bordered size="sm" responsive>
                                     <thead>
                                         <tr>
                                             <th>Date</th>

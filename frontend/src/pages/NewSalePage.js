@@ -125,8 +125,8 @@ function NewSalePage() {
                         </Form.Group>
                     </Row>
 
-                    <h5>Sale Items</h5>
-                    <Table bordered hover>
+                      <h5>Sale Items</h5>
+                      <Table bordered hover responsive>
                         <thead>
                             <tr>
                                 <th>Product</th>
