@@ -100,6 +100,27 @@ class CustomerViewSet(viewsets.ModelViewSet):
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
 
+    @action(detail=True, methods=['get'])
+    def details(self, request, pk=None):
+        customer = self.get_object()
+        sales = customer.sales.all().order_by('-sale_date')
+        payments = customer.payments.all().order_by('-payment_date')
+
+        total_turnover = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0.00
+
+        data = {
+            'customer': CustomerSerializer(customer).data,
+            'sales': SaleReadSerializer(sales, many=True).data,
+            'payments': PaymentSerializer(payments, many=True).data,
+            'summary': {
+                'open_balance': customer.open_balance,
+                'check_balance': 0.00,  # Placeholder
+                'note_balance': 0.00,  # Placeholder
+                'turnover': total_turnover
+            }
+        }
+        return Response(data)
+
 
 class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ActivitySerializer
@@ -131,27 +152,6 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'status': 'success', 'message': 'Object restored successfully.'})
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=True, methods=['get'])
-    def details(self, request, pk=None):
-        customer = self.get_object()
-        sales = customer.sales.all().order_by('-sale_date')
-        payments = customer.payments.all().order_by('-payment_date')
-        
-        total_turnover = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0.00
-        
-        data = {
-            'customer': CustomerSerializer(customer).data,
-            'sales': SaleReadSerializer(sales, many=True).data,
-            'payments': PaymentSerializer(payments, many=True).data,
-            'summary': {
-                'open_balance': customer.open_balance,
-                'check_balance': 0.00,  # Placeholder
-                'note_balance': 0.00,  # Placeholder
-                'turnover': total_turnover
-            }
-        }
-        return Response(data)
 
 
 class ProductViewSet(viewsets.ModelViewSet):
