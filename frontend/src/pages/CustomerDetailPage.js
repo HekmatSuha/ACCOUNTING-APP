@@ -136,7 +136,13 @@ function CustomerDetailPage() {
             {/* Action Buttons */}
             <ButtonToolbar className="mb-3">
                 <Button variant="primary" className="me-2" onClick={() => navigate(`/customers/${customer.id}/new-sale`)}>Make Sale</Button>
-                <Button variant="secondary" className="me-2" disabled>Prepare Offer</Button>
+                <Button
+                    variant="secondary"
+                    className="me-2"
+                    onClick={() => navigate(`/customers/${customer.id}/new-sale?type=offer`)}
+                >
+                    Make Offer
+                </Button>
                 <Button variant="success" className="me-2" onClick={() => setShowPaymentModal(true)}>Collection / Payment</Button>
             </ButtonToolbar>
 
