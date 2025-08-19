@@ -60,17 +60,27 @@ function SaleFormPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const saleData = {
-            customer_id: customerId,
-            sale_date: saleDate,
-            items: lineItems.filter(item => item.product_id) // Filter out empty lines
+        // Base payload used for both sales and offers
+        const payload = {
+            items: lineItems.filter(item => item.product_id)
         };
+
+        // Choose the correct endpoint and augment payload as needed
+        let url;
         if (isOffer) {
-            saleData.status = 'offer';
+            // When creating an offer, use the nested customer route and
+            // avoid sending sale-specific fields like ``sale_date``.
+            url = `/customers/${customerId}/offers/`;
+        } else {
+            url = '/sales/';
+            payload.customer_id = customerId;
+            payload.sale_date = saleDate;
         }
+
         try {
-            await axiosInstance.post('/sales/', saleData);
-            navigate(`/customers/${customerId}`); // Redirect back to customer detail
+            await axiosInstance.post(url, payload);
+            // Redirect back to the customer detail page after creation
+            navigate(`/customers/${customerId}`);
         } catch (error) {
             console.error("Failed to create sale", error.response?.data);
         }
@@ -87,7 +97,7 @@ function SaleFormPage() {
                         <Row className="mb-3">
                             <Col md={4}>
                                 <Form.Group>
-                                    <Form.Label>Sale Date</Form.Label>
+                                    <Form.Label>{isOffer ? 'Offer Date' : 'Sale Date'}</Form.Label>
                                     <Form.Control type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} />
                                 </Form.Group>
                             </Col>
