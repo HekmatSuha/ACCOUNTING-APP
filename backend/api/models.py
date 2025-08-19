@@ -11,6 +11,7 @@ class Activity(models.Model):
         ('created', 'Created'),
         ('updated', 'Updated'),
         ('deleted', 'Deleted'),
+        ('restored', 'Restored'),
     )
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')

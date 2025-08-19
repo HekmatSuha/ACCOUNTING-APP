@@ -1,6 +1,7 @@
 # backend/api/views.py
 from datetime import date
 from rest_framework import generics, viewsets, serializers, status
+from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Sum, F, DecimalField
@@ -145,11 +146,11 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
 
                 if model_class == Sale:
                     data = json.loads(activity.object_repr)
-                    sale_obj = list(serializers.deserialize('json', data['sale']))[0]
+                    sale_obj = list(django_serializers.deserialize('json', data['sale']))[0]
                     sale_obj.save()
                     restored_sale = sale_obj.object
 
-                    for item_obj in serializers.deserialize('json', data['items']):
+                    for item_obj in django_serializers.deserialize('json', data['items']):
                         item_obj.object.sale = restored_sale
                         item_obj.save()
 
@@ -162,11 +163,11 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
 
                 elif model_class == Purchase:
                     data = json.loads(activity.object_repr)
-                    purchase_obj = list(serializers.deserialize('json', data['purchase']))[0]
+                    purchase_obj = list(django_serializers.deserialize('json', data['purchase']))[0]
                     purchase_obj.save()
                     restored_purchase = purchase_obj.object
 
-                    for item_obj in serializers.deserialize('json', data['items']):
+                    for item_obj in django_serializers.deserialize('json', data['items']):
                         item_obj.object.purchase = restored_purchase
                         item_obj.save()
 
@@ -179,7 +180,7 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                     log_activity(request.user, 'restored', restored_purchase)
 
                 else: # Generic restore for simple models
-                    deserialized_obj = list(serializers.deserialize('json', activity.object_repr))[0]
+                    deserialized_obj = list(django_serializers.deserialize('json', activity.object_repr))[0]
                     deserialized_obj.save()
                     log_activity(request.user, 'restored', deserialized_obj.object)
 
