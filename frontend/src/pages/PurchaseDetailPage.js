@@ -55,8 +55,8 @@ function PurchaseDetailPage() {
                             <Col><strong>Bill #:</strong> {purchase.bill_number || 'N/A'}</Col>
                             <Col><strong>Account:</strong> {purchase.account_name || 'N/A'}</Col>
                         </Row>
-                        <h5>Items Purchased</h5>
-                        <Table striped bordered>
+                          <h5>Items Purchased</h5>
+                          <Table striped bordered responsive>
                             <thead><tr><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Line Total</th></tr></thead>
                             <tbody>
                                 {purchase.items.map(item => (

@@ -88,8 +88,8 @@ function SaleFormPage() {
                             </Col>
                         </Row>
 
-                        <h5>Items</h5>
-                        <Table striped bordered hover>
+                          <h5>Items</h5>
+                          <Table striped bordered hover responsive>
                             <thead>
                                 <tr>
                                     <th>Product</th>
