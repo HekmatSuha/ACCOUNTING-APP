@@ -137,6 +137,7 @@ function CustomerDetailPage() {
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(payment.payment_date).toLocaleDateString()}</span>
                                                 <span>{payment.method}</span>
+                                                {payment.account_name && <span className="text-muted">({payment.account_name})</span>}
                                                 <strong>{formatCurrency(payment.amount, customer.currency)}</strong>
                                             </div>
                                         </Accordion.Header>
