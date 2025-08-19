@@ -187,3 +187,32 @@ class ActivityRestoreTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Product.objects.filter(pk=product_id).exists())
 
+
+class OfferNestedRouteTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='offeruser', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), created_by=self.user)
+
+    def test_create_offer_via_customer_route(self):
+        url = f'/api/customers/{self.customer.id}/offers/'
+        payload = {
+            'items': [
+                {'product_id': self.product.id, 'quantity': 2, 'unit_price': '10.00'}
+            ],
+            'details': 'Test offer'
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.customer.offers.count(), 1)
+
+        offer_id = self.customer.offers.first().id
+        convert_url = f'/api/offers/{offer_id}/convert_to_sale/'
+        convert_response = self.client.post(convert_url, {}, format='json')
+        self.assertEqual(convert_response.status_code, 200)
+        self.assertEqual(self.customer.sales.count(), 1)
+        self.customer.offers.first().refresh_from_db()
+        self.assertEqual(self.customer.offers.first().status, 'accepted')
+
