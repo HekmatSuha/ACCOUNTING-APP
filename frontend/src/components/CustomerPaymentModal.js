@@ -11,7 +11,7 @@ const getTodayDate = () => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded }) {
+function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, payment }) {
     const [paymentDate, setPaymentDate] = useState(getTodayDate());
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('Cash');
@@ -34,6 +34,23 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded })
         }
     }, [show]);
 
+    useEffect(() => {
+        if (show && payment) {
+            setPaymentDate(payment.payment_date);
+            setAmount(payment.amount);
+            setMethod(payment.method);
+            setNotes(payment.notes || '');
+            setAccount(payment.account || '');
+        } else if (show && !payment) {
+            // Reset form when adding a new payment
+            setPaymentDate(getTodayDate());
+            setAmount('');
+            setMethod('Cash');
+            setNotes('');
+            setAccount('');
+        }
+    }, [payment, show]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -55,16 +72,15 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded })
         }
 
         try {
-            await axiosInstance.post(`/customers/${customerId}/payments/`, paymentData);
+            if (payment) {
+                await axiosInstance.put(`/customers/${customerId}/payments/${payment.id}/`, paymentData);
+            } else {
+                await axiosInstance.post(`/customers/${customerId}/payments/`, paymentData);
+            }
             onPaymentAdded();
             handleClose();
-            // Clear form for next time
-            setAmount('');
-            setNotes('');
-            setAccount('');
-            setPaymentDate(getTodayDate());
         } catch (err) {
-            console.error('Failed to add payment:', err);
+            console.error('Failed to save payment:', err);
             setError('Could not save the payment. Please try again.');
         }
     };
@@ -72,7 +88,7 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded })
     return (
         <Modal show={show} onHide={handleClose} centered>
             <Modal.Header closeButton>
-                <Modal.Title>Add New Payment</Modal.Title>
+                <Modal.Title>{payment ? 'Edit Payment' : 'Add New Payment'}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
@@ -136,7 +152,7 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded })
                     Cancel
                 </Button>
                 <Button variant="primary" onClick={handleSubmit}>
-                    Save Payment
+                    {payment ? 'Update Payment' : 'Save Payment'}
                 </Button>
             </Modal.Footer>
         </Modal>
