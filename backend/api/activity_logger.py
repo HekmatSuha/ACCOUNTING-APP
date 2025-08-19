@@ -3,12 +3,16 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import serializers
 from .models import Activity, Sale, Purchase
 
-def log_activity(user, action_type, instance):
+
+def log_activity(user, action_type, instance, description=None):
+    """Record an activity entry.
+
+    By default a generic description is generated.  Callers may supply a
+    custom ``description`` to override it – useful for cases like converting
+    an offer to a sale where additional context is helpful.
     """
-    Logs an activity for a given model instance.
-    For deletions, it stores a JSON representation of the object for restoration.
-    """
-    description = f'{instance.__class__.__name__} {instance} was {action_type}.'
+    if description is None:
+        description = f"{instance.__class__.__name__} {instance} was {action_type}."
     object_repr = ''
 
     if action_type == 'deleted':
@@ -29,5 +33,5 @@ def log_activity(user, action_type, instance):
         description=description,
         content_type=ContentType.objects.get_for_model(instance),
         object_id=instance.pk,
-        object_repr=object_repr
+        object_repr=object_repr,
     )
