@@ -5,6 +5,7 @@ import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { FaUsers, FaDollarSign, FaBoxOpen, FaCreditCard } from 'react-icons/fa';
 import { Bar } from 'react-chartjs-2';
+import RecentActivities from '../components/RecentActivities';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -132,6 +133,7 @@ function DashboardPage() {
                             <Bar data={barData} options={barOptions} />
                         </div>
                     )}
+                    <RecentActivities />
                 </>
             )}
         </div>

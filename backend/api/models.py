@@ -2,7 +2,36 @@
 from django.db import models, transaction
 from django.db.models import F
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
+
+class Activity(models.Model):
+    ACTION_TYPES = (
+        ('created', 'Created'),
+        ('updated', 'Updated'),
+        ('deleted', 'Deleted'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    action_type = models.CharField(max_length=10, choices=ACTION_TYPES)
+    description = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    # Generic relationship to the object that was acted upon
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    # For "deleted" actions, we can store the object's data so we can restore it
+    object_repr = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name_plural = 'Activities'
+
+    def __str__(self):
+        return f'{self.user.username} {self.action_type} - {self.description}'
 
 class Customer(models.Model):
     CURRENCY_CHOICES = [
