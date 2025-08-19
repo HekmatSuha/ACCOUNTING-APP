@@ -126,3 +126,45 @@ class PurchaseAccountTransactionTest(TestCase):
         self.assertEqual(self.account.balance, Decimal('-10.00'))
         self.assertEqual(self.supplier.open_balance, Decimal('0.00'))
 
+
+class CustomerBalanceTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='ub', password='pw')
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user, open_balance=Decimal('100.00'))
+
+    def test_payment_reduces_customer_balance(self):
+        Payment.objects.create(
+            customer=self.customer,
+            payment_date=date.today(),
+            amount=Decimal('40.00'),
+            method='Cash',
+            created_by=self.user,
+        )
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.open_balance, Decimal('60.00'))
+
+    def test_payment_delete_restores_balance(self):
+        payment = Payment.objects.create(
+            customer=self.customer,
+            payment_date=date.today(),
+            amount=Decimal('25.00'),
+            method='Cash',
+            created_by=self.user,
+        )
+        payment.delete()
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.open_balance, Decimal('100.00'))
+
+    def test_payment_update_adjusts_balance(self):
+        payment = Payment.objects.create(
+            customer=self.customer,
+            payment_date=date.today(),
+            amount=Decimal('30.00'),
+            method='Cash',
+            created_by=self.user,
+        )
+        payment.amount = Decimal('50.00')
+        payment.save()
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.open_balance, Decimal('50.00'))
+

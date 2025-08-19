@@ -160,8 +160,7 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Revert old transaction data
-            instance.customer.open_balance = F('open_balance') - instance.total_amount
-            instance.customer.save()
+            Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.total_amount)
             for item in instance.items.all():
                 Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
 
@@ -188,9 +187,7 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             instance.invoice_number = validated_data.get('invoice_number', instance.invoice_number)
             instance.details = validated_data.get('details', instance.details)
             instance.save()
-
-            instance.customer.open_balance = F('open_balance') + new_total_amount
-            instance.customer.save()
+            Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + new_total_amount)
 
         return instance
 
