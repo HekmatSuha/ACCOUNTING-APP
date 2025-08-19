@@ -1,17 +1,27 @@
 import json
 from django.contrib.contenttypes.models import ContentType
-from .models import Activity
+from django.core import serializers
+from .models import Activity, Sale, Purchase
 
 def log_activity(user, action_type, instance):
     """
     Logs an activity for a given model instance.
+    For deletions, it stores a JSON representation of the object for restoration.
     """
     description = f'{instance.__class__.__name__} {instance} was {action_type}.'
     object_repr = ''
+
     if action_type == 'deleted':
-        # For deletions, serialize the object's data for potential restoration
-        from django.core import serializers
-        object_repr = serializers.serialize('json', [instance])
+        if isinstance(instance, Sale):
+            items_data = serializers.serialize('json', instance.items.all())
+            sale_data = serializers.serialize('json', [instance])
+            object_repr = json.dumps({'sale': sale_data, 'items': items_data})
+        elif isinstance(instance, Purchase):
+            items_data = serializers.serialize('json', instance.items.all())
+            purchase_data = serializers.serialize('json', [instance])
+            object_repr = json.dumps({'purchase': purchase_data, 'items': items_data})
+        else:
+            object_repr = serializers.serialize('json', [instance])
 
     Activity.objects.create(
         user=user,
