@@ -4,8 +4,10 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem
+from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem, Activity
 from .serializers import ProductSerializer
+from .activity_logger import log_activity
+from rest_framework.test import APIClient
 
 
 class ProductSerializerTest(TestCase):
@@ -167,4 +169,21 @@ class CustomerBalanceTest(TestCase):
         payment.save()
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.open_balance, Decimal('50.00'))
+
+
+class ActivityRestoreTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='restorer', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=1, created_by=self.user)
+
+    def test_restore_deleted_product(self):
+        log_activity(self.user, 'deleted', self.product)
+        activity = Activity.objects.get(action_type='deleted')
+        product_id = self.product.pk
+        self.product.delete()
+        response = self.client.post(f'/api/activities/{activity.id}/restore/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Product.objects.filter(pk=product_id).exists())
 
