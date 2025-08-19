@@ -10,6 +10,7 @@ import {
     Receipt,
     Cart,
     CreditCard,
+    FileText,
     BoxSeam,
     BarChart,
     Bank,
@@ -56,6 +57,9 @@ function AppLayout({ children }) {
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/sales" className={linkClass}>
                     <Receipt className={iconClass} /> {!collapsed && 'Sales'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/offers" className={linkClass}>
+                    <FileText className={iconClass} /> {!collapsed && 'Offers'}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/purchases" className={linkClass}>
                     <Cart className={iconClass} /> {!collapsed && 'Purchases'}

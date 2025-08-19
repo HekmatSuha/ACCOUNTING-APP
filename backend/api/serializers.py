@@ -16,6 +16,8 @@ from .models import (
     PurchaseItem,
     BankAccount,
     Activity,
+    Offer,
+    OfferItem,
 )
 from rest_framework.validators import UniqueValidator
 
@@ -199,6 +201,66 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + new_total_amount)
 
         return instance
+
+
+class OfferItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    class Meta:
+        model = OfferItem
+        fields = ['id', 'product', 'product_name', 'quantity', 'unit_price', 'line_total']
+
+class OfferItemWriteSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField()
+    class Meta:
+        model = OfferItem
+        fields = ['product_id', 'quantity', 'unit_price']
+
+class OfferReadSerializer(serializers.ModelSerializer):
+    items = OfferItemSerializer(many=True, read_only=True)
+    customer_name = serializers.CharField(source='customer.name', read_only=True)
+    class Meta:
+        model = Offer
+        fields = ['id', 'customer', 'customer_name', 'offer_date', 'status', 'total_amount', 'items']
+
+class OfferWriteSerializer(serializers.ModelSerializer):
+    items = OfferItemWriteSerializer(many=True)
+    customer_id = serializers.IntegerField()
+
+    class Meta:
+        model = Offer
+        fields = ['customer_id', 'offer_date', 'items', 'details']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        customer_id = validated_data.pop('customer_id')
+        created_by = self.context['request'].user
+
+        with transaction.atomic():
+            customer = Customer.objects.get(id=customer_id, created_by=created_by)
+
+            offer = Offer.objects.create(
+                created_by=created_by,
+                customer=customer,
+                **validated_data
+            )
+
+            total_offer_amount = 0
+            for item_data in items_data:
+                product_id = item_data.pop('product_id')
+                product = Product.objects.get(id=product_id, created_by=created_by)
+
+                offer_item = OfferItem.objects.create(
+                    offer=offer,
+                    product=product,
+                    **item_data
+                )
+                total_offer_amount += offer_item.line_total
+
+            offer.total_amount = total_offer_amount
+            offer.save()
+
+        return offer
+
 
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:

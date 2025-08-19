@@ -15,7 +15,7 @@ import ProductFormPage from './pages/ProductFormPage';
 import SaleFormPage from './pages/SaleFormPage';
 import SupplierListPage from './pages/SupplierListPage';
 import SaleListPage from './pages/SaleListPage'; // <-- Import
-import NewSalePage from './pages/NewSalePage';   // <-- Import
+import TransactionPage from './pages/TransactionPage';   // <-- Import
 import SaleDetailPage from './pages/SaleDetailPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ProfitLossPage from './pages/ProfitLossPage';
@@ -25,6 +25,8 @@ import PurchaseListPage from './pages/PurchaseListPage';
 import PurchaseDetailPage from './pages/PurchaseDetailPage';
 import EditPurchasePage from './pages/EditPurchasePage';
 import BankAccountListPage from './pages/BankAccountListPage';
+import OfferListPage from './pages/OfferListPage';
+import OfferDetailPage from './pages/OfferDetailPage';
 
 
 function App() {
@@ -53,8 +55,10 @@ function App() {
                   <Route path="customers/:customerId/new-sale" element={<SaleFormPage />} />
                   <Route path="suppliers" element={<SupplierListPage />} />
                   <Route path="sales" element={<SaleListPage />} />
-                  <Route path="sales/new" element={<NewSalePage />} />
+                  <Route path="sales/new" element={<TransactionPage />} />
                   <Route path="sales/:id" element={<SaleDetailPage />} />
+                  <Route path="offers" element={<OfferListPage />} />
+                  <Route path="offers/:id" element={<OfferDetailPage />} />
                   <Route path="expenses" element={<ExpenseListPage />} /> {/* <-- Add Route */}
                   <Route path="reports/profit-loss" element={<ProfitLossPage />} />
                   <Route path="reports/sales" element={<SalesReportPage />} />
