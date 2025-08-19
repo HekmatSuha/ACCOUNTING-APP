@@ -1,7 +1,7 @@
 # backend/api/urls.py
 
 from django.urls import path, include
-from .views import CreateUserView, ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report
+from .views import CreateUserView, ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report, sales_report
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 # --- Import the router and the viewset ---
 from rest_framework.routers import DefaultRouter
@@ -31,6 +31,7 @@ urlpatterns = [
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/register/', CreateUserView.as_view(), name='register'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),
+    path('reports/sales/', sales_report, name='sales-report'),
 
 
     # --- Add the router's URLs ---
