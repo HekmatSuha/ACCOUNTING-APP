@@ -14,8 +14,7 @@ import {
     BarChart,
     Bank,
     BoxArrowRight,
-    ChevronLeft,
-    ChevronRight,
+    List,
     PersonCircle
 } from 'react-bootstrap-icons';
 
@@ -32,12 +31,21 @@ function AppLayout({ children }) {
 
     const linkClass = `text-white d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'} mb-2`;
     const iconClass = collapsed ? '' : 'me-2';
+    const sidebarWidth = collapsed ? '80px' : '250px';
 
     return (
-        <div className="d-flex">
+        <div>
             <div
                 className="bg-dark text-white d-flex flex-column p-3"
-                style={{ width: collapsed ? '80px' : '250px', minHeight: '100vh', transition: 'width 0.3s' }}
+                style={{
+                    width: sidebarWidth,
+                    minHeight: '100vh',
+                    transition: 'width 0.3s',
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    overflowY: 'auto'
+                }}
             >
                 {!collapsed && <h4 className="mb-4">MyAccountingApp</h4>}
                 <Nav className="flex-column mb-auto">
@@ -73,7 +81,10 @@ function AppLayout({ children }) {
                     </Nav.Link>
                 </Nav>
             </div>
-            <div className="flex-grow-1 d-flex flex-column">
+            <div
+                className="d-flex flex-column"
+                style={{ marginLeft: sidebarWidth, transition: 'margin-left 0.3s', minHeight: '100vh' }}
+            >
                 <div className="d-flex justify-content-between align-items-center border-bottom p-3">
                     <Button
                         variant="light"
@@ -81,7 +92,7 @@ function AppLayout({ children }) {
                         className="border-0 shadow-none"
                         onClick={() => setCollapsed(!collapsed)}
                     >
-                        {collapsed ? <ChevronRight /> : <ChevronLeft />}
+                        <List />
                     </Button>
                     <Dropdown align="end">
                         <Dropdown.Toggle
