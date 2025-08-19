@@ -15,8 +15,17 @@ from .models import (
     Purchase,
     PurchaseItem,
     BankAccount,
+    Activity,
 )
 from rest_framework.validators import UniqueValidator
+
+class ActivitySerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+
+    class Meta:
+        model = Activity
+        fields = ['id', 'user', 'action_type', 'description', 'timestamp', 'object_repr']
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
