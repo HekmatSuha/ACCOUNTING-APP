@@ -191,6 +191,26 @@ class PaymentViewSet(viewsets.ModelViewSet):
             raise NotFound(detail="Sale not found.")
 
 
+class CustomerPaymentViewSet(viewsets.ModelViewSet):
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        customer_pk = self.kwargs.get('customer_pk')
+        return Payment.objects.filter(customer__id=customer_pk, created_by=self.request.user)
+
+    def perform_create(self, serializer):
+        customer_pk = self.kwargs.get('customer_pk')
+        try:
+            customer = Customer.objects.get(pk=customer_pk, created_by=self.request.user)
+            serializer.save(
+                created_by=self.request.user,
+                customer=customer
+            )
+        except Customer.DoesNotExist:
+            raise NotFound(detail="Customer not found.")
+
+
 class ExpenseCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = ExpenseCategorySerializer
     permission_classes = [IsAuthenticated]
