@@ -1,7 +1,7 @@
 // frontend/src/components/AppLayout.js
 
-import React, { useState } from 'react';
-import { Nav, Button, Dropdown } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Nav, Button, Dropdown, Offcanvas } from 'react-bootstrap';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     Speedometer2,
@@ -21,7 +21,15 @@ import {
 function AppLayout({ children }) {
     const navigate = useNavigate();
     const [collapsed, setCollapsed] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const username = localStorage.getItem('username') || 'User';
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
@@ -33,64 +41,79 @@ function AppLayout({ children }) {
     const iconClass = collapsed ? '' : 'me-2';
     const sidebarWidth = collapsed ? '80px' : '250px';
 
+    const SidebarContent = (
+        <>
+            {!collapsed && !isMobile && <h4 className="mb-4">MyAccountingApp</h4>}
+            <Nav className="flex-column mb-auto">
+                <Nav.Link as={NavLink} to="/dashboard" className={linkClass}>
+                    <Speedometer2 className={iconClass} /> {!collapsed && 'Dashboard'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/customers" className={linkClass}>
+                    <People className={iconClass} /> {!collapsed && 'Customers'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/suppliers" className={linkClass}>
+                    <Truck className={iconClass} /> {!collapsed && 'Suppliers'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/sales" className={linkClass}>
+                    <Receipt className={iconClass} /> {!collapsed && 'Sales'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/purchases" className={linkClass}>
+                    <Cart className={iconClass} /> {!collapsed && 'Purchases'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/expenses" className={linkClass}>
+                    <CreditCard className={iconClass} /> {!collapsed && 'Expenses'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
+                    <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/reports/profit-loss" className={linkClass}>
+                    <BarChart className={iconClass} /> {!collapsed && 'Profit & Loss'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/reports/sales" className={linkClass}>
+                    <BarChart className={iconClass} /> {!collapsed && 'Sales Report'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
+                    <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
+                </Nav.Link>
+            </Nav>
+        </>
+    );
+
     return (
         <div>
-            <div
-                className="bg-dark text-white d-flex flex-column p-3"
-                style={{
-                    width: sidebarWidth,
-                    minHeight: '100vh',
-                    transition: 'width 0.3s',
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    overflowY: 'auto'
-                }}
-            >
-                {!collapsed && <h4 className="mb-4">MyAccountingApp</h4>}
-                <Nav className="flex-column mb-auto">
-                    <Nav.Link as={NavLink} to="/dashboard" className={linkClass}>
-                        <Speedometer2 className={iconClass} /> {!collapsed && 'Dashboard'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/customers" className={linkClass}>
-                        <People className={iconClass} /> {!collapsed && 'Customers'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/suppliers" className={linkClass}>
-                        <Truck className={iconClass} /> {!collapsed && 'Suppliers'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/sales" className={linkClass}>
-                        <Receipt className={iconClass} /> {!collapsed && 'Sales'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/purchases" className={linkClass}>
-                        <Cart className={iconClass} /> {!collapsed && 'Purchases'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/expenses" className={linkClass}>
-                        <CreditCard className={iconClass} /> {!collapsed && 'Expenses'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
-                        <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/reports/profit-loss" className={linkClass}>
-                        <BarChart className={iconClass} /> {!collapsed && 'Profit & Loss'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/reports/sales" className={linkClass}>
-                        <BarChart className={iconClass} /> {!collapsed && 'Sales Report'}
-                    </Nav.Link>
-                    <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
-                        <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
-                    </Nav.Link>
-                </Nav>
-            </div>
+            {isMobile ? (
+                <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} className="bg-dark text-white">
+                    <Offcanvas.Header closeButton closeVariant="white">
+                        <Offcanvas.Title>MyAccountingApp</Offcanvas.Title>
+                    </Offcanvas.Header>
+                    <Offcanvas.Body>{SidebarContent}</Offcanvas.Body>
+                </Offcanvas>
+            ) : (
+                <div
+                    className="bg-dark text-white d-flex flex-column p-3"
+                    style={{
+                        width: sidebarWidth,
+                        minHeight: '100vh',
+                        transition: 'width 0.3s',
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        overflowY: 'auto'
+                    }}
+                >
+                    {SidebarContent}
+                </div>
+            )}
             <div
                 className="d-flex flex-column"
-                style={{ marginLeft: sidebarWidth, transition: 'margin-left 0.3s', minHeight: '100vh' }}
+                style={{ marginLeft: isMobile ? 0 : sidebarWidth, transition: 'margin-left 0.3s', minHeight: '100vh' }}
             >
                 <div className="d-flex justify-content-between align-items-center border-bottom p-3">
                     <Button
                         variant="light"
                         size="sm"
                         className="border-0 shadow-none"
-                        onClick={() => setCollapsed(!collapsed)}
+                        onClick={() => (isMobile ? setShowSidebar(true) : setCollapsed(!collapsed))}
                     >
                         <List />
                     </Button>

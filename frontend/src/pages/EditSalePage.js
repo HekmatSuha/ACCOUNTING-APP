@@ -112,8 +112,8 @@ function EditSalePage() {
                             </Form.Select>
                         </Form.Group>
                     </Row>
-                    <h5>Sale Items</h5>
-                    <Table bordered hover>
+                      <h5>Sale Items</h5>
+                      <Table bordered hover responsive>
                         <thead>
                             <tr>
                                 <th>Product</th>

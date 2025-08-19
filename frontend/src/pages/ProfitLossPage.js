@@ -100,7 +100,7 @@ function ProfitLossPage() {
                         <h5 className="text-center">Report for {reportData.start_date} to {reportData.end_date}</h5>
                         <hr />
 
-                        <Table striped bordered hover>
+                          <Table striped bordered hover responsive>
                             <tbody>
                                 <tr className="table-success">
                                     <td><strong>Total Revenue (Sales)</strong></td>
