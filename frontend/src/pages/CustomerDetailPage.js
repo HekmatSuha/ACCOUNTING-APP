@@ -72,6 +72,39 @@ function CustomerDetailPage() {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount);
     };
 
+    const renderOpenBalanceCard = (balance, currency) => {
+        let cardProps;
+
+        if (balance > 0) {
+            cardProps = {
+                bg: 'danger',
+                title: 'Customer Debt',
+                amount: formatCurrency(balance, currency)
+            };
+        } else if (balance < 0) {
+            cardProps = {
+                bg: 'success',
+                title: 'Extra Money (Credit)',
+                amount: formatCurrency(Math.abs(balance), currency)
+            };
+        } else {
+            cardProps = {
+                bg: 'secondary',
+                title: 'Settled',
+                amount: formatCurrency(0, currency)
+            };
+        }
+
+        return (
+            <Card bg={cardProps.bg} text="white">
+                <Card.Body>
+                    <Card.Title>{cardProps.title}</Card.Title>
+                    <Card.Text className="fs-4">{cardProps.amount}</Card.Text>
+                </Card.Body>
+            </Card>
+        );
+    };
+
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
@@ -94,7 +127,7 @@ function CustomerDetailPage() {
 
             {/* Summary Cards */}
             <Row className="mb-3">
-                <Col><Card bg="danger" text="white"><Card.Body><Card.Title>Open Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.open_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
+                <Col>{renderOpenBalanceCard(summary.open_balance, customer.currency)}</Col>
                 <Col><Card bg="info" text="white"><Card.Body><Card.Title>Check Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.check_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
                 <Col><Card bg="info" text="white"><Card.Body><Card.Title>Note Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.note_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
                 <Col><Card bg="success" text="white"><Card.Body><Card.Title>Turnover</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.turnover, customer.currency)}</Card.Text></Card.Body></Card></Col>
