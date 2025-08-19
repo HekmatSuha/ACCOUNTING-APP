@@ -1,7 +1,7 @@
 // frontend/src/pages/SaleFormPage.js
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Form, Button, Row, Col, Table, InputGroup } from 'react-bootstrap';
 import { Trash } from 'react-bootstrap-icons';
@@ -9,6 +9,8 @@ import { Trash } from 'react-bootstrap-icons';
 function SaleFormPage() {
     const { customerId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const isOffer = new URLSearchParams(location.search).get('type') === 'offer';
 
     const [customer, setCustomer] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
@@ -63,6 +65,9 @@ function SaleFormPage() {
             sale_date: saleDate,
             items: lineItems.filter(item => item.product_id) // Filter out empty lines
         };
+        if (isOffer) {
+            saleData.status = 'offer';
+        }
         try {
             await axiosInstance.post('/sales/', saleData);
             navigate(`/customers/${customerId}`); // Redirect back to customer detail
@@ -76,7 +81,7 @@ function SaleFormPage() {
     return (
         <Container>
             <Card>
-                <Card.Header as="h4">New Sale for {customer.name}</Card.Header>
+                <Card.Header as="h4">{isOffer ? `New Offer for ${customer.name}` : `New Sale for ${customer.name}`}</Card.Header>
                 <Card.Body>
                     <Form onSubmit={handleSubmit}>
                         <Row className="mb-3">
@@ -123,7 +128,7 @@ function SaleFormPage() {
                         </div>
                         
                         <div className="mt-4">
-                            <Button variant="success" type="submit">Save Sale</Button>
+                            <Button variant="success" type="submit">{isOffer ? 'Save Offer' : 'Save Sale'}</Button>
                             <Button variant="light" className="ms-2" onClick={() => navigate(`/customers/${customerId}`)}>Cancel</Button>
                         </div>
                     </Form>
