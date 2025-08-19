@@ -79,24 +79,34 @@ class Payment(models.Model):
     def save(self, *args, **kwargs):
         with transaction.atomic():
             if self.pk:
-                old = Payment.objects.get(pk=self.pk)
-                # If account has changed
+                old = Payment.objects.select_for_update().get(pk=self.pk)
+
+                # Update customer balance
+                if old.customer_id != self.customer_id:
+                    Customer.objects.filter(pk=old.customer_id).update(open_balance=F('open_balance') + old.amount)
+                    Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.amount)
+                else:
+                    delta = self.amount - old.amount
+                    Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - delta)
+
+                # Update bank account balance
                 if old.account_id != self.account_id:
                     if old.account_id:
                         BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.amount)
                     if self.account_id:
                         BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
-                # If account is the same, just update with the delta
                 elif self.account_id:
                     delta = self.amount - old.amount
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + delta)
-            # New payment
-            elif self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+            else:
+                Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.amount)
+                if self.account_id:
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
+            Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') + self.amount)
             if self.account_id:
                 BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
             super().delete(*args, **kwargs)
