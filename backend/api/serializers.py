@@ -224,7 +224,9 @@ class OfferReadSerializer(serializers.ModelSerializer):
 
 class OfferWriteSerializer(serializers.ModelSerializer):
     items = OfferItemWriteSerializer(many=True)
-    customer_id = serializers.IntegerField()
+    # ``customer_id`` can be provided explicitly or inferred from the view context
+    # when using nested routes like /customers/<id>/offers/.
+    customer_id = serializers.IntegerField(required=False)
 
     class Meta:
         model = Offer
@@ -232,7 +234,11 @@ class OfferWriteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        customer_id = validated_data.pop('customer_id')
+        # Pull customer id either from data or from the view context (nested route)
+        customer_id = validated_data.pop('customer_id', self.context.get('customer_id'))
+        if customer_id is None:
+            raise serializers.ValidationError({'customer_id': 'This field is required.'})
+
         # ``created_by`` may be supplied via ``serializer.save``; pop it to
         # avoid passing multiple values to ``Offer.objects.create``. Defaults
         # to the request user.

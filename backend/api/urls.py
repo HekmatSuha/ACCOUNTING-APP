@@ -25,6 +25,8 @@ sales_router.register(r'payments', PaymentViewSet, basename='sale-payments')
 # Create a nested router for payments under customers
 customers_router = routers.NestedSimpleRouter(router, r'customers', lookup='customer')
 customers_router.register(r'payments', CustomerPaymentViewSet, basename='customer-payments')
+# Allow creating and listing offers scoped to a specific customer
+customers_router.register(r'offers', OfferViewSet, basename='customer-offers')
 
 router.register(r'expense-categories', ExpenseCategoryViewSet, basename='expense-category') # <-- Add this
 router.register(r'expenses', ExpenseViewSet, basename='expense')

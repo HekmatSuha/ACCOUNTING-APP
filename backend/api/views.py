@@ -255,8 +255,20 @@ class OfferViewSet(viewsets.ModelViewSet):
             return OfferWriteSerializer
         return OfferReadSerializer
 
+    def get_serializer_context(self):
+        """Include ``customer_id`` when using nested customer routes."""
+        context = super().get_serializer_context()
+        customer_pk = self.kwargs.get('customer_pk')
+        if customer_pk is not None:
+            context['customer_id'] = customer_pk
+        return context
+
     def get_queryset(self):
-        return Offer.objects.filter(created_by=self.request.user).order_by('-offer_date')
+        queryset = Offer.objects.filter(created_by=self.request.user).order_by('-offer_date')
+        customer_pk = self.kwargs.get('customer_pk')
+        if customer_pk is not None:
+            queryset = queryset.filter(customer_id=customer_pk)
+        return queryset
 
     def perform_create(self, serializer):
         instance = serializer.save(created_by=self.request.user)
