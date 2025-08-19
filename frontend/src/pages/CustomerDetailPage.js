@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar } from 'react-bootstrap';
+import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer } from 'react-bootstrap-icons';
 import CustomerPaymentModal from '../components/CustomerPaymentModal';
 
@@ -92,14 +92,33 @@ function CustomerDetailPage() {
                             <Accordion>
                                 {sales.map((sale, index) => (
                                     <Accordion.Item eventKey={index.toString()} key={sale.id}>
-                                        <Accordion.Header>
+                                        <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(sale.sale_date).toLocaleDateString()}</span>
                                                 <strong>{formatCurrency(sale.total_amount, customer.currency)}</strong>
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
-                                            <strong>Details:</strong> {sale.details || 'No details provided.'}
+                                            <Table striped bordered hover size="sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th>Quantity</th>
+                                                        <th>Unit Price</th>
+                                                        <th className="text-end">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {sale.items.map(item => (
+                                                        <tr key={item.id}>
+                                                            <td>{item.product_name}</td>
+                                                            <td>{item.quantity}</td>
+                                                            <td>{formatCurrency(item.unit_price, customer.currency)}</td>
+                                                            <td className="text-end">{formatCurrency(item.line_total, customer.currency)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
                                         </Accordion.Body>
                                     </Accordion.Item>
                                 ))}
@@ -114,7 +133,7 @@ function CustomerDetailPage() {
                             <Accordion>
                                 {payments.map((payment, index) => (
                                     <Accordion.Item eventKey={index.toString()} key={payment.id}>
-                                        <Accordion.Header>
+                                        <Accordion.Header style={{ backgroundColor: '#d4edda' }}>
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(payment.payment_date).toLocaleDateString()}</span>
                                                 <span>{payment.method}</span>
