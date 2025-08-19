@@ -16,6 +16,7 @@ function CustomerDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [editingPayment, setEditingPayment] = useState(null);
 
     const fetchDetails = async () => {
         try {
@@ -35,6 +36,36 @@ function CustomerDetailPage() {
 
     const handlePaymentAdded = () => {
         fetchDetails(); // Refresh data after payment
+    };
+
+    const handleDeleteSale = async (saleId) => {
+        if (!window.confirm('Are you sure you want to delete this sale?')) return;
+        try {
+            await axiosInstance.delete(`/sales/${saleId}/`);
+            fetchDetails();
+        } catch (err) {
+            setError('Failed to delete sale.');
+        }
+    };
+
+    const handleEditPayment = (payment) => {
+        setEditingPayment(payment);
+        setShowPaymentModal(true);
+    };
+
+    const handleDeletePayment = async (paymentId) => {
+        if (!window.confirm('Are you sure you want to delete this payment?')) return;
+        try {
+            await axiosInstance.delete(`/customers/${id}/payments/${paymentId}/`);
+            fetchDetails();
+        } catch (err) {
+            setError('Failed to delete payment.');
+        }
+    };
+
+    const handleClosePaymentModal = () => {
+        setShowPaymentModal(false);
+        setEditingPayment(null);
     };
     
     const formatCurrency = (amount, currency) => {
@@ -78,9 +109,10 @@ function CustomerDetailPage() {
 
             <CustomerPaymentModal
                 show={showPaymentModal}
-                handleClose={() => setShowPaymentModal(false)}
+                handleClose={handleClosePaymentModal}
                 customerId={id}
                 onPaymentAdded={handlePaymentAdded}
+                payment={editingPayment}
             />
 
             {/* Transaction Lists */}
@@ -99,6 +131,10 @@ function CustomerDetailPage() {
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
+                                            <div className="d-flex justify-content-end mb-2">
+                                                <Button size="sm" variant="warning" onClick={() => navigate(`/sales/${sale.id}/edit`)}>Edit</Button>
+                                                <Button size="sm" variant="danger" className="ms-2" onClick={() => handleDeleteSale(sale.id)}>Delete</Button>
+                                            </div>
                                             <Table striped bordered hover size="sm">
                                                 <thead>
                                                     <tr>
@@ -141,6 +177,10 @@ function CustomerDetailPage() {
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
+                                            <div className="d-flex justify-content-end mb-2">
+                                                <Button size="sm" variant="warning" onClick={() => handleEditPayment(payment)}>Edit</Button>
+                                                <Button size="sm" variant="danger" className="ms-2" onClick={() => handleDeletePayment(payment.id)}>Delete</Button>
+                                            </div>
                                             <Table borderless size="sm" className="mb-0">
                                                 <tbody>
                                                     <tr>
