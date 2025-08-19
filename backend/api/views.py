@@ -9,6 +9,8 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
+import json
+from django.contrib.contenttypes.models import ContentType
 from rest_framework.exceptions import NotFound
 from .activity_logger import log_activity
 
@@ -138,20 +140,55 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
 
         try:
             with transaction.atomic():
-                # The object_repr is a serialized list of one object
-                deserialized_obj = list(serializers.deserialize('json', activity.object_repr))[0]
-                deserialized_obj.object.save()
+                content_type = activity.content_type
+                model_class = content_type.model_class()
 
-                # Optional: Create a new activity log for the restoration
-                log_activity(request.user, 'restored', deserialized_obj.object)
+                if model_class == Sale:
+                    data = json.loads(activity.object_repr)
+                    sale_obj = list(serializers.deserialize('json', data['sale']))[0]
+                    sale_obj.save()
+                    restored_sale = sale_obj.object
 
-                # Mark the original 'deleted' activity as "undone"
+                    for item_obj in serializers.deserialize('json', data['items']):
+                        item_obj.object.sale = restored_sale
+                        item_obj.save()
+
+                    # Re-apply financial logic
+                    Customer.objects.filter(pk=restored_sale.customer.pk).update(open_balance=F('open_balance') + restored_sale.total_amount)
+                    for item in restored_sale.items.all():
+                        Product.objects.filter(pk=item.product.pk).update(stock_quantity=F('stock_quantity') - item.quantity)
+
+                    log_activity(request.user, 'restored', restored_sale)
+
+                elif model_class == Purchase:
+                    data = json.loads(activity.object_repr)
+                    purchase_obj = list(serializers.deserialize('json', data['purchase']))[0]
+                    purchase_obj.save()
+                    restored_purchase = purchase_obj.object
+
+                    for item_obj in serializers.deserialize('json', data['items']):
+                        item_obj.object.purchase = restored_purchase
+                        item_obj.save()
+
+                    # Re-apply financial logic
+                    if not restored_purchase.account_id:
+                        Supplier.objects.filter(pk=restored_purchase.supplier.pk).update(open_balance=F('open_balance') + restored_purchase.total_amount)
+                    for item in restored_purchase.items.all():
+                        Product.objects.filter(pk=item.product.pk).update(stock_quantity=F('stock_quantity') + item.quantity)
+
+                    log_activity(request.user, 'restored', restored_purchase)
+
+                else: # Generic restore for simple models
+                    deserialized_obj = list(serializers.deserialize('json', activity.object_repr))[0]
+                    deserialized_obj.save()
+                    log_activity(request.user, 'restored', deserialized_obj.object)
+
                 activity.description = f"(Restored) {activity.description}"
                 activity.save()
 
             return Response({'status': 'success', 'message': 'Object restored successfully.'})
         except Exception as e:
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'status': 'error', 'message': f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ProductViewSet(viewsets.ModelViewSet):
