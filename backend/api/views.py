@@ -28,6 +28,8 @@ from .models import (
     Purchase,
     PurchaseItem,
     BankAccount,
+    Offer,
+    OfferItem,
 )
 from .serializers import (
     ActivitySerializer,
@@ -43,6 +45,8 @@ from .serializers import (
     PurchaseReadSerializer,
     PurchaseWriteSerializer,
     BankAccountSerializer,
+    OfferReadSerializer,
+    OfferWriteSerializer,
 )
 
 
@@ -241,6 +245,62 @@ class SaleViewSet(viewsets.ModelViewSet):
             Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
         
         instance.delete()
+
+
+class OfferViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return OfferWriteSerializer
+        return OfferReadSerializer
+
+    def get_queryset(self):
+        return Offer.objects.filter(created_by=self.request.user).order_by('-offer_date')
+
+    def perform_create(self, serializer):
+        instance = serializer.save(created_by=self.request.user)
+        log_activity(self.request.user, 'created', instance)
+
+    @action(detail=True, methods=['post'])
+    def convert_to_sale(self, request, pk=None):
+        offer = self.get_object()
+        if offer.status != 'pending':
+            return Response({'status': 'error', 'message': 'Offer is not pending.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            # Create a new Sale object from the Offer
+            sale = Sale.objects.create(
+                customer=offer.customer,
+                sale_date=date.today(),
+                total_amount=offer.total_amount,
+                details=offer.details,
+                created_by=offer.created_by
+            )
+
+            # Create SaleItem objects from OfferItem objects
+            for offer_item in offer.items.all():
+                SaleItem.objects.create(
+                    sale=sale,
+                    product=offer_item.product,
+                    quantity=offer_item.quantity,
+                    unit_price=offer_item.unit_price
+                )
+
+                # Update product stock
+                Product.objects.filter(id=offer_item.product.id).update(stock_quantity=F('stock_quantity') - offer_item.quantity)
+
+            # Update customer's open balance
+            Customer.objects.filter(id=offer.customer.id).update(open_balance=F('open_balance') + offer.total_amount)
+
+            # Update the offer status to 'accepted'
+            offer.status = 'accepted'
+            offer.save()
+
+            log_activity(request.user, 'created', sale, f"Converted from offer #{offer.id}")
+            log_activity(request.user, 'updated', offer, "Converted to sale")
+
+        return Response({'status': 'success', 'message': 'Offer converted to sale.', 'sale_id': sale.id})
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
