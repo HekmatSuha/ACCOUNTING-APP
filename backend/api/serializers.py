@@ -233,7 +233,10 @@ class OfferWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         customer_id = validated_data.pop('customer_id')
-        created_by = self.context['request'].user
+        # ``created_by`` may be supplied via ``serializer.save``; pop it to
+        # avoid passing multiple values to ``Offer.objects.create``. Defaults
+        # to the request user.
+        created_by = validated_data.pop('created_by', self.context['request'].user)
 
         with transaction.atomic():
             customer = Customer.objects.get(id=customer_id, created_by=created_by)
