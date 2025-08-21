@@ -270,6 +270,27 @@ class OfferWriteSerializer(serializers.ModelSerializer):
 
         return offer
 
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items')
+        with transaction.atomic():
+            instance.items.all().delete()
+            total_offer_amount = 0
+            for item_data in items_data:
+                product_id = item_data.pop('product_id')
+                product = Product.objects.get(id=product_id, created_by=self.context['request'].user)
+                offer_item = OfferItem.objects.create(
+                    offer=instance,
+                    product=product,
+                    **item_data
+                )
+                total_offer_amount += offer_item.line_total
+
+            instance.offer_date = validated_data.get('offer_date', instance.offer_date)
+            instance.details = validated_data.get('details', instance.details)
+            instance.total_amount = total_offer_amount
+            instance.save()
+        return instance
+
 
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
