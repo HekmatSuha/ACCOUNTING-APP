@@ -107,47 +107,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.status != 'pending':
-            raise serializers.ValidationError('Only pending offers can be updated.')
-        return super().update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.status != 'pending':
-            raise serializers.ValidationError('Only pending offers can be deleted.')
-        return super().destroy(request, *args, **kwargs)
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        log_activity(self.request.user, 'updated', instance)
-
-    def perform_destroy(self, instance):
-        log_activity(self.request.user, 'deleted', instance)
-        instance.delete()
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        raise Exception(f'status={instance.status}')
-        if instance.status != 'pending':
-            raise serializers.ValidationError('Only pending offers can be updated.')
-        return super().update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.status != 'pending':
-            raise serializers.ValidationError('Only pending offers can be deleted.')
-        return super().destroy(request, *args, **kwargs)
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        log_activity(self.request.user, 'updated', instance)
-
-    def perform_destroy(self, instance):
-        log_activity(self.request.user, 'deleted', instance)
-        instance.delete()
-
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         customer = self.get_object()
@@ -386,6 +345,29 @@ class SupplierViewSet(viewsets.ModelViewSet):
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
 
+    @action(detail=True, methods=['get'])
+    def details(self, request, pk=None):
+        supplier = self.get_object()
+        purchases = supplier.purchases.all().order_by('-purchase_date')
+
+        # 'payments' is the related_name from Expense model's supplier field
+        payments = supplier.payments.all().order_by('-expense_date')
+
+        total_turnover = purchases.aggregate(Sum('total_amount'))['total_amount__sum'] or 0.00
+
+        data = {
+            'supplier': SupplierSerializer(supplier).data,
+            'purchases': PurchaseReadSerializer(purchases, many=True).data,
+            'payments': ExpenseSerializer(payments, many=True).data,
+            'summary': {
+                'open_balance': supplier.open_balance,
+                'check_balance': 0.00,  # Placeholder
+                'note_balance': 0.00,  # Placeholder
+                'turnover': total_turnover
+            }
+        }
+        return Response(data)
+
 
 class BankAccountViewSet(viewsets.ModelViewSet):
     serializer_class = BankAccountSerializer
@@ -466,6 +448,27 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
+
+
+class SupplierPaymentViewSet(viewsets.ModelViewSet):
+    serializer_class = ExpenseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        supplier_pk = self.kwargs.get('supplier_pk')
+        return Expense.objects.filter(supplier__id=supplier_pk, created_by=self.request.user)
+
+    def perform_create(self, serializer):
+        supplier_pk = self.kwargs.get('supplier_pk')
+        try:
+            supplier = Supplier.objects.get(pk=supplier_pk, created_by=self.request.user)
+            instance = serializer.save(
+                created_by=self.request.user,
+                supplier=supplier
+            )
+            log_activity(self.request.user, 'created', instance)
+        except Supplier.DoesNotExist:
+            raise NotFound(detail="Supplier not found.")
 
 
 class ExpenseCategoryViewSet(viewsets.ModelViewSet):

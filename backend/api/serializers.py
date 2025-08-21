@@ -309,6 +309,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
     # This makes the category name appear in the API response, which is more useful than just the ID.
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
 
     class Meta:
         model = Expense
@@ -321,8 +322,10 @@ class ExpenseSerializer(serializers.ModelSerializer):
             'description',
             'account',
             'account_name',
+            'supplier',
+            'supplier_name',
         ]
-        read_only_fields = ['created_by', 'account_name']
+        read_only_fields = ['created_by', 'account_name', 'supplier_name']
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)

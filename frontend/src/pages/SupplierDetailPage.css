@@ -1,0 +1,40 @@
+.summary-card {
+    color: white;
+    height: 100%;
+}
+
+.summary-card .icon {
+    opacity: 0.8;
+}
+
+.customer-header {
+    position: relative;
+}
+
+.speech-bubble {
+    position: relative;
+    background: #e9ecef;
+    border-radius: .4em;
+    padding: 10px;
+    font-style: italic;
+    color: #333;
+}
+
+.speech-bubble:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border: 10px solid transparent;
+    border-bottom-color: #e9ecef;
+    border-top: 0;
+    margin-left: -10px;
+    margin-top: -10px;
+}
+
+.table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
