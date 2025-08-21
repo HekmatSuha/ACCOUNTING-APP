@@ -14,12 +14,14 @@ import ProductListPage from './pages/ProductListPage'; // <-- Import
 import ProductFormPage from './pages/ProductFormPage';
 import SaleFormPage from './pages/SaleFormPage';
 import SupplierListPage from './pages/SupplierListPage';
+import SupplierDetailPage from './pages/SupplierDetailPage';
 import SaleListPage from './pages/SaleListPage'; // <-- Import
 import TransactionPage from './pages/TransactionPage';   // <-- Import
 import SaleDetailPage from './pages/SaleDetailPage';
 import ExpenseListPage from './pages/ExpenseListPage';
 import ProfitLossPage from './pages/ProfitLossPage';
 import SalesReportPage from './pages/SalesReportPage';
+import PurchaseFormPage from './pages/PurchaseFormPage';
 import EditSalePage from './pages/EditSalePage';
 import PurchaseListPage from './pages/PurchaseListPage';
 import PurchaseDetailPage from './pages/PurchaseDetailPage';
@@ -54,6 +56,8 @@ function App() {
                   <Route path="inventory/edit/:id" element={<ProductFormPage />} /> {/* <-- Add Route */}
                   <Route path="customers/:customerId/new-sale" element={<SaleFormPage />} />
                   <Route path="suppliers" element={<SupplierListPage />} />
+                  <Route path="suppliers/:id" element={<SupplierDetailPage />} />
+                  <Route path="suppliers/:supplierId/new-purchase" element={<PurchaseFormPage />} />
                   <Route path="sales" element={<SaleListPage />} />
                   <Route path="sales/new" element={<TransactionPage />} />
                   <Route path="sales/:id" element={<SaleDetailPage />} />

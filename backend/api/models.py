@@ -243,6 +243,7 @@ class Expense(models.Model):
     account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='expenses', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expenses')
     created_at = models.DateTimeField(auto_now_add=True)
+    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments')
 
     def __str__(self):
         return f"Expense of {self.amount} on {self.expense_date}"
@@ -261,15 +262,33 @@ class Expense(models.Model):
                 elif self.account_id:
                     delta = self.amount - old.amount
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - delta)
+
+                # Handle supplier balance update on change
+                if old.supplier_id != self.supplier_id:
+                    if old.supplier_id:
+                        Supplier.objects.filter(pk=old.supplier_id).update(open_balance=F('open_balance') + old.amount)
+                    if self.supplier_id:
+                        Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - self.amount)
+                # if supplier is same, update with delta
+                elif self.supplier_id:
+                    delta = self.amount - old.amount
+                    Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - delta)
+
             # New expense
-            elif self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+            else:
+                if self.account_id:
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+                if self.supplier_id:
+                    Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - self.amount)
+
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.account_id:
                 BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+            if self.supplier_id:
+                Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') + self.amount)
             super().delete(*args, **kwargs)
     
 
