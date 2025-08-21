@@ -90,7 +90,7 @@ function SupplierListPage() {
                             <tr>
                                 <td colSpan="2" className="text-center p-5">
                                     {searchTerm ? `No suppliers found for "${searchTerm}".` : 'No suppliers found. Click "Add New Supplier" to get started.'}
-                                d>
+                                </td>
                             </tr>
                         )}
                     </tbody>
