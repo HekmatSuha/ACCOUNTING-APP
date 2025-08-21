@@ -107,6 +107,47 @@ class CustomerViewSet(viewsets.ModelViewSet):
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.status != 'pending':
+            raise serializers.ValidationError('Only pending offers can be updated.')
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.status != 'pending':
+            raise serializers.ValidationError('Only pending offers can be deleted.')
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        raise Exception(f'status={instance.status}')
+        if instance.status != 'pending':
+            raise serializers.ValidationError('Only pending offers can be updated.')
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.status != 'pending':
+            raise serializers.ValidationError('Only pending offers can be deleted.')
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
+
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         customer = self.get_object()
@@ -207,15 +248,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         instance = serializer.save(created_by=self.request.user)
         log_activity(self.request.user, 'created', instance)
 
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        log_activity(self.request.user, 'updated', instance)
-
-    def perform_destroy(self, instance):
-        log_activity(self.request.user, 'deleted', instance)
-        instance.delete()
-
-
 class SaleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -273,6 +305,26 @@ class OfferViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save(created_by=self.request.user)
         log_activity(self.request.user, 'created', instance)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'updated', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
+        instance.delete()
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.status != 'pending':
+            raise serializers.ValidationError('Only pending offers can be updated.')
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.status != 'pending':
+            raise serializers.ValidationError('Only pending offers can be deleted.')
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'])
     def convert_to_sale(self, request, pk=None):
