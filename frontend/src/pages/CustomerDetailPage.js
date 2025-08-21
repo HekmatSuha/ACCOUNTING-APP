@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
-import { PersonCircle, Cash, Tag, Hammer } from 'react-bootstrap-icons';
+import { PersonCircle, Cash, Tag, Hammer, BarChart } from 'react-bootstrap-icons';
+import './CustomerDetailPage.css';
 import CustomerPaymentModal from '../components/CustomerPaymentModal';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -72,6 +73,18 @@ function CustomerDetailPage() {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount);
     };
 
+    const renderSummaryCard = (bg, title, amount, Icon) => (
+        <Card bg={bg} text="white" className="summary-card">
+            <Card.Body className="d-flex align-items-center">
+                <Icon size={40} className="icon me-3" />
+                <div>
+                    <h6 className="mb-0">{title}</h6>
+                    <div className="fs-4">{amount}</div>
+                </div>
+            </Card.Body>
+        </Card>
+    );
+
     const renderOpenBalanceCard = (balance, currency) => {
         let cardProps;
 
@@ -95,14 +108,7 @@ function CustomerDetailPage() {
             };
         }
 
-        return (
-            <Card bg={cardProps.bg} text="white">
-                <Card.Body>
-                    <Card.Title>{cardProps.title}</Card.Title>
-                    <Card.Text className="fs-4">{cardProps.amount}</Card.Text>
-                </Card.Body>
-            </Card>
-        );
+        return renderSummaryCard(cardProps.bg, cardProps.title, cardProps.amount, Cash);
     };
 
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
@@ -114,23 +120,34 @@ function CustomerDetailPage() {
         <Container fluid>
             {/* Customer Header */}
             <Card className="mb-3" style={{ background: '#f5f5f5' }}>
-                <Card.Body className="d-flex align-items-center">
+                <Card.Body className="d-flex align-items-center customer-header">
                     {customer.image ? (
                         <img src={`${API_BASE_URL}${customer.image}`} alt={customer.name} className="rounded-circle me-3" style={{ width: '60px', height: '60px' }} />
                     ) : (
                         <PersonCircle size={60} className="me-3 text-secondary" />
                     )}
-                    <h2 className="mb-0">{customer.name}</h2>
-                    <Button variant="info" className="ms-auto" onClick={() => navigate(`/customers/edit/${id}`)}>Edit Customer</Button>
+                    <div className="flex-grow-1">
+                        <h2 className="mb-0">{customer.name}</h2>
+                        <div className="speech-bubble mt-2">{customer.notes || 'No notes for this customer yet.'}</div>
+                    </div>
+                    <Button variant="info" className="ms-3" onClick={() => navigate(`/customers/edit/${id}`)}>Edit Customer</Button>
                 </Card.Body>
             </Card>
 
             {/* Summary Cards */}
             <Row className="mb-3">
-                <Col>{renderOpenBalanceCard(summary.open_balance, customer.currency)}</Col>
-                <Col><Card bg="info" text="white"><Card.Body><Card.Title>Check Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.check_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
-                <Col><Card bg="info" text="white"><Card.Body><Card.Title>Note Balance</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.note_balance, customer.currency)}</Card.Text></Card.Body></Card></Col>
-                <Col><Card bg="success" text="white"><Card.Body><Card.Title>Turnover</Card.Title><Card.Text className="fs-4">{formatCurrency(summary.turnover, customer.currency)}</Card.Text></Card.Body></Card></Col>
+                <Col md={3} sm={6} className="mb-3">
+                    {renderOpenBalanceCard(summary.open_balance, customer.currency)}
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                    {renderSummaryCard('info', 'Check Balance', formatCurrency(summary.check_balance, customer.currency), Tag)}
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                    {renderSummaryCard('warning', 'Note Balance', formatCurrency(summary.note_balance, customer.currency), Hammer)}
+                </Col>
+                <Col md={3} sm={6} className="mb-3">
+                    {renderSummaryCard('success', 'Turnover', formatCurrency(summary.turnover, customer.currency), BarChart)}
+                </Col>
             </Row>
 
             {/* Action Buttons */}
