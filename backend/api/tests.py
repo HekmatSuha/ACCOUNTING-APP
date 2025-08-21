@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem, Activity
+from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem, Activity, Offer, OfferItem
 from .serializers import ProductSerializer
 from .activity_logger import log_activity
 from rest_framework.test import APIClient
@@ -215,4 +215,55 @@ class OfferNestedRouteTest(TestCase):
         self.assertEqual(self.customer.sales.count(), 1)
         self.customer.offers.first().refresh_from_db()
         self.assertEqual(self.customer.offers.first().status, 'accepted')
+
+
+class OfferEditDeletePermissionTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='edituser', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), created_by=self.user)
+        self.offer = Offer.objects.create(customer=self.customer, created_by=self.user)
+        OfferItem.objects.create(offer=self.offer, product=self.product, quantity=1, unit_price=Decimal('10.00'))
+        self.offer.total_amount = Decimal('10.00')
+        self.offer.save()
+
+    def test_update_pending_offer(self):
+        url = f'/api/offers/{self.offer.id}/'
+        payload = {
+            'offer_date': str(date.today()),
+            'items': [
+                {'product_id': self.product.id, 'quantity': 2, 'unit_price': '10.00'}
+            ]
+        }
+        response = self.client.put(url, payload, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.offer.refresh_from_db()
+        self.assertEqual(self.offer.total_amount, Decimal('20.00'))
+
+    def test_update_non_pending_offer_fails(self):
+        Offer.objects.filter(id=self.offer.id).update(status='accepted')
+        url = f'/api/offers/{self.offer.id}/'
+        payload = {
+            'offer_date': str(date.today()),
+            'items': [
+                {'product_id': self.product.id, 'quantity': 2, 'unit_price': '10.00'}
+            ]
+        }
+        response = self.client.put(url, payload, format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_delete_pending_offer(self):
+        url = f'/api/offers/{self.offer.id}/'
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Offer.objects.filter(id=self.offer.id).exists())
+
+    def test_delete_non_pending_offer_fails(self):
+        Offer.objects.filter(id=self.offer.id).update(status='accepted')
+        url = f'/api/offers/{self.offer.id}/'
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Offer.objects.filter(id=self.offer.id).exists())
 
