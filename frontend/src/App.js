@@ -15,6 +15,7 @@ import ProductFormPage from './pages/ProductFormPage';
 import SaleFormPage from './pages/SaleFormPage';
 import SupplierListPage from './pages/SupplierListPage';
 import SupplierDetailPage from './pages/SupplierDetailPage';
+import SupplierFormPage from './pages/SupplierFormPage';
 import SaleListPage from './pages/SaleListPage'; // <-- Import
 import TransactionPage from './pages/TransactionPage';   // <-- Import
 import SaleDetailPage from './pages/SaleDetailPage';
@@ -56,6 +57,8 @@ function App() {
                   <Route path="inventory/edit/:id" element={<ProductFormPage />} /> {/* <-- Add Route */}
                   <Route path="customers/:customerId/new-sale" element={<SaleFormPage />} />
                   <Route path="suppliers" element={<SupplierListPage />} />
+                  <Route path="suppliers/new" element={<SupplierFormPage />} />
+                  <Route path="suppliers/edit/:id" element={<SupplierFormPage />} />
                   <Route path="suppliers/:id" element={<SupplierDetailPage />} />
                   <Route path="suppliers/:supplierId/new-purchase" element={<PurchaseFormPage />} />
                   <Route path="sales" element={<SaleListPage />} />
