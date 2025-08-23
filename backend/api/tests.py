@@ -18,6 +18,7 @@ from .models import (
     OfferItem,
     Sale,
     SaleItem,
+ main
 )
 from .serializers import ProductSerializer, PaymentSerializer
 from .activity_logger import log_activity
@@ -147,7 +148,8 @@ class PurchaseAccountTransactionTest(TestCase):
 class CustomerBalanceTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='ub', password='pw')
-        self.customer = Customer.objects.create(name='Cust', created_by=self.user, open_balance=Decimal('100.00'))
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user)
+        Sale.objects.create(customer=self.customer, total_amount=Decimal('100.00'), created_by=self.user)
 
     def test_payment_reduces_customer_balance(self):
         Payment.objects.create(
@@ -159,7 +161,7 @@ class CustomerBalanceTest(TestCase):
             created_by=self.user,
         )
         self.customer.refresh_from_db()
-        self.assertEqual(self.customer.open_balance, Decimal('60.00'))
+        self.assertEqual(self.customer.balance, Decimal('60.00'))
 
     def test_payment_delete_restores_balance(self):
         payment = Payment.objects.create(
@@ -172,7 +174,7 @@ class CustomerBalanceTest(TestCase):
         )
         payment.delete()
         self.customer.refresh_from_db()
-        self.assertEqual(self.customer.open_balance, Decimal('100.00'))
+        self.assertEqual(self.customer.balance, Decimal('100.00'))
 
     def test_payment_update_adjusts_balance(self):
         payment = Payment.objects.create(
@@ -186,13 +188,14 @@ class CustomerBalanceTest(TestCase):
         payment.amount = Decimal('50.00')
         payment.save()
         self.customer.refresh_from_db()
-        self.assertEqual(self.customer.open_balance, Decimal('50.00'))
+        self.assertEqual(self.customer.balance, Decimal('50.00'))
 
 
 class CrossCurrencyPaymentTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='xc', password='pw')
-        self.customer = Customer.objects.create(name='Cust', currency='USD', open_balance=Decimal('200.00'), created_by=self.user)
+        self.customer = Customer.objects.create(name='Cust', currency='USD', created_by=self.user)
+        Sale.objects.create(customer=self.customer, total_amount=Decimal('200.00'), created_by=self.user)
         self.account = BankAccount.objects.create(name='Euro', currency='EUR', created_by=self.user)
 
     def test_cross_currency_payment_updates_balances(self):
@@ -209,7 +212,7 @@ class CrossCurrencyPaymentTest(TestCase):
         self.account.refresh_from_db()
         self.customer.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal('100.00'))
-        self.assertEqual(self.customer.open_balance, Decimal('90.00'))
+        self.assertEqual(self.customer.balance, Decimal('90.00'))
 
     def test_exchange_rate_required_when_currencies_differ(self):
         data = {
