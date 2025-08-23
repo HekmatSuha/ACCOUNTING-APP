@@ -9,6 +9,10 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
     const [notes, setNotes] = useState('');
     const [account, setAccount] = useState('');
     const [accounts, setAccounts] = useState([]);
+    const [accountCurrency, setAccountCurrency] = useState('USD');
+    const [baseCurrency] = useState('USD');
+    const [exchangeRate, setExchangeRate] = useState('');
+    const [convertedAmount, setConvertedAmount] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -28,14 +32,42 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             setMethod(payment.method);
             setNotes(payment.notes);
             setAccount(payment.account);
+            setAccountCurrency(payment.currency || 'USD');
+            setExchangeRate(payment.exchange_rate ? String(payment.exchange_rate) : '');
+            setConvertedAmount(payment.converted_amount ? String(payment.converted_amount) : '');
         } else {
             setAmount('');
             setPaymentDate(new Date().toISOString().slice(0, 10));
             setMethod('Cash');
             setNotes('');
             setAccount('');
+            setAccountCurrency('USD');
+            setExchangeRate('');
+            setConvertedAmount('');
         }
     }, [payment, show]);
+
+    useEffect(() => {
+        if (account) {
+            const acc = accounts.find(a => a.id === parseInt(account));
+            if (acc) {
+                setAccountCurrency(acc.currency);
+            }
+        } else {
+            setAccountCurrency(baseCurrency);
+        }
+    }, [account, accounts, baseCurrency]);
+
+    useEffect(() => {
+        if (accountCurrency !== baseCurrency) {
+            const rate = parseFloat(exchangeRate) || 0;
+            const amt = parseFloat(amount) || 0;
+            setConvertedAmount((amt * rate).toFixed(2));
+        } else {
+            setExchangeRate('');
+            setConvertedAmount(amount);
+        }
+    }, [amount, exchangeRate, accountCurrency, baseCurrency]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -52,7 +84,11 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             method,
             notes,
             account: account || null,
+            currency: accountCurrency,
         };
+        if (accountCurrency !== baseCurrency) {
+            paymentData.exchange_rate = parseFloat(exchangeRate);
+        }
 
         try {
             const url = payment
@@ -110,10 +146,28 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                         <Form.Select value={account} onChange={(e) => setAccount(e.target.value)}>
                             <option value="">None (Pay from balance)</option>
                             {accounts.map(acc => (
-                                <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
                             ))}
                         </Form.Select>
                     </Form.Group>
+                    {accountCurrency !== baseCurrency && (
+                        <>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Exchange Rate ({accountCurrency} to {baseCurrency})</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    step="0.000001"
+                                    value={exchangeRate}
+                                    onChange={(e) => setExchangeRate(e.target.value)}
+                                    required
+                                />
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Converted Amount ({baseCurrency})</Form.Label>
+                                <Form.Control type="number" value={convertedAmount} readOnly />
+                            </Form.Group>
+                        </>
+                    )}
                     <Form.Group className="mb-3">
                         <Form.Label>Notes</Form.Label>
                         <Form.Control

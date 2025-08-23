@@ -11,13 +11,16 @@ const getTodayDate = () => {
     return `${yyyy}-${mm}-${dd}`;
 };
 
-function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, payment }) {
+function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, payment, customerCurrency }) {
     const [paymentDate, setPaymentDate] = useState(getTodayDate());
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('Cash');
     const [notes, setNotes] = useState('');
     const [accounts, setAccounts] = useState([]);
     const [account, setAccount] = useState('');
+    const [accountCurrency, setAccountCurrency] = useState(customerCurrency);
+    const [exchangeRate, setExchangeRate] = useState('');
+    const [convertedAmount, setConvertedAmount] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -41,6 +44,9 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             setMethod(payment.method);
             setNotes(payment.notes || '');
             setAccount(payment.account || '');
+            setAccountCurrency(payment.currency || customerCurrency);
+            setExchangeRate(payment.exchange_rate ? String(payment.exchange_rate) : '');
+            setConvertedAmount(payment.converted_amount ? String(payment.converted_amount) : '');
         } else if (show && !payment) {
             // Reset form when adding a new payment
             setPaymentDate(getTodayDate());
@@ -48,8 +54,33 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             setMethod('Cash');
             setNotes('');
             setAccount('');
+            setAccountCurrency(customerCurrency);
+            setExchangeRate('');
+            setConvertedAmount('');
         }
-    }, [payment, show]);
+    }, [payment, show, customerCurrency]);
+
+    useEffect(() => {
+        if (account) {
+            const acc = accounts.find(a => a.id === parseInt(account));
+            if (acc) {
+                setAccountCurrency(acc.currency);
+            }
+        } else {
+            setAccountCurrency(customerCurrency);
+        }
+    }, [account, accounts, customerCurrency]);
+
+    useEffect(() => {
+        if (accountCurrency !== customerCurrency) {
+            const rate = parseFloat(exchangeRate) || 0;
+            const amt = parseFloat(amount) || 0;
+            setConvertedAmount((amt * rate).toFixed(2));
+        } else {
+            setExchangeRate('');
+            setConvertedAmount(amount);
+        }
+    }, [amount, exchangeRate, accountCurrency, customerCurrency]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -65,10 +96,14 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             amount: parseFloat(amount),
             method,
             notes,
+            currency: accountCurrency,
         };
 
         if (account) {
             paymentData.account = account;
+        }
+        if (accountCurrency !== customerCurrency) {
+            paymentData.exchange_rate = parseFloat(exchangeRate);
         }
 
         try {
@@ -132,10 +167,28 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                         >
                             <option value="">No Account</option>
                             {accounts.map((acc) => (
-                                <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
                             ))}
                         </Form.Select>
                     </Form.Group>
+                    {accountCurrency !== customerCurrency && (
+                        <>
+                            <Form.Group className="mb-3" controlId="exchangeRate">
+                                <Form.Label>Exchange Rate ({accountCurrency} to {customerCurrency})</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    step="0.000001"
+                                    value={exchangeRate}
+                                    onChange={(e) => setExchangeRate(e.target.value)}
+                                    required
+                                />
+                            </Form.Group>
+                            <Form.Group className="mb-3" controlId="convertedAmount">
+                                <Form.Label>Converted Amount ({customerCurrency})</Form.Label>
+                                <Form.Control type="number" value={convertedAmount} readOnly />
+                            </Form.Group>
+                        </>
+                    )}
                     <Form.Group className="mb-3" controlId="paymentNotes">
                         <Form.Label>Notes (Optional)</Form.Label>
                         <Form.Control

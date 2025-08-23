@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.models import F
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from decimal import Decimal
 from .models import (
     Customer,
     ExpenseCategory,
@@ -66,6 +67,9 @@ class PaymentSerializer(serializers.ModelSerializer):
             'id',
             'payment_date',
             'amount',
+            'currency',
+            'exchange_rate',
+            'converted_amount',
             'method',
             'notes',
             'account',
@@ -74,7 +78,24 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_by',
             'customer',
         ]
-        read_only_fields = ['created_by', 'customer', 'account_name']
+        read_only_fields = ['created_by', 'customer', 'account_name', 'converted_amount']
+
+    def validate(self, attrs):
+        account = attrs.get('account') or (self.instance.account if self.instance else None)
+        currency = attrs.get('currency') or (account.currency if account else None)
+        if account and currency and account.currency != currency:
+            raise serializers.ValidationError({'currency': 'Currency must match selected account currency.'})
+
+        customer = self.context.get('customer') or (self.instance.customer if self.instance else None)
+        if customer:
+            attrs['currency'] = currency or customer.currency
+            if attrs['currency'] != customer.currency:
+                exchange_rate = attrs.get('exchange_rate')
+                if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
+                    raise serializers.ValidationError({'exchange_rate': 'Exchange rate required when currencies differ.'})
+            else:
+                attrs['exchange_rate'] = Decimal('1')
+        return attrs
 
 class ProductSerializer(serializers.ModelSerializer):
     sku = serializers.CharField(
@@ -439,5 +460,5 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 class BankAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = BankAccount
-        fields = ['id', 'name', 'balance']
+        fields = ['id', 'name', 'balance', 'currency']
         read_only_fields = ['balance', 'created_by']
