@@ -230,11 +230,15 @@ class SaleViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         log_activity(self.request.user, 'deleted', instance)
         customer = instance.customer
-        Customer.objects.filter(id=customer.id).update(open_balance=F('open_balance') - instance.total_amount)
+
+        for payment in instance.payments.all():
+            payment.delete()
 
         for item in instance.items.all():
             Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
-        
+
+        Customer.objects.filter(id=customer.id).update(open_balance=F('open_balance') - instance.total_amount)
+
         instance.delete()
 
 
