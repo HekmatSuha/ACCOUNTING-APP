@@ -48,7 +48,8 @@ function CustomerListPage() {
     };
 
     const formatCurrency = (amount, currency) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(amount);
+        const value = isNaN(Number(amount)) ? 0 : Number(amount);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
     };
 
     return (
