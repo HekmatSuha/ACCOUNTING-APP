@@ -93,6 +93,7 @@ class Offer(models.Model):
 class BankAccount(models.Model):
     name = models.CharField(max_length=255)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -114,6 +115,9 @@ class Payment(models.Model):
 
     payment_date = models.DateField()
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='Cash')
     notes = models.TextField(blank=True, null=True)
     account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
@@ -126,19 +130,26 @@ class Payment(models.Model):
         return f"Payment of {self.amount} from {self.customer.name}"
 
     def save(self, *args, **kwargs):
+        # determine converted amount
+        if self.currency == self.customer.currency:
+            self.exchange_rate = Decimal('1')
+            self.converted_amount = self.amount
+        else:
+            self.converted_amount = (Decimal(self.amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
+
         with transaction.atomic():
             if self.pk:
                 old = Payment.objects.select_for_update().get(pk=self.pk)
 
-                # Update customer balance
+                # Update customer balance using converted amounts
                 if old.customer_id != self.customer_id:
-                    Customer.objects.filter(pk=old.customer_id).update(open_balance=F('open_balance') + old.amount)
-                    Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.amount)
+                    Customer.objects.filter(pk=old.customer_id).update(open_balance=F('open_balance') + old.converted_amount)
+                    Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.converted_amount)
                 else:
-                    delta = self.amount - old.amount
+                    delta = self.converted_amount - old.converted_amount
                     Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - delta)
 
-                # Update bank account balance
+                # Update bank account balance using payment amounts
                 if old.account_id != self.account_id:
                     if old.account_id:
                         BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.amount)
@@ -148,14 +159,14 @@ class Payment(models.Model):
                     delta = self.amount - old.amount
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + delta)
             else:
-                Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.amount)
+                Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.converted_amount)
                 if self.account_id:
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
-            Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') + self.amount)
+            Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') + self.converted_amount)
             if self.account_id:
                 BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
             super().delete(*args, **kwargs)
