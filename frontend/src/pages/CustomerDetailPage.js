@@ -70,7 +70,8 @@ function CustomerDetailPage() {
     };
     
     const formatCurrency = (amount, currency) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount);
+        const value = isNaN(Number(amount)) ? 0 : Number(amount);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(value);
     };
 
     const renderSummaryCard = (bg, title, amount, Icon) => (
@@ -86,19 +87,20 @@ function CustomerDetailPage() {
     );
 
     const renderOpenBalanceCard = (balance, currency) => {
+        const numericBalance = isNaN(Number(balance)) ? 0 : Number(balance);
         let cardProps;
 
-        if (balance > 0) {
+        if (numericBalance > 0) {
             cardProps = {
                 bg: 'danger',
                 title: 'Customer Debt',
-                amount: formatCurrency(balance, currency)
+                amount: formatCurrency(numericBalance, currency)
             };
-        } else if (balance < 0) {
+        } else if (numericBalance < 0) {
             cardProps = {
                 bg: 'success',
                 title: 'Extra Money (Credit)',
-                amount: formatCurrency(Math.abs(balance), currency)
+                amount: formatCurrency(Math.abs(numericBalance), currency)
             };
         } else {
             cardProps = {
