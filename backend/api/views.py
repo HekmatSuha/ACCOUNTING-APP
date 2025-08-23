@@ -58,9 +58,13 @@ def dashboard_summary(request):
     """
     user = request.user
     
-    total_receivables = user.customers.aggregate(
-        total=Coalesce(Sum('open_balance'), 0, output_field=DecimalField())
+    sales_total = Sale.objects.filter(customer__created_by=user).aggregate(
+        total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
     )['total']
+    payments_total = Payment.objects.filter(customer__created_by=user).aggregate(
+        total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
+    )['total']
+    total_receivables = sales_total - payments_total
     
     stock_value = user.products.aggregate(
         total_value=Coalesce(Sum(F('purchase_price') * F('stock_quantity')), 0, output_field=DecimalField())
@@ -120,7 +124,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             'sales': SaleReadSerializer(sales, many=True).data,
             'payments': PaymentSerializer(payments, many=True).data,
             'summary': {
-                'open_balance': customer.open_balance,
+                'balance': customer.balance,
                 'check_balance': 0.00,  # Placeholder
                 'note_balance': 0.00,  # Placeholder
                 'turnover': total_turnover

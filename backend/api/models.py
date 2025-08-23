@@ -1,6 +1,7 @@
 # backend/api/models.py
 from django.db import models, transaction
-from django.db.models import F
+from django.db.models import F, Sum, DecimalField
+from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -55,6 +56,17 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def balance(self):
+        """Current balance derived from sales and payments."""
+        sales_total = self.sales.aggregate(
+            total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
+        )['total']
+        payments_total = self.payments.aggregate(
+            total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
+        )['total']
+        return sales_total - payments_total
 
 
 class Sale(models.Model):
