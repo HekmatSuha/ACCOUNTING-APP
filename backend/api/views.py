@@ -393,6 +393,17 @@ class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        sale_pk = self.kwargs.get('sale_pk')
+        if sale_pk:
+            try:
+                sale = Sale.objects.get(pk=sale_pk, created_by=self.request.user)
+                context['customer'] = sale.customer
+            except Sale.DoesNotExist:
+                pass
+        return context
+
     def get_queryset(self):
         sale_pk = self.kwargs.get('sale_pk')
         if sale_pk:
@@ -424,6 +435,17 @@ class PaymentViewSet(viewsets.ModelViewSet):
 class CustomerPaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        customer_pk = self.kwargs.get('customer_pk')
+        if customer_pk:
+            try:
+                customer = Customer.objects.get(pk=customer_pk, created_by=self.request.user)
+                context['customer'] = customer
+            except Customer.DoesNotExist:
+                pass
+        return context
 
     def get_queryset(self):
         customer_pk = self.kwargs.get('customer_pk')

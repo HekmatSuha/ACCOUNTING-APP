@@ -169,6 +169,7 @@ function CustomerDetailPage() {
                 customerId={id}
                 onPaymentAdded={handlePaymentAdded}
                 payment={editingPayment}
+                customerCurrency={customer.currency}
             />
 
             {/* Transaction Lists */}
