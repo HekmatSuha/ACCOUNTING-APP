@@ -4,7 +4,21 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem, Activity, Offer, OfferItem
+from .models import (
+    BankAccount,
+    Customer,
+    Expense,
+    Payment,
+    Product,
+    Supplier,
+    Purchase,
+    PurchaseItem,
+    Activity,
+    Offer,
+    OfferItem,
+    Sale,
+    SaleItem,
+)
 from .serializers import ProductSerializer, PaymentSerializer
 from .activity_logger import log_activity
 from rest_framework.test import APIClient
@@ -318,4 +332,58 @@ class OfferEditDeletePermissionTest(TestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, 400)
         self.assertTrue(Offer.objects.filter(id=self.offer.id).exists())
+
+
+class SaleDeletionTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='saleuser', password='pw')
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user, open_balance=Decimal('0.00'))
+        self.product = Product.objects.create(
+            name='Prod',
+            sale_price=Decimal('100.00'),
+            stock_quantity=Decimal('10'),
+            created_by=self.user,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_delete_sale_with_payments_restores_customer_balance(self):
+        original_balance = self.customer.open_balance
+        sale = Sale.objects.create(
+            customer=self.customer,
+            sale_date=date.today(),
+            total_amount=Decimal('100.00'),
+            created_by=self.user,
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.product,
+            quantity=1,
+            unit_price=Decimal('100.00'),
+        )
+
+        # Mimic serializer side effects of sale creation
+        self.product.stock_quantity -= 1
+        self.product.save()
+        self.customer.open_balance += sale.total_amount
+        self.customer.save()
+
+        Payment.objects.create(
+            customer=self.customer,
+            sale=sale,
+            payment_date=date.today(),
+            amount=Decimal('60.00'),
+            currency='USD',
+            method='Cash',
+            created_by=self.user,
+        )
+
+        # Sanity check intermediate balance
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.open_balance, original_balance + Decimal('40.00'))
+
+        response = self.client.delete(f'/api/sales/{sale.id}/')
+        self.assertEqual(response.status_code, 204)
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.open_balance, original_balance)
 
