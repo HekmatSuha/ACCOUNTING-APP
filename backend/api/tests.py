@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from .models import BankAccount, Customer, Expense, Payment, Product, Supplier, Purchase, PurchaseItem, Activity, Offer, OfferItem
-from .serializers import ProductSerializer
+from .serializers import ProductSerializer, PaymentSerializer
 from .activity_logger import log_activity
 from rest_framework.test import APIClient
 
@@ -81,6 +81,7 @@ class BankAccountTransactionTest(TestCase):
             customer=self.customer,
             payment_date=date.today(),
             amount=Decimal('100.00'),
+            currency='USD',
             method='Cash',
             account=self.account,
             created_by=self.user,
@@ -139,6 +140,7 @@ class CustomerBalanceTest(TestCase):
             customer=self.customer,
             payment_date=date.today(),
             amount=Decimal('40.00'),
+            currency='USD',
             method='Cash',
             created_by=self.user,
         )
@@ -150,6 +152,7 @@ class CustomerBalanceTest(TestCase):
             customer=self.customer,
             payment_date=date.today(),
             amount=Decimal('25.00'),
+            currency='USD',
             method='Cash',
             created_by=self.user,
         )
@@ -162,6 +165,7 @@ class CustomerBalanceTest(TestCase):
             customer=self.customer,
             payment_date=date.today(),
             amount=Decimal('30.00'),
+            currency='USD',
             method='Cash',
             created_by=self.user,
         )
@@ -169,6 +173,54 @@ class CustomerBalanceTest(TestCase):
         payment.save()
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.open_balance, Decimal('50.00'))
+
+
+class CrossCurrencyPaymentTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='xc', password='pw')
+        self.customer = Customer.objects.create(name='Cust', currency='USD', open_balance=Decimal('200.00'), created_by=self.user)
+        self.account = BankAccount.objects.create(name='Euro', currency='EUR', created_by=self.user)
+
+    def test_cross_currency_payment_updates_balances(self):
+        Payment.objects.create(
+            customer=self.customer,
+            payment_date=date.today(),
+            amount=Decimal('100.00'),
+            currency='EUR',
+            exchange_rate=Decimal('1.10'),
+            method='Cash',
+            account=self.account,
+            created_by=self.user,
+        )
+        self.account.refresh_from_db()
+        self.customer.refresh_from_db()
+        self.assertEqual(self.account.balance, Decimal('100.00'))
+        self.assertEqual(self.customer.open_balance, Decimal('90.00'))
+
+    def test_exchange_rate_required_when_currencies_differ(self):
+        data = {
+            'payment_date': date.today(),
+            'amount': Decimal('50.00'),
+            'currency': 'EUR',
+            'method': 'Cash',
+            'account': self.account.id,
+        }
+        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('exchange_rate', serializer.errors)
+
+    def test_currency_must_match_account(self):
+        data = {
+            'payment_date': date.today(),
+            'amount': Decimal('50.00'),
+            'currency': 'USD',
+            'exchange_rate': Decimal('1'),
+            'method': 'Cash',
+            'account': self.account.id,
+        }
+        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('currency', serializer.errors)
 
 
 class ActivityRestoreTest(TestCase):

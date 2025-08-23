@@ -9,7 +9,7 @@ function BankAccountListPage() {
     const [showModal, setShowModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentAccount, setCurrentAccount] = useState(null);
-    const [formData, setFormData] = useState({ name: '' });
+    const [formData, setFormData] = useState({ name: '', currency: 'USD' });
     const [error, setError] = useState('');
 
     const fetchAccounts = async () => {
@@ -34,11 +34,11 @@ function BankAccountListPage() {
         if (account) {
             setIsEditing(true);
             setCurrentAccount(account);
-            setFormData({ name: account.name });
+            setFormData({ name: account.name, currency: account.currency });
         } else {
             setIsEditing(false);
             setCurrentAccount(null);
-            setFormData({ name: '' });
+            setFormData({ name: '', currency: 'USD' });
         }
         setError('');
         setShowModal(true);
@@ -93,7 +93,7 @@ function BankAccountListPage() {
                             {accounts.map((acc) => (
                                 <tr key={acc.id}>
                                     <td>{acc.name}</td>
-                                    <td>${parseFloat(acc.balance).toFixed(2)}</td>
+                                    <td>{parseFloat(acc.balance).toFixed(2)} {acc.currency}</td>
                                     <td>
                                         <Button variant="warning" size="sm" className="me-2" onClick={() => handleShowModal(acc)}>Edit</Button>
                                         <Button variant="danger" size="sm" onClick={() => handleDelete(acc.id)}>Delete</Button>
@@ -121,6 +121,14 @@ function BankAccountListPage() {
                                 onChange={handleInputChange}
                                 required
                             />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Currency</Form.Label>
+                            <Form.Select name="currency" value={formData.currency} onChange={handleInputChange}>
+                                {['USD','EUR','KZT','TRY'].map((cur) => (
+                                    <option key={cur} value={cur}>{cur}</option>
+                                ))}
+                            </Form.Select>
                         </Form.Group>
                     </Form>
                 </Modal.Body>
