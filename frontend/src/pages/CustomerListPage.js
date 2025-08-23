@@ -88,7 +88,7 @@ function CustomerListPage() {
                     <thead className="table-dark">
                         <tr>
                             <th style={{ padding: '1rem' }}>Name / Title</th>
-                            <th style={{ padding: '1rem' }}>Open Balance</th>
+                            <th style={{ padding: '1rem' }}>Balance</th>
                             <th style={{ padding: '1rem' }}>Check/Note Balance</th>
                         </tr>
                     </thead>
@@ -103,7 +103,7 @@ function CustomerListPage() {
                             customers.map((customer) => (
                                 <tr key={customer.id} onClick={() => navigate(`/customers/${customer.id}`)} style={{ cursor: 'pointer' }}>
                                     <td>{customer.name}</td>
-                                    <td>{formatCurrency(customer.open_balance, customer.currency)}</td>
+                                    <td>{formatCurrency(customer.balance, customer.currency)}</td>
                                     <td>{formatCurrency(0, customer.currency)}</td>
                                 </tr>
                             ))
