@@ -13,12 +13,15 @@ function ProductFormPage() {
     const [formData, setFormData] = useState({
         name: '', description: '', sku: '', purchase_price: 0.00, sale_price: 0.00, stock_quantity: 0
     });
+    const [imageFile, setImageFile] = useState(null);
     const [error, setError] = useState('');
 
     useEffect(() => {
         if (isEditing) {
             axiosInstance.get(`/products/${id}/`)
-                .then(response => setFormData(response.data))
+                .then(response => {
+                    setFormData(response.data);
+                })
                 .catch(error => setError('Failed to fetch product details.'));
         }
     }, [id, isEditing]);
@@ -27,12 +30,28 @@ function ProductFormPage() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const apiCall = isEditing 
-            ? axiosInstance.put(`/products/${id}/`, formData)
-            : axiosInstance.post('/products/', formData);
-        
+        const submissionData = new FormData();
+        Object.keys(formData).forEach(key => {
+            if (key !== 'image') {
+                submissionData.append(key, formData[key]);
+            }
+        });
+        if (imageFile) {
+            submissionData.append('image', imageFile);
+        }
+        const apiCall = isEditing
+            ? axiosInstance.put(`/products/${id}/`, submissionData)
+            : axiosInstance.post('/products/', submissionData);
+
         try {
             await apiCall;
             navigate('/inventory');
@@ -66,6 +85,10 @@ function ProductFormPage() {
                         <Form.Group className="mb-3">
                             <Form.Label>Description</Form.Label>
                             <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Product Image</Form.Label>
+                            <Form.Control type="file" onChange={handleImageChange} />
                         </Form.Group>
                         <Row>
                             <Col md={4}>

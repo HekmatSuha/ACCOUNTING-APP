@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Table, Button, Card, Spinner } from 'react-bootstrap';
+import { Table, Button, Card, Spinner, Image } from 'react-bootstrap';
 import { Plus } from 'react-bootstrap-icons';
+
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 function ProductListPage() {
     const [products, setProducts] = useState([]);
@@ -41,6 +43,7 @@ function ProductListPage() {
                 <Table striped bordered hover responsive>
                     <thead className="table-dark">
                         <tr>
+                            <th>Image</th>
                             <th>SKU</th>
                             <th>Name</th>
                             <th>Stock Quantity</th>
@@ -50,10 +53,13 @@ function ProductListPage() {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan="5" className="text-center"><Spinner animation="border" /></td></tr>
+                            <tr><td colSpan="6" className="text-center"><Spinner animation="border" /></td></tr>
                         ) : products.length > 0 ? (
                             products.map(product => (
                                 <tr key={product.id}>
+                                    <td>{product.image && (
+                                        <Image src={`${API_BASE_URL}${product.image}`} rounded width={50} height={50} />
+                                    )}</td>
                                     <td>{product.sku || 'N/A'}</td>
                                     <td>{product.name}</td>
                                     <td>{product.stock_quantity}</td>
@@ -66,7 +72,7 @@ function ProductListPage() {
                                 </tr>
                             ))
                         ) : (
-                            <tr><td colSpan="5" className="text-center">No products found.</td></tr>
+                            <tr><td colSpan="6" className="text-center">No products found.</td></tr>
                         )}
                     </tbody>
                 </Table>
