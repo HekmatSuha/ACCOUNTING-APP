@@ -105,10 +105,11 @@ class ProductSerializer(serializers.ModelSerializer):
         allow_blank=True,
         allow_null=True,
     )
+    image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'sku', 'purchase_price', 'sale_price', 'stock_quantity']
+        fields = ['id', 'name', 'description', 'sku', 'purchase_price', 'sale_price', 'stock_quantity', 'image']
         read_only_fields = ['created_by']
 
     def validate_sku(self, value):
