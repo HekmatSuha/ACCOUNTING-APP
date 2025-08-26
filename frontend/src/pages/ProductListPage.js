@@ -57,9 +57,20 @@ function ProductListPage() {
                         ) : products.length > 0 ? (
                             products.map(product => (
                                 <tr key={product.id}>
-                                    <td>{product.image && (
-                                        <Image src={`${API_BASE_URL}${product.image}`} rounded width={50} height={50} />
-                                    )}</td>
+                                    <td>
+                                        {product.image && (
+                                            <Image
+                                                src={
+                                                    product.image.startsWith('http')
+                                                        ? product.image
+                                                        : `${API_BASE_URL}${product.image}`
+                                                }
+                                                rounded
+                                                width={50}
+                                                height={50}
+                                            />
+                                        )}
+                                    </td>
                                     <td>{product.sku || 'N/A'}</td>
                                     <td>{product.name}</td>
                                     <td>{product.stock_quantity}</td>
