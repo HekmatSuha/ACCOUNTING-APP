@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
+import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table, Modal } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer, BarChart } from 'react-bootstrap-icons';
 import './CustomerDetailPage.css';
 import CustomerPaymentModal from '../components/CustomerPaymentModal';
@@ -18,6 +18,7 @@ function CustomerDetailPage() {
     const [error, setError] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [editingPayment, setEditingPayment] = useState(null);
+    const [showImageModal, setShowImageModal] = useState(false);
 
     const fetchDetails = async () => {
         try {
@@ -68,6 +69,9 @@ function CustomerDetailPage() {
         setShowPaymentModal(false);
         setEditingPayment(null);
     };
+
+    const handleImageClick = () => setShowImageModal(true);
+    const handleCloseImageModal = () => setShowImageModal(false);
     
     const formatCurrency = (amount, currency) => {
         const value = isNaN(Number(amount)) ? 0 : Number(amount);
@@ -124,7 +128,14 @@ function CustomerDetailPage() {
             <Card className="mb-3" style={{ background: '#f5f5f5' }}>
                 <Card.Body className="d-flex align-items-center customer-header">
                     {customer.image ? (
-                        <img src={`${API_BASE_URL}${customer.image}`} alt={customer.name} className="rounded-circle me-3" style={{ width: '60px', height: '60px' }} />
+                        <div className="customer-image-wrapper me-3">
+                            <img
+                                src={`${API_BASE_URL}${customer.image}`}
+                                alt={customer.name}
+                                className="rounded-circle customer-image"
+                                onClick={handleImageClick}
+                            />
+                        </div>
                     ) : (
                         <PersonCircle size={60} className="me-3 text-secondary" />
                     )}
@@ -173,6 +184,14 @@ function CustomerDetailPage() {
                 payment={editingPayment}
                 customerCurrency={customer.currency}
             />
+
+            <Modal show={showImageModal} onHide={handleCloseImageModal} centered>
+                <Modal.Body className="text-center">
+                    {customer.image && (
+                        <img src={`${API_BASE_URL}${customer.image}`} alt={customer.name} className="img-fluid" />
+                    )}
+                </Modal.Body>
+            </Modal>
 
             {/* Transaction Lists */}
             <Row>

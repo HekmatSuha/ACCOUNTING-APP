@@ -39,3 +39,23 @@
         margin-bottom: 0.5rem;
     }
 }
+
+.customer-image-wrapper {
+    width: 60px;
+    height: 60px;
+    display: inline-block;
+    overflow: visible;
+}
+
+.customer-image {
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.customer-image:hover {
+    transform: scale(1.8);
+    position: relative;
+    z-index: 10;
+}
