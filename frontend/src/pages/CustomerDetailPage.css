@@ -39,3 +39,12 @@
         margin-bottom: 0.5rem;
     }
 }
+
+.customer-image {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.customer-image:hover {
+    transform: scale(1.5);
+}
