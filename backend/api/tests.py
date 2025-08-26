@@ -18,7 +18,6 @@ from .models import (
     OfferItem,
     Sale,
     SaleItem,
- main
 )
 from .serializers import ProductSerializer, PaymentSerializer
 from .activity_logger import log_activity
