@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Sum, F, DecimalField
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -66,6 +67,14 @@ def dashboard_summary(request):
         total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
     )['total']
     total_receivables = sales_total - payments_total
+
+    today = timezone.now().date()
+    today_sales = Sale.objects.filter(
+        customer__created_by=user, sale_date=today
+    ).aggregate(total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField()))['total']
+    today_incoming = Payment.objects.filter(
+        customer__created_by=user, payment_date=today
+    ).aggregate(total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField()))['total']
     
     stock_value = user.products.aggregate(
         total_value=Coalesce(Sum(F('purchase_price') * F('stock_quantity')), 0, output_field=DecimalField())
@@ -82,6 +91,8 @@ def dashboard_summary(request):
         'expenses': total_expenses,
         'stock_value': stock_value,
         'customer_count': user.customers.count(),
+        'today_sales': today_sales,
+        'today_incoming': today_incoming,
     }
     return Response(data)
 

@@ -46,24 +46,3 @@
         font-size: 1.3rem;
     }
 }
-
-.chart-container {
-    position: relative;
-    margin: auto;
-    height: 60vh;
-    width: 80vw;
-}
-
-@media (max-width: 768px) {
-    .chart-container {
-        height: 50vh;
-        width: 90vw;
-    }
-}
-
-@media (max-width: 576px) {
-    .chart-container {
-        height: 40vh;
-        width: 100vw;
-    }
-}
