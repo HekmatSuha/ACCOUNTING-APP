@@ -3,21 +3,10 @@ import './DashboardPage.css';
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
-import { FaUsers, FaDollarSign, FaBoxOpen, FaCreditCard } from 'react-icons/fa';
-import { Bar } from 'react-chartjs-2';
+import { FaUsers, FaDollarSign, FaBoxOpen, FaCreditCard, FaMoneyBillWave } from 'react-icons/fa';
 import RecentActivities from '../components/RecentActivities';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-} from 'chart.js';
+import BankAccountsOverview from '../components/BankAccountsOverview';
 // frontend/src/pages/DashboardPage.js
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 
 
@@ -40,29 +29,6 @@ function DashboardPage() {
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-
-    const barData = summary ? {
-        labels: ['Receivables', 'Stock Value', 'Expenses'],
-        datasets: [
-            {
-                label: 'Amount ($)',
-                data: [
-                    parseFloat(summary.total_receivables),
-                    parseFloat(summary.stock_value),
-                    parseFloat(summary.expenses)
-                ],
-                backgroundColor: ['#0d6efd', '#0dcaf0', '#dc3545'],
-            },
-        ],
-    } : null;
-
-    const barOptions = {
-        responsive: true,
-        plugins: {
-            legend: { position: 'top' },
-            title: { display: true, text: 'Financial Overview' },
-        },
-    };
 
     useEffect(() => {
         const fetchSummaryData = async () => {
@@ -94,6 +60,24 @@ function DashboardPage() {
             <h2 className="mb-4">Dashboard</h2>
             {summary && (
                 <>
+                    <Row className="g-4 justify-content-end mb-4">
+                        <Col md={6} lg={3}>
+                            <SummaryCard
+                                title="Today's Sales"
+                                value={`$${parseFloat(summary.today_sales).toFixed(2)}`}
+                                icon={<FaDollarSign size={50} />}
+                                color="secondary"
+                            />
+                        </Col>
+                        <Col md={6} lg={3}>
+                            <SummaryCard
+                                title="Incoming Money"
+                                value={`$${parseFloat(summary.today_incoming).toFixed(2)}`}
+                                icon={<FaMoneyBillWave size={50} />}
+                                color="warning"
+                            />
+                        </Col>
+                    </Row>
                     <Row className="g-4">
                         <Col md={6} lg={4}>
                             <SummaryCard
@@ -128,11 +112,7 @@ function DashboardPage() {
                             />
                         </Col>
                     </Row>
-                    {barData && (
-                        <div className="chart-container mt-5">
-                            <Bar data={barData} options={barOptions} />
-                        </div>
-                    )}
+                    <BankAccountsOverview />
                     <RecentActivities />
                 </>
             )}
