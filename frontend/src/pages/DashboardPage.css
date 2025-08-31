@@ -6,8 +6,7 @@
 }
 
 .summary-card .icon {
-    font-size: 50px;
-    margin-right: 1.5rem;
+    margin-right: 1rem;
 }
 
 /* Media query for medium screens and down */
@@ -18,31 +17,7 @@
     }
 
     .summary-card .icon {
-        font-size: 40px;
         margin-right: 0;
         margin-bottom: 0.5rem;
-    }
-
-    .summary-card h5 {
-        font-size: 1.1rem;
-    }
-
-    .summary-card h3 {
-        font-size: 1.5rem;
-    }
-}
-
-/* Media query for small screens and down */
-@media (max-width: 576px) {
-    .summary-card .icon {
-        font-size: 30px;
-    }
-
-    .summary-card h5 {
-        font-size: 1rem;
-    }
-
-    .summary-card h3 {
-        font-size: 1.3rem;
     }
 }
