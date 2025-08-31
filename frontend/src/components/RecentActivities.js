@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, ListGroup, Button, Spinner, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { FaUndo } from 'react-icons/fa';
 
@@ -7,7 +8,8 @@ function RecentActivities() {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [visibleCount, setVisibleCount] = useState(5);
+    const visibleCount = 5;
+    const navigate = useNavigate();
 
     const fetchActivities = async () => {
         try {
@@ -38,7 +40,7 @@ function RecentActivities() {
     };
 
     const showMore = () => {
-        setVisibleCount(prevCount => prevCount + 5);
+        navigate('/activities');
     };
 
     if (loading) {
@@ -70,7 +72,7 @@ function RecentActivities() {
                     </ListGroup.Item>
                 ))}
             </ListGroup>
-            {visibleCount < activities.length && (
+            {activities.length > visibleCount && (
                 <Card.Footer className="text-center">
                     <Button variant="primary" onClick={showMore}>Show More</Button>
                 </Card.Footer>

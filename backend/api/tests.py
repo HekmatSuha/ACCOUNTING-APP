@@ -17,8 +17,7 @@ from .models import (
     Offer,
     OfferItem,
     Sale,
-    SaleItem,
- main
+    SaleItem
 )
 from .serializers import ProductSerializer, PaymentSerializer
 from .activity_logger import log_activity
@@ -255,6 +254,21 @@ class ActivityRestoreTest(TestCase):
         response = self.client.post(f'/api/activities/{activity.id}/restore/')
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Product.objects.filter(pk=product_id).exists())
+
+
+class ActivityDateFilterTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='actuser', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=1, created_by=self.user)
+        log_activity(self.user, 'created', self.product)
+        self.activity_date = Activity.objects.first().timestamp.date()
+
+    def test_filter_by_date(self):
+        response = self.client.get('/api/activities/', {'date': self.activity_date.strftime('%Y-%m-%d')})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
 
 
 class OfferNestedRouteTest(TestCase):
