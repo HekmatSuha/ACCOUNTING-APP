@@ -1,4 +1,3 @@
-// frontend/src/pages/DashboardPage.js
 import './DashboardPage.css';
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
@@ -8,18 +7,22 @@ import RecentActivities from '../components/RecentActivities';
 import BankAccountsOverview from '../components/BankAccountsOverview';
 // frontend/src/pages/DashboardPage.js
 
-
+// Helper to format currency values and avoid NaN outputs
+const formatCurrency = (value) => {
+    const num = Number(value);
+    return `$${isNaN(num) ? '0.00' : num.toFixed(2)}`;
+};
 
 // A reusable component for our summary cards
 const SummaryCard = ({ title, value, icon, color }) => (
-    <Card className={`summary-card shadow-sm bg-${color} text-white`}>
-        <Card.Body>
-            <div className="icon">
+    <Card className={`summary-card shadow-sm border-start border-4 border-${color}`}>
+        <Card.Body className="d-flex align-items-center">
+            <div className={`icon text-${color}`}>
                 {icon}
             </div>
             <div>
-                <h5 className="mb-1">{title}</h5>
-                <h3 className="mb-0">{value}</h3>
+                <h6 className="mb-1 text-muted">{title}</h6>
+                <h4 className="mb-0">{value}</h4>
             </div>
         </Card.Body>
     </Card>
@@ -60,20 +63,20 @@ function DashboardPage() {
             <h2 className="mb-4">Dashboard</h2>
             {summary && (
                 <>
-                    <Row className="g-4 justify-content-end mb-4">
+                    <Row className="g-4 mb-4">
                         <Col md={6} lg={3}>
                             <SummaryCard
                                 title="Today's Sales"
-                                value={`$${parseFloat(summary.today_sales).toFixed(2)}`}
-                                icon={<FaDollarSign size={50} />}
+                                value={formatCurrency(summary.today_sales)}
+                                icon={<FaDollarSign size={40} />}
                                 color="secondary"
                             />
                         </Col>
                         <Col md={6} lg={3}>
                             <SummaryCard
                                 title="Incoming Money"
-                                value={`$${parseFloat(summary.today_incoming).toFixed(2)}`}
-                                icon={<FaMoneyBillWave size={50} />}
+                                value={formatCurrency(summary.today_incoming)}
+                                icon={<FaMoneyBillWave size={40} />}
                                 color="warning"
                             />
                         </Col>
@@ -82,32 +85,32 @@ function DashboardPage() {
                         <Col md={6} lg={4}>
                             <SummaryCard
                                 title="Total Receivables"
-                                value={`$${parseFloat(summary.total_receivables).toFixed(2)}`}
-                                icon={<FaDollarSign size={50} />}
+                                value={formatCurrency(summary.total_receivables)}
+                                icon={<FaDollarSign size={40} />}
                                 color="primary"
                             />
                         </Col>
                         <Col md={6} lg={4}>
                             <SummaryCard
                                 title="Total Customers"
-                                value={summary.customer_count}
-                                icon={<FaUsers size={50} />}
+                                value={summary.customer_count ?? 0}
+                                icon={<FaUsers size={40} />}
                                 color="success"
                             />
                         </Col>
                         <Col md={6} lg={4}>
                             <SummaryCard
                                 title="Stock Value"
-                                value={`$${parseFloat(summary.stock_value).toFixed(2)}`}
-                                icon={<FaBoxOpen size={50} />}
+                                value={formatCurrency(summary.stock_value)}
+                                icon={<FaBoxOpen size={40} />}
                                 color="info"
                             />
                         </Col>
                         <Col md={6} lg={4}>
                             <SummaryCard
                                 title="Total Expenses"
-                                value={`$${parseFloat(summary.expenses).toFixed(2)}`}
-                                icon={<FaCreditCard size={50} />}
+                                value={formatCurrency(summary.expenses)}
+                                icon={<FaCreditCard size={40} />}
                                 color="danger"
                             />
                         </Col>
