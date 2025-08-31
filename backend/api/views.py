@@ -147,7 +147,11 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None  # Or a custom pagination class
 
     def get_queryset(self):
-        return self.request.user.activities.all().order_by('-timestamp')
+        queryset = self.request.user.activities.all().order_by('-timestamp')
+        date_str = self.request.query_params.get('date')
+        if date_str:
+            queryset = queryset.filter(timestamp__date=date_str)
+        return queryset
 
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):

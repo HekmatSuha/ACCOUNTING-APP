@@ -30,6 +30,7 @@ import EditPurchasePage from './pages/EditPurchasePage';
 import BankAccountListPage from './pages/BankAccountListPage';
 import OfferListPage from './pages/OfferListPage';
 import OfferDetailPage from './pages/OfferDetailPage';
+import ActivityPage from './pages/ActivityPage';
 
 
 function App() {
@@ -72,8 +73,9 @@ function App() {
                   <Route path="sales/:id/edit" element={<EditSalePage />} /> {/* <-- Add Route */}
                   <Route path="purchases" element={<PurchaseListPage />} /> {/* <-- Add Route */}
                   <Route path="purchases/:id" element={<PurchaseDetailPage />} /> {/* <-- Add Route */}
-                  <Route path="purchases/:id/edit" element={<EditPurchasePage />} /> {/* <-- Add Route */}
-                  <Route path="accounts" element={<BankAccountListPage />} />
+                    <Route path="purchases/:id/edit" element={<EditPurchasePage />} /> {/* <-- Add Route */}
+                    <Route path="accounts" element={<BankAccountListPage />} />
+                    <Route path="activities" element={<ActivityPage />} />
 
                 </Routes>
 
