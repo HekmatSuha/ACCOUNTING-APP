@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Table, Button, Card, Spinner, Image } from 'react-bootstrap';
+import { Table, Button, Card, Spinner, Image, Modal } from 'react-bootstrap';
 import { Plus } from 'react-bootstrap-icons';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -11,6 +11,8 @@ const API_BASE_URL = 'http://127.0.0.1:8000';
 function ProductListPage() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -29,6 +31,17 @@ function ProductListPage() {
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    };
+
+    const handleImageClick = (image) => {
+        const src = image.startsWith('http') ? image : `${API_BASE_URL}${image}`;
+        setSelectedImage(src);
+        setShowImageModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowImageModal(false);
+        setSelectedImage(null);
     };
 
     return (
@@ -68,6 +81,8 @@ function ProductListPage() {
                                                 rounded
                                                 width={50}
                                                 height={50}
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => handleImageClick(product.image)}
                                             />
                                         )}
                                     </td>
@@ -88,6 +103,13 @@ function ProductListPage() {
                     </tbody>
                 </Table>
             </Card.Body>
+            <Modal show={showImageModal} onHide={handleCloseModal} centered>
+                <Modal.Body className="text-center">
+                    {selectedImage && (
+                        <img src={selectedImage} alt="Product" className="img-fluid" />
+                    )}
+                </Modal.Body>
+            </Modal>
         </Card>
     );
 }
