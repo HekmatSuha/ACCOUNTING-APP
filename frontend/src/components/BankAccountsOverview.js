@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Spinner, Alert } from 'react-bootstrap';
+import { Card, Row, Col, Spinner, Alert, ListGroup } from 'react-bootstrap';
+import { FaLandmark } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
 
 function BankAccountsOverview() {
@@ -38,32 +39,35 @@ function BankAccountsOverview() {
 
   return (
     <div className="mt-5">
-      <h4>Bank Accounts</h4>
-      <div className="mb-3">
-        {Object.entries(totals).map(([currency, amount]) => (
-          <span key={currency} className="me-3 fw-bold">
-            {currency}: {amount.toFixed(2)}
-          </span>
+      <h4 className="mb-4">Bank Accounts</h4>
+      <Card className="mb-4 shadow-sm">
+        <Card.Header as="h5">Account Totals</Card.Header>
+        <Card.Body>
+          <ListGroup variant="flush">
+            {Object.entries(totals).map(([currency, amount]) => (
+              <ListGroup.Item key={currency} className="d-flex justify-content-between align-items-center">
+                <span className="fw-bold">{currency}</span>
+                <span className="badge bg-primary rounded-pill fs-6">{amount.toFixed(2)}</span>
+              </ListGroup.Item>
+            ))}
+          </ListGroup>
+        </Card.Body>
+      </Card>
+      <Row className="g-4">
+        {accounts.map(account => (
+          <Col md={6} lg={4} key={account.id}>
+            <Card className="shadow-sm">
+              <Card.Body className="d-flex align-items-center">
+                <FaLandmark size={30} className="me-3 text-muted" />
+                <div>
+                  <h6 className="mb-1">{account.name}</h6>
+                  <h4 className="mb-0">{parseFloat(account.balance).toFixed(2)} <small className="text-muted">{account.currency}</small></h4>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
         ))}
-      </div>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>Account</th>
-            <th>Balance</th>
-            <th>Currency</th>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map(account => (
-            <tr key={account.id}>
-              <td>{account.name}</td>
-              <td>{parseFloat(account.balance).toFixed(2)}</td>
-              <td>{account.currency}</td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      </Row>
     </div>
   );
 }
