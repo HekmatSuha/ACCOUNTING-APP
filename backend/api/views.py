@@ -84,10 +84,14 @@ def dashboard_summary(request):
         total=Coalesce(Sum('amount'), 0, output_field=DecimalField())
     )['total']
 
+    total_payables = user.suppliers.aggregate(
+        total=Coalesce(Sum('open_balance'), 0, output_field=DecimalField())
+    )['total']
+
     data = {
         'total_receivables': total_receivables,
-        'total_payables': 0.00,  # Placeholder
-        'turnover': 0.00,  # Placeholder
+        'total_payables': total_payables,
+        'turnover': sales_total,
         'expenses': total_expenses,
         'stock_value': stock_value,
         'customer_count': user.customers.count(),
