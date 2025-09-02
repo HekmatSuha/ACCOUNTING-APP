@@ -1,23 +1,13 @@
-/* frontend/src/pages/DashboardPage.css */
-
-.summary-card .card-body {
-    display: flex;
-    align-items: center;
+.summary-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-.summary-card .icon {
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.icon {
+    font-size: 2.5rem;
     margin-right: 1rem;
-}
-
-/* Media query for medium screens and down */
-@media (max-width: 768px) {
-    .summary-card .card-body {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .summary-card .icon {
-        margin-right: 0;
-        margin-bottom: 0.5rem;
-    }
 }
