@@ -374,3 +374,53 @@ class PurchaseItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} of {self.product.name} for Purchase #{self.purchase.id}"
+
+
+class PurchaseReturn(models.Model):
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='returns')
+    return_date = models.DateField()
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchase_returns')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        commit = kwargs.pop('commit', False)
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if commit:
+                total = Decimal('0')
+                for item in self.items.all():
+                    Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') - item.quantity)
+                    total += item.line_total
+                self.total_amount = total
+                if not self.purchase.account_id:
+                    if self.purchase.supplier_id:
+                        Supplier.objects.filter(pk=self.purchase.supplier_id).update(open_balance=F('open_balance') - total)
+                    elif self.purchase.customer_id:
+                        Customer.objects.filter(pk=self.purchase.customer_id).update(open_balance=F('open_balance') + total)
+                super().save(update_fields=['total_amount'])
+
+    def delete(self, *args, **kwargs):
+        with transaction.atomic():
+            for item in self.items.all():
+                Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') + item.quantity)
+            if not self.purchase.account_id:
+                if self.purchase.supplier_id:
+                    Supplier.objects.filter(pk=self.purchase.supplier_id).update(open_balance=F('open_balance') + self.total_amount)
+                elif self.purchase.customer_id:
+                    Customer.objects.filter(pk=self.purchase.customer_id).update(open_balance=F('open_balance') - self.total_amount)
+            super().delete(*args, **kwargs)
+
+
+class PurchaseReturnItem(models.Model):
+    purchase_return = models.ForeignKey(PurchaseReturn, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='purchase_return_items')
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+
+    @property
+    def line_total(self):
+        return self.quantity * self.unit_price
+
+    def __str__(self):
+        return f"{self.quantity} of {self.product.name} returned for Purchase #{self.purchase_return.purchase.id}"
