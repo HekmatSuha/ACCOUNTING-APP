@@ -52,6 +52,14 @@ function CustomerListPage() {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
     };
 
+    // Positive balances mean the customer owes money, so display them as negative
+    // while showing credits (negative balances) as positive values
+    const formatBalance = (amount, currency) => {
+        const value = isNaN(Number(amount)) ? 0 : Number(amount);
+        const displayValue = value > 0 ? -value : Math.abs(value);
+        return formatCurrency(displayValue, currency);
+    };
+
     return (
         <>
             {error && <Alert variant="danger">{error}</Alert>}
@@ -103,7 +111,7 @@ function CustomerListPage() {
                             customers.map((customer) => (
                                 <tr key={customer.id} onClick={() => navigate(`/customers/${customer.id}`)} style={{ cursor: 'pointer' }}>
                                     <td>{customer.name}</td>
-                                    <td>{formatCurrency(customer.balance, customer.currency)}</td>
+                                    <td>{formatBalance(customer.balance, customer.currency)}</td>
                                     <td>{formatCurrency(0, customer.currency)}</td>
                                 </tr>
                             ))
