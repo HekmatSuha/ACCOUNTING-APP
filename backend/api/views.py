@@ -24,6 +24,8 @@ from .models import (
     Product,
     Sale,
     SaleItem,
+    SaleReturn,
+    SaleReturnItem,
     Supplier,
     Payment,
     ExpenseCategory,
@@ -50,6 +52,7 @@ from .serializers import (
     PurchaseReadSerializer,
     PurchaseWriteSerializer,
     PurchaseReturnSerializer,
+    SaleReturnSerializer,
     BankAccountSerializer,
     OfferReadSerializer,
     OfferWriteSerializer,
@@ -679,6 +682,23 @@ class PurchaseViewSet(viewsets.ModelViewSet):
             elif instance.customer_id:
                 Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + instance.total_amount)
 
+        instance.delete()
+
+
+class SaleReturnViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SaleReturnSerializer
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return SaleReturn.objects.filter(sale__created_by=self.request.user).order_by('-return_date')
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        log_activity(self.request.user, 'created', instance)
+
+    def perform_destroy(self, instance):
+        log_activity(self.request.user, 'deleted', instance)
         instance.delete()
 
 

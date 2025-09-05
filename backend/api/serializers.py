@@ -11,6 +11,8 @@ from .models import (
     Payment,
     Product,
     SaleItem,
+    SaleReturn,
+    SaleReturnItem,
     Supplier,
     Expense,
     Purchase,
@@ -397,6 +399,42 @@ class PurchaseItemWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseItem
         fields = ['product_id', 'quantity', 'unit_price']
+
+
+class SaleReturnItemSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField()
+    reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    class Meta:
+        model = SaleReturnItem
+        fields = ['product_id', 'quantity', 'unit_price', 'reason']
+
+
+class SaleReturnSerializer(serializers.ModelSerializer):
+    items = SaleReturnItemSerializer(many=True)
+    sale_id = serializers.IntegerField()
+
+    class Meta:
+        model = SaleReturn
+        fields = ['id', 'sale_id', 'return_date', 'total_amount', 'items']
+        read_only_fields = ['id', 'total_amount']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        sale_id = validated_data.pop('sale_id')
+        sale = Sale.objects.get(id=sale_id, created_by=self.context['request'].user)
+        sale_return = SaleReturn.objects.create(sale=sale, created_by=self.context['request'].user, **validated_data)
+        for item_data in items_data:
+            product = Product.objects.get(id=item_data['product_id'], created_by=self.context['request'].user)
+            SaleReturnItem.objects.create(
+                sale_return=sale_return,
+                product=product,
+                quantity=item_data['quantity'],
+                unit_price=item_data['unit_price'],
+                reason=item_data.get('reason', '')
+            )
+        sale_return.save(commit=True)
+        return sale_return
 
 # For reading/viewing a purchase
 class PurchaseReadSerializer(serializers.ModelSerializer):
