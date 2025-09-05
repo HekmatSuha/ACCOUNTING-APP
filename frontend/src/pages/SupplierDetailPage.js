@@ -146,8 +146,27 @@ function SupplierDetailPage() {
 
             {/* Action Buttons */}
             <ButtonToolbar className="mb-3">
-                <Button variant="primary" className="me-2" onClick={() => navigate(`/suppliers/${supplier.id}/new-purchase`)}>Make Purchase</Button>
-                <Button variant="success" className="me-2" onClick={() => setShowPaymentModal(true)}>Make Payment</Button>
+                <Button
+                    variant="primary"
+                    className="me-2"
+                    onClick={() => navigate(`/suppliers/${supplier.id}/new-purchase`)}
+                >
+                    Make Purchase
+                </Button>
+                <Button
+                    variant="secondary"
+                    className="me-2"
+                    onClick={() => navigate(`/suppliers/${supplier.id}/new-sale`)}
+                >
+                    Sell to Supplier
+                </Button>
+                <Button
+                    variant="success"
+                    className="me-2"
+                    onClick={() => setShowPaymentModal(true)}
+                >
+                    Make Payment
+                </Button>
             </ButtonToolbar>
 
             <SupplierPaymentModal
