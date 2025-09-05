@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.contrib.contenttypes.models import ContentType
 
 from .models import (
     BankAccount,
@@ -13,6 +14,7 @@ from .models import (
     Supplier,
     Purchase,
     PurchaseItem,
+    PurchaseReturn,
     Activity,
     Offer,
     OfferItem,
@@ -142,6 +144,52 @@ class PurchaseAccountTransactionTest(TestCase):
 
         self.assertEqual(self.account.balance, Decimal('-10.00'))
         self.assertEqual(self.supplier.open_balance, Decimal('0.00'))
+
+
+class PurchaseReturnTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='pruser', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
+
+        serializer = PurchaseWriteSerializer(
+            data={
+                'supplier_id': self.supplier.id,
+                'purchase_date': str(date.today()),
+                'items': [{'product_id': self.product.id, 'quantity': '2', 'unit_price': '5.00'}],
+            },
+            context={'request': self._get_request()},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.purchase = serializer.save()
+
+    def _get_request(self):
+        class DummyRequest:
+            pass
+        req = DummyRequest()
+        req.user = self.user
+        return req
+
+    def test_purchase_return_updates_stock_balance_and_activity(self):
+        payload = {
+            'purchase_id': self.purchase.id,
+            'return_date': str(date.today()),
+            'items': [{'product_id': self.product.id, 'quantity': '1', 'unit_price': '5.00'}],
+        }
+        response = self.client.post('/api/purchase-returns/', payload, format='json')
+        self.assertEqual(response.status_code, 201)
+
+        self.product.refresh_from_db()
+        self.supplier.refresh_from_db()
+
+        self.assertEqual(self.product.stock_quantity, Decimal('1'))
+        self.assertEqual(self.supplier.open_balance, Decimal('5.00'))
+
+        pr_id = response.data['id']
+        ct = ContentType.objects.get_for_model(PurchaseReturn)
+        self.assertTrue(Activity.objects.filter(content_type=ct, object_id=pr_id, action_type='created').exists())
 
 
 class CustomerBalanceTest(TestCase):
