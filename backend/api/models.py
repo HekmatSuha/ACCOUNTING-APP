@@ -70,8 +70,9 @@ class Customer(models.Model):
 
 
 class Sale(models.Model):
-    # FIX: rename 'sale' -> 'customer'
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sales')
+    # Either a customer or supplier can be the counterparty of a sale
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
+    supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     sale_date = models.DateField(auto_now_add=True)
     invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -80,7 +81,9 @@ class Sale(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Sale #{self.id} for {self.customer.name}"
+        if self.customer_id:
+            return f"Sale #{self.id} for {self.customer.name}"
+        return f"Sale #{self.id} to {self.supplier.name}"
 
 
 class Offer(models.Model):
@@ -318,7 +321,8 @@ class Expense(models.Model):
 
 
 class Purchase(models.Model):
-    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='purchases')
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     purchase_date = models.DateField()
     bill_number = models.CharField(max_length=50, blank=True, null=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -327,7 +331,9 @@ class Purchase(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Purchase #{self.id} from {self.supplier.name}"
+        if self.supplier_id:
+            return f"Purchase #{self.id} from {self.supplier.name}"
+        return f"Purchase #{self.id} from {self.customer.name}"
 
     def save(self, *args, **kwargs):
         with transaction.atomic():

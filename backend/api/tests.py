@@ -19,7 +19,7 @@ from .models import (
     Sale,
     SaleItem
 )
-from .serializers import ProductSerializer, PaymentSerializer
+from .serializers import ProductSerializer, PaymentSerializer, SaleWriteSerializer, PurchaseWriteSerializer
 from .activity_logger import log_activity
 from rest_framework.test import APIClient
 
@@ -403,4 +403,53 @@ class SaleDeletionTest(TestCase):
         self.assertEqual(response.status_code, 204)
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.open_balance, original_balance)
+
+
+class CrossDealTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='xdeal', password='pw')
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.product = Product.objects.create(
+            name='Prod',
+            sale_price=Decimal('10.00'),
+            purchase_price=Decimal('5.00'),
+            stock_quantity=Decimal('10'),
+            created_by=self.user,
+        )
+
+    def _get_request(self):
+        class DummyRequest:
+            pass
+        req = DummyRequest()
+        req.user = self.user
+        return req
+
+    def test_sale_to_supplier_reduces_supplier_balance(self):
+        serializer = SaleWriteSerializer(
+            data={
+                'supplier_id': self.supplier.id,
+                'sale_date': str(date.today()),
+                'items': [{'product_id': self.product.id, 'quantity': 1, 'unit_price': '10.00'}],
+            },
+            context={'request': self._get_request()},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+        self.supplier.refresh_from_db()
+        self.assertEqual(self.supplier.open_balance, Decimal('-10.00'))
+
+    def test_purchase_from_customer_decreases_customer_balance(self):
+        serializer = PurchaseWriteSerializer(
+            data={
+                'customer_id': self.customer.id,
+                'purchase_date': str(date.today()),
+                'items': [{'product_id': self.product.id, 'quantity': '1', 'unit_price': '5.00'}],
+            },
+            context={'request': self._get_request()},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.open_balance, Decimal('-5.00'))
 
