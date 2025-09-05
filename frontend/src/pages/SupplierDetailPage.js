@@ -48,6 +48,16 @@ function SupplierDetailPage() {
         }
     };
 
+    const handleDeleteSale = async (saleId) => {
+        if (!window.confirm('Are you sure you want to delete this sale?')) return;
+        try {
+            await axiosInstance.delete(`/sales/${saleId}/`);
+            fetchDetails();
+        } catch (err) {
+            setError('Failed to delete sale.');
+        }
+    };
+
     const handleEditPayment = (payment) => {
         setEditingPayment(payment);
         setShowPaymentModal(true);
@@ -113,7 +123,7 @@ function SupplierDetailPage() {
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
-    const { supplier, purchases, payments, summary } = data;
+    const { supplier, purchases, sales, payments, summary } = data;
 
     return (
         <Container fluid>
@@ -179,7 +189,7 @@ function SupplierDetailPage() {
 
             {/* Transaction Lists */}
             <Row>
-                <Col md={6}>
+                <Col md={4}>
                     <Card>
                         <Card.Header as="h5">Previous Purchases</Card.Header>
                         <Card.Body>
@@ -224,7 +234,52 @@ function SupplierDetailPage() {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col md={6}>
+                <Col md={4}>
+                    <Card>
+                        <Card.Header as="h5">Previous Sales</Card.Header>
+                        <Card.Body>
+                            <Accordion>
+                                {sales.map((sale, index) => (
+                                    <Accordion.Item eventKey={index.toString()} key={sale.id}>
+                                        <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
+                                            <div className="d-flex justify-content-between w-100 pe-3">
+                                                <span>{new Date(sale.sale_date).toLocaleDateString()}</span>
+                                                <strong>{formatCurrency(sale.total_amount, 'USD')}</strong>
+                                            </div>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                            <div className="d-flex justify-content-end mb-2">
+                                                <Button size="sm" variant="warning" onClick={() => navigate(`/sales/${sale.id}/edit`)}>Edit</Button>
+                                                <Button size="sm" variant="danger" className="ms-2" onClick={() => handleDeleteSale(sale.id)}>Delete</Button>
+                                            </div>
+                                            <Table striped bordered hover size="sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th>Quantity</th>
+                                                        <th>Unit Price</th>
+                                                        <th className="text-end">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {sale.items.map(item => (
+                                                        <tr key={item.id}>
+                                                            <td>{item.product_name}</td>
+                                                            <td>{item.quantity}</td>
+                                                            <td>{formatCurrency(item.unit_price, 'USD')}</td>
+                                                            <td className="text-end">{formatCurrency(item.line_total, 'USD')}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                ))}
+                            </Accordion>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={4}>
                      <Card>
                         <Card.Header as="h5">Previous Payments</Card.Header>
                         <Card.Body>

@@ -6,6 +6,7 @@ from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Sum, F, DecimalField, Q
+from decimal import Decimal
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.decorators import action, api_view, permission_classes
@@ -391,15 +392,19 @@ class SupplierViewSet(viewsets.ModelViewSet):
     def details(self, request, pk=None):
         supplier = self.get_object()
         purchases = supplier.purchases.all().order_by('-purchase_date')
+        sales = supplier.sales.all().order_by('-sale_date')
 
         # 'payments' is the related_name from Expense model's supplier field
         payments = supplier.payments.all().order_by('-expense_date')
 
-        total_turnover = purchases.aggregate(Sum('total_amount'))['total_amount__sum'] or 0.00
+        purchase_total = purchases.aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal('0.00')
+        sales_total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal('0.00')
+        total_turnover = purchase_total + sales_total
 
         data = {
             'supplier': SupplierSerializer(supplier).data,
             'purchases': PurchaseReadSerializer(purchases, many=True).data,
+            'sales': SaleReadSerializer(sales, many=True).data,
             'payments': ExpenseSerializer(payments, many=True).data,
             'summary': {
                 'open_balance': supplier.open_balance,
