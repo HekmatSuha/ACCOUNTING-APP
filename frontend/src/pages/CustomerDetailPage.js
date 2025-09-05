@@ -78,6 +78,14 @@ function CustomerDetailPage() {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(value);
     };
 
+    // Format balances so debts (positive numbers) appear with a minus sign
+    // and credits (negative numbers) appear as positive values
+    const formatBalance = (amount, currency) => {
+        const value = isNaN(Number(amount)) ? 0 : Number(amount);
+        const displayValue = value > 0 ? -value : Math.abs(value);
+        return formatCurrency(displayValue, currency);
+    };
+
     const renderSummaryCard = (bg, title, amount, Icon) => (
         <Card bg={bg} text="white" className="summary-card">
             <Card.Body className="d-flex align-items-center">
@@ -92,29 +100,13 @@ function CustomerDetailPage() {
 
     const renderOpenBalanceCard = (balance, currency) => {
         const numericBalance = isNaN(Number(balance)) ? 0 : Number(balance);
-        let cardProps;
-
         if (numericBalance > 0) {
-            cardProps = {
-                bg: 'danger',
-                title: 'Customer Debt',
-                amount: formatCurrency(numericBalance, currency)
-            };
+            return renderSummaryCard('danger', 'Customer Debt', formatBalance(numericBalance, currency), Cash);
         } else if (numericBalance < 0) {
-            cardProps = {
-                bg: 'success',
-                title: 'Extra Money (Credit)',
-                amount: formatCurrency(Math.abs(numericBalance), currency)
-            };
-        } else {
-            cardProps = {
-                bg: 'secondary',
-                title: 'Settled',
-                amount: formatCurrency(0, currency)
-            };
+            return renderSummaryCard('success', 'Extra Money (Credit)', formatBalance(numericBalance, currency), Cash);
         }
 
-        return renderSummaryCard(cardProps.bg, cardProps.title, cardProps.amount, Cash);
+        return renderSummaryCard('secondary', 'Settled', formatCurrency(0, currency), Cash);
     };
 
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
@@ -152,10 +144,10 @@ function CustomerDetailPage() {
                     {renderOpenBalanceCard(summary.open_balance, customer.currency)}
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                    {renderSummaryCard('info', 'Check Balance', formatCurrency(summary.check_balance, customer.currency), Tag)}
+                    {renderSummaryCard('info', 'Check Balance', formatBalance(summary.check_balance, customer.currency), Tag)}
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                    {renderSummaryCard('warning', 'Note Balance', formatCurrency(summary.note_balance, customer.currency), Hammer)}
+                    {renderSummaryCard('warning', 'Note Balance', formatBalance(summary.note_balance, customer.currency), Hammer)}
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
                     {renderSummaryCard('success', 'Turnover', formatCurrency(summary.turnover, customer.currency), BarChart)}
