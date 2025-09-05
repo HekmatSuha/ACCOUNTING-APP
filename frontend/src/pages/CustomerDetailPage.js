@@ -172,6 +172,13 @@ function CustomerDetailPage() {
                 >
                     Make Offer
                 </Button>
+                <Button
+                    variant="warning"
+                    className="me-2"
+                    onClick={() => navigate(`/customers/${customer.id}/new-purchase`)}
+                >
+                    Buy from Customer
+                </Button>
                 <Button variant="success" className="me-2" onClick={() => setShowPaymentModal(true)}>Collection / Payment</Button>
             </ButtonToolbar>
 
