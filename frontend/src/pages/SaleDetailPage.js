@@ -1,6 +1,6 @@
 // frontend/src/pages/SaleDetailPage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
@@ -14,6 +14,7 @@ function SaleDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const invoiceRef = useRef();
 
     // Function to fetch all data for the page
     const fetchSaleData = async () => {
@@ -54,6 +55,20 @@ function SaleDetailPage() {
         }
     };
 
+    const handlePrint = () => {
+        if (!invoiceRef.current) return;
+        const printContents = invoiceRef.current.innerHTML;
+        const printWindow = window.open('', '', 'height=800,width=600');
+        printWindow.document.write('<html><head><title>Sale Invoice</title>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(printContents);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+    };
+
     // Calculate total payments and balance due
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
     const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
@@ -72,7 +87,7 @@ function SaleDetailPage() {
                 &larr; Back to Sales List
             </Button>
             {sale && (
-                <Card>
+                <Card ref={invoiceRef}>
                     {/* ... Card.Header and top customer details section ... */}
                     <Card.Header>
                         <h4>Sale Invoice #{sale.invoice_number || sale.id}</h4>
@@ -162,7 +177,7 @@ function SaleDetailPage() {
                         </Row>
                     </Card.Body>
                     <Card.Footer className="text-end">
-                        <Button variant="primary" className="me-2">Print Invoice</Button>
+                        <Button variant="primary" className="me-2" onClick={handlePrint}>Print Invoice</Button>
                         {/* --- 2. UPDATE THE BUTTONS --- */}
                         <Button as={Link} to={`/sales/${id}/edit`} variant="warning" className="me-2">
                             Edit Sale
