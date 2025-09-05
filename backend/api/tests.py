@@ -453,3 +453,37 @@ class CrossDealTest(TestCase):
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.open_balance, Decimal('-5.00'))
 
+
+class SupplierDetailsIncludeSalesTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='supdetail', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), created_by=self.user)
+
+        serializer = SaleWriteSerializer(
+            data={
+                'supplier_id': self.supplier.id,
+                'sale_date': str(date.today()),
+                'items': [{'product_id': self.product.id, 'quantity': 1, 'unit_price': '10.00'}],
+            },
+            context={'request': self._get_request()},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.sale = serializer.save()
+
+    def _get_request(self):
+        class DummyRequest:
+            pass
+        req = DummyRequest()
+        req.user = self.user
+        return req
+
+    def test_details_endpoint_returns_sales(self):
+        response = self.client.get(f'/api/suppliers/{self.supplier.id}/details/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('sales', response.data)
+        self.assertEqual(len(response.data['sales']), 1)
+        self.assertEqual(response.data['sales'][0]['id'], self.sale.id)
+
