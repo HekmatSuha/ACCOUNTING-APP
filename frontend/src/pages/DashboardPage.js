@@ -1,12 +1,10 @@
 import './DashboardPage.css';
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import dayjs from 'dayjs';
+import { Card, Row, Col, Spinner, Alert, ProgressBar } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
-import { FaUsers, FaDollarSign, FaBoxOpen, FaCreditCard, FaMoneyBillWave, FaChartLine, FaFileInvoiceDollar } from 'react-icons/fa';
 import RecentActivities from '../components/RecentActivities';
 import BankAccountsOverview from '../components/BankAccountsOverview';
-// frontend/src/pages/DashboardPage.js
 
 // Helper to format currency values and avoid NaN outputs
 const formatCurrency = (value) => {
@@ -14,27 +12,29 @@ const formatCurrency = (value) => {
     return `$${isNaN(num) ? '0.00' : num.toFixed(2)}`;
 };
 
-// A reusable component for our summary cards
-const SummaryCard = ({ title, value, icon, color }) => (
-    <Card className={`summary-card shadow-sm border-start border-4 border-${color}`}>
-        <Card.Body className="d-flex align-items-center">
-            <div className={`icon text-${color}`}>
-                {icon}
-            </div>
-            <div>
-                <h6 className="mb-1 text-muted">{title}</h6>
-                <h4 className="mb-0">{value}</h4>
-            </div>
-        </Card.Body>
-    </Card>
-);
-
-// A new component that wraps SummaryCard with a Link
-const ClickableSummaryCard = ({ to, ...props }) => (
-    <Link to={to} className="text-decoration-none">
-        <SummaryCard {...props} />
-    </Link>
-);
+// A card that displays items with progress bars similar to the reference dashboard
+const ProgressCard = ({ title, items, headerColor = 'primary' }) => {
+    const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
+    return (
+        <Card className="progress-card shadow-sm mb-4">
+            <Card.Header className={`text-white bg-${headerColor}`}>{title}</Card.Header>
+            <Card.Body>
+                {items.map(({ label, value, variant }, idx) => {
+                    const percentage = total > 0 ? (Number(value) / total) * 100 : 0;
+                    return (
+                        <div key={idx} className="mb-3">
+                            <div className="d-flex justify-content-between">
+                                <span>{label}</span>
+                                <span>{formatCurrency(value)}</span>
+                            </div>
+                            <ProgressBar now={percentage} variant={variant || headerColor} />
+                        </div>
+                    );
+                })}
+            </Card.Body>
+        </Card>
+    );
+};
 
 function DashboardPage() {
     const [summary, setSummary] = useState(null);
@@ -48,7 +48,7 @@ function DashboardPage() {
                 const response = await axiosInstance.get('/dashboard-summary/');
                 setSummary(response.data);
             } catch (err) {
-                console.error("Failed to fetch dashboard data:", err);
+                console.error('Failed to fetch dashboard data:', err);
                 setError('Could not load summary data. Please try again later.');
             } finally {
                 setLoading(false);
@@ -66,93 +66,41 @@ function DashboardPage() {
         return <Alert variant="danger">{error}</Alert>;
     }
 
+    const assetItems = summary ? [
+        { label: 'Receivables', value: summary.total_receivables, variant: 'success' },
+        { label: 'Stock Value', value: summary.stock_value, variant: 'info' },
+        { label: "Today's Incoming", value: summary.today_incoming, variant: 'warning' }
+    ] : [];
+
+    const liabilityItems = summary ? [
+        { label: 'Payables', value: summary.total_payables, variant: 'danger' },
+        { label: 'Expenses', value: summary.expenses, variant: 'secondary' }
+    ] : [];
+
+    const performanceItems = summary ? [
+        { label: 'Turnover', value: summary.turnover, variant: 'primary' },
+        { label: "Today's Sales", value: summary.today_sales, variant: 'success' }
+    ] : [];
+
     return (
         <div>
-            <h2 className="mb-4">Dashboard</h2>
+            <h2 className="mb-1">Dashboard</h2>
+            <p className="text-muted mb-4">{dayjs().format('D MMMM YYYY dddd')}</p>
             {summary && (
-                <>
-                    <Row className="g-4 mb-4">
-                        <Col md={6} lg={3}>
-                            <ClickableSummaryCard
-                                to="/sales"
-                                title="Today's Sales"
-                                value={formatCurrency(summary.today_sales)}
-                                icon={<FaDollarSign size={40} />}
-                                color="secondary"
-                            />
-                        </Col>
-                        <Col md={6} lg={3}>
-                            <ClickableSummaryCard
-                                to="/sales/new"
-                                title="Incoming Money"
-                                value={formatCurrency(summary.today_incoming)}
-                                icon={<FaMoneyBillWave size={40} />}
-                                color="warning"
-                            />
-                        </Col>
-                    </Row>
-                    <Row className="g-4">
-                        <Col md={6} lg={4}>
-                            <ClickableSummaryCard
-                                to="/sales"
-                                title="Total Receivables"
-                                value={formatCurrency(summary.total_receivables)}
-                                icon={<FaDollarSign size={40} />}
-                                color="primary"
-                            />
-                        </Col>
-                        <Col md={6} lg={4}>
-                            <ClickableSummaryCard
-                                to="/customers"
-                                title="Total Customers"
-                                value={summary.customer_count ?? 0}
-                                icon={<FaUsers size={40} />}
-                                color="success"
-                            />
-                        </Col>
-                        <Col md={6} lg={4}>
-                            <ClickableSummaryCard
-                                to="/inventory"
-                                title="Stock Value"
-                                value={formatCurrency(summary.stock_value)}
-                                icon={<FaBoxOpen size={40} />}
-                                color="info"
-                            />
-                        </Col>
-                        <Col md={6} lg={4}>
-                            <ClickableSummaryCard
-                                to="/expenses"
-                                title="Total Expenses"
-                                value={formatCurrency(summary.expenses)}
-                                icon={<FaCreditCard size={40} />}
-                                color="danger"
-                            />
-                        </Col>
-                    </Row>
-                    <Row className="g-4 mt-2">
-                        <Col md={6} lg={4}>
-                            <ClickableSummaryCard
-                                to="/reports/sales"
-                                title="Turnover"
-                                value={formatCurrency(summary.turnover)}
-                                icon={<FaChartLine size={40} />}
-                                color="dark"
-                            />
-                        </Col>
-                        <Col md={6} lg={4}>
-                            <ClickableSummaryCard
-                                to="/purchases"
-                                title="Total Payables"
-                                value={formatCurrency(summary.total_payables)}
-                                icon={<FaFileInvoiceDollar size={40} />}
-                                color="warning"
-                            />
-                        </Col>
-                    </Row>
-                    <BankAccountsOverview />
-                    <RecentActivities />
-                </>
+                <Row className="g-4 mb-4">
+                    <Col md={6} lg={4}>
+                        <ProgressCard title="Assets" items={assetItems} headerColor="success" />
+                    </Col>
+                    <Col md={6} lg={4}>
+                        <ProgressCard title="Liabilities" items={liabilityItems} headerColor="danger" />
+                    </Col>
+                    <Col md={6} lg={4}>
+                        <ProgressCard title="Performance" items={performanceItems} headerColor="primary" />
+                    </Col>
+                </Row>
             )}
+            <BankAccountsOverview />
+            <RecentActivities />
         </div>
     );
 }
