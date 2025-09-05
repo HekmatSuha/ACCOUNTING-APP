@@ -15,6 +15,8 @@ from .models import (
     Expense,
     Purchase,
     PurchaseItem,
+    PurchaseReturn,
+    PurchaseReturnItem,
     BankAccount,
     Activity,
     Offer,
@@ -519,6 +521,40 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
                     Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - new_total_amount)
 
         return instance
+
+
+class PurchaseReturnItemSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField()
+
+    class Meta:
+        model = PurchaseReturnItem
+        fields = ['product_id', 'quantity', 'unit_price']
+
+
+class PurchaseReturnSerializer(serializers.ModelSerializer):
+    items = PurchaseReturnItemSerializer(many=True)
+    purchase_id = serializers.IntegerField()
+
+    class Meta:
+        model = PurchaseReturn
+        fields = ['id', 'purchase_id', 'return_date', 'total_amount', 'items']
+        read_only_fields = ['id', 'total_amount']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        purchase_id = validated_data.pop('purchase_id')
+        purchase = Purchase.objects.get(id=purchase_id, created_by=self.context['request'].user)
+        purchase_return = PurchaseReturn.objects.create(purchase=purchase, created_by=self.context['request'].user, **validated_data)
+        for item_data in items_data:
+            product = Product.objects.get(id=item_data['product_id'], created_by=self.context['request'].user)
+            PurchaseReturnItem.objects.create(
+                purchase_return=purchase_return,
+                product=product,
+                quantity=item_data['quantity'],
+                unit_price=item_data['unit_price'],
+            )
+        purchase_return.save(commit=True)
+        return purchase_return
 
 
 class BankAccountSerializer(serializers.ModelSerializer):
