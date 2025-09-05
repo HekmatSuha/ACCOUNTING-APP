@@ -7,10 +7,10 @@ import { Container, Card, Form, Button, Row, Col, Table } from 'react-bootstrap'
 import { Trash } from 'react-bootstrap-icons';
 
 function PurchaseFormPage() {
-    const { supplierId } = useParams();
+    const { supplierId, customerId } = useParams();
     const navigate = useNavigate();
 
-    const [supplier, setSupplier] = useState(null);
+    const [partner, setPartner] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
     const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0 }]);
@@ -18,16 +18,18 @@ function PurchaseFormPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [supRes, prodRes] = await Promise.all([
-                    axiosInstance.get(`/suppliers/${supplierId}/`),
+                const [partnerRes, prodRes] = await Promise.all([
+                    supplierId
+                        ? axiosInstance.get(`/suppliers/${supplierId}/`)
+                        : axiosInstance.get(`/customers/${customerId}/`),
                     axiosInstance.get('/products/')
                 ]);
-                setSupplier(supRes.data);
+                setPartner(partnerRes.data);
                 setAllProducts(prodRes.data);
             } catch (error) { console.error("Failed to fetch initial data", error); }
         };
         fetchData();
-    }, [supplierId]);
+    }, [supplierId, customerId]);
 
     const handleLineItemChange = (index, event) => {
         const values = [...lineItems];
@@ -57,25 +59,29 @@ function PurchaseFormPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const payload = {
-            supplier_id: supplierId,
             purchase_date: purchaseDate,
             items: lineItems.filter(item => item.product_id)
         };
+        if (supplierId) {
+            payload.supplier_id = supplierId;
+        } else {
+            payload.customer_id = customerId;
+        }
 
         try {
             await axiosInstance.post('/purchases/', payload);
-            navigate(`/suppliers/${supplierId}`);
+            navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`);
         } catch (error) {
             console.error("Failed to create purchase", error.response?.data);
         }
     };
 
-    if (!supplier) return <div>Loading...</div>;
+    if (!partner) return <div>Loading...</div>;
 
     return (
         <Container>
             <Card>
-                <Card.Header as="h4">{`New Purchase from ${supplier.name}`}</Card.Header>
+                <Card.Header as="h4">{`New Purchase from ${partner.name}`}</Card.Header>
                 <Card.Body>
                     <Form onSubmit={handleSubmit}>
                         <Row className="mb-3">
@@ -123,7 +129,7 @@ function PurchaseFormPage() {
 
                         <div className="mt-4">
                             <Button variant="success" type="submit">Save Purchase</Button>
-                            <Button variant="light" className="ms-2" onClick={() => navigate(`/suppliers/${supplierId}`)}>Cancel</Button>
+                            <Button variant="light" className="ms-2" onClick={() => navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`)}>Cancel</Button>
                         </div>
                     </Form>
                 </Card.Body>
