@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 # --- Import the router and the viewset ---
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
-from .views import CustomerViewSet, dashboard_summary, ProductViewSet,SaleViewSet, SupplierViewSet,PaymentViewSet,PurchaseViewSet, CustomerPaymentViewSet, ActivityViewSet, OfferViewSet, SupplierPaymentViewSet, PurchaseReturnViewSet
+from .views import CustomerViewSet, dashboard_summary, ProductViewSet,SaleViewSet, SupplierViewSet,PaymentViewSet,PurchaseViewSet, CustomerPaymentViewSet, ActivityViewSet, OfferViewSet, SupplierPaymentViewSet, PurchaseReturnViewSet, SaleReturnViewSet
 from .views import BankAccountViewSet
 
 # Create a router and register our viewsets with it.
@@ -36,6 +36,7 @@ router.register(r'expense-categories', ExpenseCategoryViewSet, basename='expense
 router.register(r'expenses', ExpenseViewSet, basename='expense')
 router.register(r'purchases', PurchaseViewSet, basename='purchase')
 router.register(r'purchase-returns', PurchaseReturnViewSet, basename='purchase-return')
+router.register(r'sale-returns', SaleReturnViewSet, basename='sale-return')
 
 
 # The API URLs are now determined automatically by the router.

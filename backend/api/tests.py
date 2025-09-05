@@ -15,6 +15,7 @@ from .models import (
     Purchase,
     PurchaseItem,
     PurchaseReturn,
+    SaleReturn,
     Activity,
     Offer,
     OfferItem,
@@ -190,6 +191,52 @@ class PurchaseReturnTest(TestCase):
         pr_id = response.data['id']
         ct = ContentType.objects.get_for_model(PurchaseReturn)
         self.assertTrue(Activity.objects.filter(content_type=ct, object_id=pr_id, action_type='created').exists())
+
+
+class SaleReturnTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='sruser', password='pw')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.customer = Customer.objects.create(name='Cust', created_by=self.user)
+        self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), stock_quantity=Decimal('2'), created_by=self.user)
+
+        serializer = SaleWriteSerializer(
+            data={
+                'customer_id': self.customer.id,
+                'sale_date': str(date.today()),
+                'items': [{'product_id': self.product.id, 'quantity': 2, 'unit_price': '10.00'}],
+            },
+            context={'request': self._get_request()},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.sale = serializer.save()
+
+    def _get_request(self):
+        class DummyRequest:
+            pass
+        req = DummyRequest()
+        req.user = self.user
+        return req
+
+    def test_sale_return_updates_stock_balance_and_activity(self):
+        payload = {
+            'sale_id': self.sale.id,
+            'return_date': str(date.today()),
+            'items': [{'product_id': self.product.id, 'quantity': '1', 'unit_price': '10.00', 'reason': 'Damaged'}],
+        }
+        response = self.client.post('/api/sale-returns/', payload, format='json')
+        self.assertEqual(response.status_code, 201)
+
+        self.product.refresh_from_db()
+        self.customer.refresh_from_db()
+
+        self.assertEqual(self.product.stock_quantity, Decimal('1'))
+        self.assertEqual(self.customer.open_balance, Decimal('10.00'))
+
+        sr_id = response.data['id']
+        ct = ContentType.objects.get_for_model(SaleReturn)
+        self.assertTrue(Activity.objects.filter(content_type=ct, object_id=sr_id, action_type='created').exists())
 
 
 class CustomerBalanceTest(TestCase):
