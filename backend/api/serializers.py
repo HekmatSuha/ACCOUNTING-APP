@@ -56,7 +56,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
-        fields = ['id', 'sale_date', 'total_amount', 'details', 'created_at', 'invoice_number', 'created_by']
+        fields = ['id', 'customer', 'supplier', 'sale_date', 'total_amount', 'details', 'created_at', 'invoice_number', 'created_by']
 
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
@@ -139,33 +139,39 @@ class SaleItemWriteSerializer(serializers.ModelSerializer):
 # This serializer is for READING a full sale
 class SaleReadSerializer(serializers.ModelSerializer):
     items = SaleItemSerializer(many=True, read_only=True)
-    customer_name = serializers.CharField(source='customer.name', read_only=True)
+    customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
     class Meta:
         model = Sale
-        fields = ['id', 'customer', 'customer_name', 'sale_date', 'invoice_number', 'total_amount', 'items']
+        fields = ['id', 'customer', 'customer_name', 'supplier', 'supplier_name', 'sale_date', 'invoice_number', 'total_amount', 'items']
 
 # This serializer is for CREATING a full sale
 class SaleWriteSerializer(serializers.ModelSerializer):
-    items = SaleItemWriteSerializer(many=True) # Nested items
-    customer_id = serializers.IntegerField()
+    items = SaleItemWriteSerializer(many=True)  # Nested items
+    customer_id = serializers.IntegerField(required=False)
+    supplier_id = serializers.IntegerField(required=False)
 
     class Meta:
         model = Sale
-        fields = ['customer_id', 'sale_date', 'items', 'invoice_number', 'details']
+        fields = ['customer_id', 'supplier_id', 'sale_date', 'items', 'invoice_number', 'details']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        customer_id = validated_data.pop('customer_id')
+        customer_id = validated_data.pop('customer_id', None)
+        supplier_id = validated_data.pop('supplier_id', None)
+        if not customer_id and not supplier_id:
+            raise serializers.ValidationError('customer_id or supplier_id required')
+        if customer_id and supplier_id:
+            raise serializers.ValidationError('Only one of customer_id or supplier_id may be provided.')
         created_by = self.context['request'].user
 
         with transaction.atomic():
-            customer = Customer.objects.get(id=customer_id, created_by=created_by)
-
-            sale = Sale.objects.create(
-                created_by=created_by,
-                customer=customer,
-                **validated_data
-            )
+            if customer_id:
+                customer = Customer.objects.get(id=customer_id, created_by=created_by)
+                sale = Sale.objects.create(created_by=created_by, customer=customer, **validated_data)
+            else:
+                supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
+                sale = Sale.objects.create(created_by=created_by, supplier=supplier, **validated_data)
 
             total_sale_amount = 0
             for item_data in items_data:
@@ -185,20 +191,43 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             sale.total_amount = total_sale_amount
             sale.save()
 
-            Customer.objects.filter(id=customer.id).update(open_balance=F('open_balance') + total_sale_amount)
+            if sale.customer_id:
+                Customer.objects.filter(id=sale.customer.id).update(open_balance=F('open_balance') + total_sale_amount)
+            else:
+                Supplier.objects.filter(id=sale.supplier.id).update(open_balance=F('open_balance') - total_sale_amount)
 
         return sale
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items')
+        customer_id = validated_data.pop('customer_id', instance.customer_id)
+        supplier_id = validated_data.pop('supplier_id', instance.supplier_id)
+        if not customer_id and not supplier_id:
+            raise serializers.ValidationError('customer_id or supplier_id required')
+        if customer_id and supplier_id:
+            raise serializers.ValidationError('Only one of customer_id or supplier_id may be provided.')
 
         with transaction.atomic():
             # Revert old transaction data
-            Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.total_amount)
+            if instance.customer_id:
+                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.total_amount)
+            elif instance.supplier_id:
+                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + instance.total_amount)
             for item in instance.items.all():
                 Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
 
             instance.items.all().delete()
+
+            # Handle partner switch
+            if customer_id != instance.customer_id or supplier_id != instance.supplier_id:
+                if customer_id:
+                    customer = Customer.objects.get(id=customer_id, created_by=self.context['request'].user)
+                    instance.customer = customer
+                    instance.supplier = None
+                else:
+                    supplier = Supplier.objects.get(id=supplier_id, created_by=self.context['request'].user)
+                    instance.supplier = supplier
+                    instance.customer = None
 
             # Create new items
             new_total_amount = 0
@@ -221,7 +250,11 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             instance.invoice_number = validated_data.get('invoice_number', instance.invoice_number)
             instance.details = validated_data.get('details', instance.details)
             instance.save()
-            Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + new_total_amount)
+
+            if instance.customer_id:
+                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + new_total_amount)
+            elif instance.supplier_id:
+                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') - new_total_amount)
 
         return instance
 
@@ -366,33 +399,39 @@ class PurchaseItemWriteSerializer(serializers.ModelSerializer):
 # For reading/viewing a purchase
 class PurchaseReadSerializer(serializers.ModelSerializer):
     items = PurchaseItemSerializer(many=True, read_only=True)
-    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
+    customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
     account_name = serializers.CharField(source='account.name', read_only=True, allow_null=True)
     class Meta:
         model = Purchase
-        fields = ['id', 'supplier', 'supplier_name', 'purchase_date', 'bill_number', 'total_amount', 'account', 'account_name', 'items']
+        fields = ['id', 'supplier', 'supplier_name', 'customer', 'customer_name', 'purchase_date', 'bill_number', 'total_amount', 'account', 'account_name', 'items']
 
 # For creating/writing a purchase
 class PurchaseWriteSerializer(serializers.ModelSerializer):
     items = PurchaseItemWriteSerializer(many=True)
-    supplier_id = serializers.IntegerField()
+    supplier_id = serializers.IntegerField(required=False)
+    customer_id = serializers.IntegerField(required=False)
     class Meta:
         model = Purchase
-        fields = ['supplier_id', 'purchase_date', 'bill_number', 'account', 'items']
+        fields = ['supplier_id', 'customer_id', 'purchase_date', 'bill_number', 'account', 'items']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
-        supplier_id = validated_data.pop('supplier_id')
+        supplier_id = validated_data.pop('supplier_id', None)
+        customer_id = validated_data.pop('customer_id', None)
+        if not supplier_id and not customer_id:
+            raise serializers.ValidationError('supplier_id or customer_id required')
+        if supplier_id and customer_id:
+            raise serializers.ValidationError('Only one of supplier_id or customer_id may be provided.')
         created_by = self.context['request'].user
 
         with transaction.atomic():
-            supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-
-            purchase = Purchase.objects.create(
-                created_by=created_by,
-                supplier=supplier,
-                **validated_data
-            )
+            if supplier_id:
+                supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
+                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, **validated_data)
+            else:
+                customer = Customer.objects.get(id=customer_id, created_by=created_by)
+                purchase = Purchase.objects.create(created_by=created_by, customer=customer, **validated_data)
 
             total_purchase_amount = 0
             for item_data in items_data:
@@ -413,24 +452,44 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
             purchase.save()
 
             if not purchase.account_id:
-                Supplier.objects.filter(id=supplier.id).update(open_balance=F('open_balance') + total_purchase_amount)
+                if purchase.supplier_id:
+                    Supplier.objects.filter(id=purchase.supplier.id).update(open_balance=F('open_balance') + total_purchase_amount)
+                else:
+                    Customer.objects.filter(id=purchase.customer.id).update(open_balance=F('open_balance') - total_purchase_amount)
 
         return purchase
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items')
-        supplier_id = validated_data.pop('supplier_id', instance.supplier.id)
+        supplier_id = validated_data.pop('supplier_id', instance.supplier_id)
+        customer_id = validated_data.pop('customer_id', instance.customer_id)
+        if not supplier_id and not customer_id:
+            raise serializers.ValidationError('supplier_id or customer_id required')
+        if supplier_id and customer_id:
+            raise serializers.ValidationError('Only one of supplier_id or customer_id may be provided.')
 
         with transaction.atomic():
             old_supplier = instance.supplier
+            old_customer = instance.customer
             if not instance.account_id:
-                Supplier.objects.filter(id=old_supplier.id).update(open_balance=F('open_balance') - instance.total_amount)
+                if old_supplier:
+                    Supplier.objects.filter(id=old_supplier.id).update(open_balance=F('open_balance') - instance.total_amount)
+                elif old_customer:
+                    Customer.objects.filter(id=old_customer.id).update(open_balance=F('open_balance') + instance.total_amount)
 
-            if supplier_id != old_supplier.id:
-                supplier = Supplier.objects.get(id=supplier_id, created_by=self.context['request'].user)
-                instance.supplier = supplier
+            # Handle partner switch
+            if supplier_id != instance.supplier_id or customer_id != instance.customer_id:
+                if supplier_id:
+                    supplier = Supplier.objects.get(id=supplier_id, created_by=self.context['request'].user)
+                    instance.supplier = supplier
+                    instance.customer = None
+                else:
+                    customer = Customer.objects.get(id=customer_id, created_by=self.context['request'].user)
+                    instance.customer = customer
+                    instance.supplier = None
             else:
-                supplier = old_supplier
+                supplier = instance.supplier
+                customer = instance.customer
 
             for item in instance.items.all():
                 Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') - item.quantity)
@@ -454,7 +513,10 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
             instance.save()
 
             if not instance.account_id:
-                Supplier.objects.filter(id=supplier.id).update(open_balance=F('open_balance') + new_total_amount)
+                if instance.supplier_id:
+                    Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + new_total_amount)
+                else:
+                    Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - new_total_amount)
 
         return instance
 
