@@ -7,7 +7,9 @@ import { Container, Card, Form, Button, Row, Col, Table, InputGroup } from 'reac
 import { Trash } from 'react-bootstrap-icons';
 
 function SaleFormPage() {
-    const { customerId } = useParams();
+    const { customerId, supplierId } = useParams();
+    const entityId = customerId || supplierId;
+    const isSupplierSale = Boolean(supplierId);
     const navigate = useNavigate();
     const location = useLocation();
     const isOffer = new URLSearchParams(location.search).get('type') === 'offer';
@@ -18,19 +20,22 @@ function SaleFormPage() {
     const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0 }]);
     
     useEffect(() => {
-        // Fetch customer and all products
+        // Fetch customer/supplier and all products
         const fetchData = async () => {
             try {
                 const [custRes, prodRes] = await Promise.all([
-                    axiosInstance.get(`/customers/${customerId}/`),
+                    axiosInstance.get(isSupplierSale ? `/suppliers/${entityId}/` : `/customers/${entityId}/`),
                     axiosInstance.get('/products/')
                 ]);
-                setCustomer(custRes.data);
+                const entityData = { currency: 'USD', ...custRes.data };
+                setCustomer(entityData);
                 setAllProducts(prodRes.data);
-            } catch (error) { console.error("Failed to fetch initial data", error); }
+            } catch (error) {
+                console.error('Failed to fetch initial data', error);
+            }
         };
         fetchData();
-    }, [customerId]);
+    }, [entityId, isSupplierSale]);
 
     const handleLineItemChange = (index, event) => {
         const values = [...lineItems];
@@ -70,17 +75,17 @@ function SaleFormPage() {
         if (isOffer) {
             // When creating an offer, use the nested customer route and
             // avoid sending sale-specific fields like ``sale_date``.
-            url = `/customers/${customerId}/offers/`;
+            url = `/customers/${entityId}/offers/`;
         } else {
             url = '/sales/';
-            payload.customer_id = customerId;
+            payload.customer_id = entityId;
             payload.sale_date = saleDate;
         }
 
         try {
             await axiosInstance.post(url, payload);
-            // Redirect back to the customer detail page after creation
-            navigate(`/customers/${customerId}`);
+            // Redirect back to the detail page after creation
+            navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`);
         } catch (error) {
             console.error("Failed to create sale", error.response?.data);
         }
@@ -139,7 +144,13 @@ function SaleFormPage() {
                         
                         <div className="mt-4">
                             <Button variant="success" type="submit">{isOffer ? 'Save Offer' : 'Save Sale'}</Button>
-                            <Button variant="light" className="ms-2" onClick={() => navigate(`/customers/${customerId}`)}>Cancel</Button>
+                            <Button
+                                variant="light"
+                                className="ms-2"
+                                onClick={() => navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`)}
+                            >
+                                Cancel
+                            </Button>
                         </div>
                     </Form>
                 </Card.Body>
