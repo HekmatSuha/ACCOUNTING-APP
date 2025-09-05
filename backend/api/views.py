@@ -132,6 +132,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         customer = self.get_object()
         sales = customer.sales.all().order_by('-sale_date')
         payments = customer.payments.all().order_by('-payment_date')
+        purchases = customer.purchases.all().order_by('-purchase_date')
 
         total_turnover = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or 0.00
 
@@ -139,6 +140,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             'customer': CustomerSerializer(customer).data,
             'sales': SaleReadSerializer(sales, many=True).data,
             'payments': PaymentSerializer(payments, many=True).data,
+            'purchases': PurchaseReadSerializer(purchases, many=True).data,
             'summary': {
                 # Use the dynamically calculated balance so the frontend can
                 # correctly show whether the customer has an outstanding debt
