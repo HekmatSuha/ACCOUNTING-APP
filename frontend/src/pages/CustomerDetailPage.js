@@ -120,7 +120,7 @@ function CustomerDetailPage() {
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
-    const { customer, sales, payments, summary } = data;
+    const { customer, sales, payments, purchases, summary } = data;
 
     return (
         <Container fluid>
@@ -247,9 +247,9 @@ function CustomerDetailPage() {
                     </Card>
                 </Col>
                 <Col md={6}>
-                     <Card>
-                        <Card.Header as="h5">Previous Payments</Card.Header>
-                        <Card.Body>
+                    <Card>
+                       <Card.Header as="h5">Previous Payments</Card.Header>
+                       <Card.Body>
                             <Accordion>
                                 {payments.map((payment, index) => (
                                     <Accordion.Item eventKey={index.toString()} key={payment.id}>
@@ -281,6 +281,59 @@ function CustomerDetailPage() {
                                     </Accordion.Item>
                                 ))}
                             </Accordion>
+                       </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            <Row className="mt-3">
+                <Col md={6}>
+                    <Card>
+                        <Card.Header as="h5">Purchases / Returns</Card.Header>
+                        <Card.Body>
+                            {purchases.length > 0 ? (
+                                <Accordion>
+                                    {purchases.map((purchase, index) => (
+                                        <Accordion.Item eventKey={index.toString()} key={purchase.id}>
+                                            <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
+                                                <div className="d-flex justify-content-between w-100 pe-3">
+                                                    <span>{new Date(purchase.purchase_date).toLocaleDateString()}</span>
+                                                    <strong>{formatCurrency(purchase.total_amount, customer.currency)}</strong>
+                                                </div>
+                                            </Accordion.Header>
+                                            <Accordion.Body>
+                                                <Table striped bordered hover size="sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Product</th>
+                                                            <th>Quantity</th>
+                                                            <th>Unit Price</th>
+                                                            <th className="text-end">Line Total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {purchase.items.map(item => (
+                                                            <tr key={item.id}>
+                                                                <td>{item.product_name}</td>
+                                                                <td>{item.quantity}</td>
+                                                                <td>{formatCurrency(item.unit_price, customer.currency)}</td>
+                                                                <td className="text-end">{formatCurrency(item.line_total, customer.currency)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </Table>
+                                            </Accordion.Body>
+                                        </Accordion.Item>
+                                    ))}
+                                </Accordion>
+                            ) : (
+                                <p className="text-muted mb-0">
+                                    This customer has no previous purchase records.{' '}
+                                    <Button variant="link" className="p-0" onClick={() => navigate(`/customers/${customer.id}/new-purchase`)}>
+                                        Click to make one.
+                                    </Button>
+                                </p>
+                            )}
                         </Card.Body>
                     </Card>
                 </Col>
