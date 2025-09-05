@@ -189,7 +189,7 @@ function SupplierDetailPage() {
 
             {/* Transaction Lists */}
             <Row>
-                <Col md={4}>
+                <Col md={6}>
                     <Card>
                         <Card.Header as="h5">Previous Purchases</Card.Header>
                         <Card.Body>
@@ -233,9 +233,8 @@ function SupplierDetailPage() {
                             </Accordion>
                         </Card.Body>
                     </Card>
-                </Col>
-                <Col md={4}>
-                    <Card>
+
+                    <Card className="mt-3">
                         <Card.Header as="h5">Previous Sales</Card.Header>
                         <Card.Body>
                             <Accordion>
@@ -279,8 +278,8 @@ function SupplierDetailPage() {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col md={4}>
-                     <Card>
+                <Col md={6}>
+                    <Card>
                         <Card.Header as="h5">Previous Payments</Card.Header>
                         <Card.Body>
                             <Accordion>
