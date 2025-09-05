@@ -57,6 +57,7 @@ function App() {
                   <Route path="inventory/new" element={<ProductFormPage />} /> {/* <-- Add Route */}
                   <Route path="inventory/edit/:id" element={<ProductFormPage />} /> {/* <-- Add Route */}
                   <Route path="customers/:customerId/new-sale" element={<SaleFormPage />} />
+                  <Route path="customers/:customerId/new-purchase" element={<PurchaseFormPage />} />
                   <Route path="suppliers" element={<SupplierListPage />} />
                   <Route path="suppliers/new" element={<SupplierFormPage />} />
                   <Route path="suppliers/edit/:id" element={<SupplierFormPage />} />

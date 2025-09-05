@@ -59,14 +59,17 @@ class Customer(models.Model):
 
     @property
     def balance(self):
-        """Current balance derived from sales and payments."""
+        """Current balance derived from sales, purchases, and payments."""
         sales_total = self.sales.aggregate(
             total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
         )['total']
         payments_total = self.payments.aggregate(
             total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
         )['total']
-        return sales_total - payments_total
+        purchases_total = self.purchases.aggregate(
+            total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
+        )['total']
+        return sales_total - payments_total - purchases_total
 
 
 class Sale(models.Model):
