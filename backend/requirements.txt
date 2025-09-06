@@ -4,3 +4,4 @@ django-cors-headers
 djangorestframework-simplejwt
 drf-nested-routers
 Pillow
+reportlab
