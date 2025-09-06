@@ -58,11 +58,10 @@ function SaleDetailPage() {
     const handlePrint = () => {
         if (!invoiceRef.current) return;
         const printContents = invoiceRef.current.innerHTML;
-        const printWindow = window.open('', '', 'height=800,width=600');
-        printWindow.document.write('<html><head><title>Sale Invoice</title>');
-        printWindow.document.write('</head><body>');
-        printWindow.document.write(printContents);
-        printWindow.document.write('</body></html>');
+        const printWindow = window.open('', '_blank', 'height=800,width=600');
+        // Ensure a fresh document for each print to avoid caching previous invoice content
+        printWindow.document.open();
+        printWindow.document.write(`<!DOCTYPE html><html><head><title>Sale Invoice</title></head><body>${printContents}</body></html>`);
         printWindow.document.close();
         printWindow.focus();
         printWindow.print();
