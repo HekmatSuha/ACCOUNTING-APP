@@ -473,3 +473,28 @@ class PurchaseReturnItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} of {self.product.name} returned for Purchase #{self.purchase_return.purchase.id}"
+
+
+class CompanyInfo(models.Model):
+    """A singleton model to store company information."""
+    name = models.CharField(max_length=255, default="Your Company Name")
+    address = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(max_length=254, blank=True, null=True)
+    website = models.URLField(blank=True, null=True)
+    logo = models.ImageField(upload_to='company_logos/', blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "Company Info"
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super(CompanyInfo, self).save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj

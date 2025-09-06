@@ -31,6 +31,7 @@ import BankAccountListPage from './pages/BankAccountListPage';
 import OfferListPage from './pages/OfferListPage';
 import OfferDetailPage from './pages/OfferDetailPage';
 import ActivityPage from './pages/ActivityPage';
+import CompanyInfoPage from './pages/CompanyInfoPage';
 
 
 function App() {
@@ -78,6 +79,7 @@ function App() {
                     <Route path="purchases/:id/edit" element={<EditPurchasePage />} /> {/* <-- Add Route */}
                     <Route path="accounts" element={<BankAccountListPage />} />
                     <Route path="activities" element={<ActivityPage />} />
+                    <Route path="settings/company-info" element={<CompanyInfoPage />} />
 
                 </Routes>
 

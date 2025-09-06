@@ -16,7 +16,8 @@ import {
     Bank,
     BoxArrowRight,
     List,
-    PersonCircle
+    PersonCircle,
+    Gear
 } from 'react-bootstrap-icons';
 
 function AppLayout({ children }) {
@@ -131,6 +132,10 @@ function AppLayout({ children }) {
                             {username}
                         </Dropdown.Toggle>
                         <Dropdown.Menu>
+                            <Dropdown.Item as={NavLink} to="/settings/company-info">
+                                <Gear className="me-2" /> Company Settings
+                            </Dropdown.Item>
+                            <Dropdown.Divider />
                             <Dropdown.Item onClick={handleLogout}>
                                 <BoxArrowRight className="me-2" /> Logout
                             </Dropdown.Item>
