@@ -14,7 +14,7 @@ function SaleDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const invoiceRef = useRef();
+    const [isPrinting, setIsPrinting] = useState(false);
 
     // Function to fetch all data for the page
     const fetchSaleData = async () => {
@@ -55,19 +55,29 @@ function SaleDetailPage() {
         }
     };
 
-    const handlePrint = () => {
-        if (!invoiceRef.current) return;
-        const printContents = invoiceRef.current.innerHTML;
-        const printWindow = window.open('', '_blank', 'height=800,width=600');
-        // Ensure a fresh document for each print to avoid caching previous invoice content
-        printWindow.document.open();
-        printWindow.document.write(`<!DOCTYPE html><html><head><title>Sale Invoice</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-        </head><body>${printContents}</body></html>`);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
+    const handlePrint = async () => {
+        setIsPrinting(true);
+        setError('');
+        try {
+            const response = await axiosInstance.get(`/sales/${id}/invoice_pdf/`, {
+                responseType: 'blob', // Important for handling binary data
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            const filename = `invoice_${sale.invoice_number || sale.id}.pdf`;
+            link.setAttribute('download', filename);
+
+            // For a better user experience, open in a new tab
+            window.open(url, '_blank');
+
+        } catch (err) {
+            console.error('Failed to generate or open PDF:', err);
+            setError('Could not generate the invoice PDF. Please try again.');
+        } finally {
+            setIsPrinting(false);
+        }
     };
 
     // Calculate total payments and balance due
@@ -88,7 +98,7 @@ function SaleDetailPage() {
                 &larr; Back to Sales List
             </Button>
             {sale && (
-                <Card ref={invoiceRef}>
+                <Card>
                     {/* ... Card.Header and top customer details section ... */}
                     <Card.Header>
                         <h4>Sale Invoice #{sale.invoice_number || sale.id}</h4>
@@ -185,7 +195,9 @@ function SaleDetailPage() {
                         </Row>
                     </Card.Body>
                     <Card.Footer className="text-end d-print-none">
-                        <Button variant="primary" className="me-2" onClick={handlePrint}>Print Invoice</Button>
+                        <Button variant="primary" className="me-2" onClick={handlePrint} disabled={isPrinting}>
+                            {isPrinting ? <><Spinner as="span" animation="border" size="sm" /> Printing...</> : 'Print Invoice'}
+                        </Button>
                         {/* --- 2. UPDATE THE BUTTONS --- */}
                         <Button as={Link} to={`/sales/${id}/edit`} variant="warning" className="me-2">
                             Edit Sale
