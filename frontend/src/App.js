@@ -1,6 +1,6 @@
 // frontend/src/App.js
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -33,8 +33,13 @@ import OfferDetailPage from './pages/OfferDetailPage';
 import ActivityPage from './pages/ActivityPage';
 import CompanyInfoPage from './pages/CompanyInfoPage';
 
+import { loadBaseCurrency } from './config/currency';
+
 
 function App() {
+  useEffect(() => {
+    loadBaseCurrency();
+  }, []);
   return (
     <BrowserRouter>
       <Routes>

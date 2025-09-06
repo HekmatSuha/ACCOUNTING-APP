@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import AddPaymentModal from '../components/AddPaymentModal';
+import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
 
 function SaleDetailPage() {
     const { id } = useParams();
@@ -12,6 +13,7 @@ function SaleDetailPage() {
     const [sale, setSale] = useState(null);
     const [payments, setPayments] = useState([]); // <-- State for payments
     const [customerCurrency, setCustomerCurrency] = useState('USD');
+    const [baseCurrency, setBaseCurrency] = useState(getBaseCurrency());
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -45,6 +47,7 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
 
     useEffect(() => {
         fetchSaleData();
+        loadBaseCurrency().then(bc => setBaseCurrency(bc));
     },[id]);
 
     // --- 1. ADD THIS DELETE HANDLER ---
@@ -88,14 +91,16 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
     };
 
     
-const formatCurrency = (amount) => {
+const formatCurrency = (amount, currency) => {
     const value = isNaN(Number(amount)) ? 0 : Number(amount);
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: customerCurrency }).format(value);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(value);
 };
 
 // Calculate total payments and balance due
-const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.converted_amount ?? p.amount), 0);
-const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
+const totalPaidCustomer = payments.reduce((sum, p) => sum + parseFloat(p.converted_amount ?? p.amount), 0);
+const totalPaidBase = sale ? totalPaidCustomer * parseFloat(sale.exchange_rate || 1) : totalPaidCustomer;
+const balanceDueCustomer = sale ? parseFloat(sale.original_amount) - totalPaidCustomer : 0;
+const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amount) - totalPaidBase : 0;
 
     if (loading) {
         return <div className="text-center"><Spinner animation="border" /></div>;
@@ -142,8 +147,8 @@ const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
                                         <td>{index + 1}</td>
                                         <td>{item.product_name}</td>
                                         <td>{item.quantity}</td>
-                                        <td>{formatCurrency(item.unit_price)}</td>
-                                        <td>{formatCurrency(item.quantity * item.unit_price)}</td>
+                                        <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
+                                        <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -168,7 +173,14 @@ const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
                                         {payments.length > 0 ? payments.map(p => (
                                             <tr key={p.id}>
                                                 <td>{new Date(p.payment_date).toLocaleDateString()}</td>
-                                                <td>{formatCurrency(p.converted_amount ?? p.amount)}</td>
+                                                <td>
+                                                    {formatCurrency(p.original_amount, p.original_currency)}
+                                                    {p.original_currency !== baseCurrency && (
+                                                        <div className="text-muted">
+                                                            {formatCurrency((p.converted_amount ?? p.amount) * parseFloat(sale.exchange_rate || 1), baseCurrency)}
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td>{p.method}</td>
                                                 <td>{p.notes || 'N/A'}</td>
                                             </tr>
@@ -193,17 +205,27 @@ const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
                             <Col md={4} className="text-end">
                                 <p className="mb-1">
                                     <strong>Subtotal:</strong>
-                                    <span className="float-end">{formatCurrency(sale.total_amount)}</span>
+                                    <span className="float-end">
+                                        {formatCurrency(sale.original_amount, sale.original_currency)}
+                                        {sale.original_currency !== baseCurrency && (
+                                            <> ({formatCurrency(sale.converted_amount || sale.total_amount, baseCurrency)})</>
+                                        )}
+                                    </span>
                                 </p>
                                 <p className="mb-1">
                                     <strong>Total Paid:</strong>
-                                    <span className="float-end text-success">{formatCurrency(-totalPaid)}</span>
+                                    <span className="float-end text-success">{formatCurrency(totalPaidBase, baseCurrency)}</span>
                                 </p>
                                 <hr />
                                 <h4 className="mb-0">
                                     <strong>Balance Due:</strong>
-                                    <span className="float-end text-danger">{formatCurrency(balanceDue)}</span>
+                                    <span className="float-end text-danger">{formatCurrency(balanceDueBase, baseCurrency)}</span>
                                 </h4>
+                                {sale.original_currency !== baseCurrency && (
+                                    <div className="text-muted">
+                                        {formatCurrency(balanceDueCustomer, sale.original_currency)}
+                                    </div>
+                                )}
                             </Col>
                         </Row>
                     </Card.Body>
