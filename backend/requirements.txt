@@ -5,3 +5,4 @@ djangorestframework-simplejwt
 drf-nested-routers
 Pillow
 reportlab
+requests
