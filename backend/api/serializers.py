@@ -178,6 +178,23 @@ class SaleWriteSerializer(serializers.ModelSerializer):
         created_by = self.context['request'].user
 
         with transaction.atomic():
+            if not validated_data.get('invoice_number'):
+                last_sale = (
+                    Sale.objects.filter(created_by=created_by, invoice_number__isnull=False)
+                    .order_by('-id')
+                    .first()
+                )
+                if last_sale and last_sale.invoice_number and last_sale.invoice_number.isdigit():
+                    next_number = int(last_sale.invoice_number) + 1
+                else:
+                    next_number = 1
+                invoice_number = str(next_number)
+                # Ensure global uniqueness in case another user chose same number
+                while Sale.objects.filter(invoice_number=invoice_number).exists():
+                    next_number += 1
+                    invoice_number = str(next_number)
+                validated_data['invoice_number'] = invoice_number
+
             if customer_id:
                 customer = Customer.objects.get(id=customer_id, created_by=created_by)
                 sale = Sale.objects.create(created_by=created_by, customer=customer, **validated_data)

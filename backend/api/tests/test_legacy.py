@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.contrib.contenttypes.models import ContentType
 
-from .models import (
+from ..models import (
     BankAccount,
     Customer,
     Expense,
@@ -22,8 +22,13 @@ from .models import (
     Sale,
     SaleItem
 )
-from .serializers import ProductSerializer, PaymentSerializer, SaleWriteSerializer, PurchaseWriteSerializer
-from .activity_logger import log_activity
+from ..serializers import (
+    ProductSerializer,
+    PaymentSerializer,
+    SaleWriteSerializer,
+    PurchaseWriteSerializer,
+)
+from ..activity_logger import log_activity
 from rest_framework.test import APIClient
 
 
