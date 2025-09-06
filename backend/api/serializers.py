@@ -4,6 +4,7 @@ from django.db.models import F
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from decimal import Decimal
+from .exchange_rates import get_exchange_rate
 from .models import (
     Customer,
     ExpenseCategory,
@@ -122,11 +123,24 @@ class PaymentSerializer(serializers.ModelSerializer):
 
         customer = self.context.get('customer') or (self.instance.customer if self.instance else None)
         if customer:
+ codex/create-exchange-rates-service-module
+            attrs['currency'] = currency or customer.currency
+            if attrs['currency'] != customer.currency:
+                manual_rate = attrs.get('exchange_rate')
+                try:
+                    attrs['exchange_rate'] = get_exchange_rate(
+                        attrs['currency'], customer.currency, manual_rate=manual_rate
+                    )
+                except ValueError:
+                    raise serializers.ValidationError(
+                        {'exchange_rate': 'Exchange rate required when currencies differ.'}
+                    )
             attrs['original_currency'] = currency or customer.currency
             if attrs['original_currency'] != customer.currency:
                 exchange_rate = attrs.get('exchange_rate')
                 if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
                     raise serializers.ValidationError({'exchange_rate': 'Exchange rate required when currencies differ.'})
+
             else:
                 attrs['exchange_rate'] = Decimal('1')
         return attrs
