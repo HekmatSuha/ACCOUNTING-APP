@@ -18,17 +18,25 @@ function CompanyInfoPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [baseCurrency, setBaseCurrency] = useState('USD');
 
     useEffect(() => {
-        const fetchCompanyInfo = async () => {
+        const fetchData = async () => {
             try {
-                const res = await axiosInstance.get('/company-info/');
-                // My custom view returns a single object, not a list
-                if (res.data) {
-                    setCompanyInfo(res.data);
-                    if (res.data.logo) {
-                        setLogoPreview(res.data.logo);
+                const [infoRes, settingsRes] = await Promise.all([
+                    axiosInstance.get('/company-info/'),
+                    axiosInstance.get('/settings/')
+                ]);
+
+                if (infoRes.data) {
+                    setCompanyInfo(infoRes.data);
+                    if (infoRes.data.logo) {
+                        setLogoPreview(infoRes.data.logo);
                     }
+                }
+
+                if (settingsRes.data) {
+                    setBaseCurrency(settingsRes.data.base_currency);
                 }
             } catch (err) {
                 setError('Failed to load company information. Please try again later.');
@@ -38,7 +46,7 @@ function CompanyInfoPage() {
             }
         };
 
-        fetchCompanyInfo();
+        fetchData();
     }, []);
 
     const handleChange = (e) => {
@@ -90,7 +98,9 @@ function CompanyInfoPage() {
                     'Content-Type': 'multipart/form-data'
                 }
             });
-            // Update state with the response, which includes the new logo URL if uploaded
+
+            await axiosInstance.post('/settings/', { base_currency: baseCurrency });
+
             setCompanyInfo(res.data);
             if (res.data.logo) {
                 setLogoPreview(res.data.logo);
@@ -164,6 +174,15 @@ function CompanyInfoPage() {
                                     </Form.Group>
                                 </Col>
                             </Row>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Base Currency</Form.Label>
+                                <Form.Select value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value)}>
+                                    <option value="USD">United States Dollar (USD)</option>
+                                    <option value="EUR">Euro (EUR)</option>
+                                    <option value="KZT">Kazakhstani Tenge (KZT)</option>
+                                    <option value="TRY">Turkish Lira (TRY)</option>
+                                </Form.Select>
+                            </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Website</Form.Label>
                                 <Form.Control
