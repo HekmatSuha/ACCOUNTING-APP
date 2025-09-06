@@ -103,6 +103,7 @@ def generate_invoice_pdf(sale):
 
     # --- 3. Items Table ---
     table_header = [
+        Paragraph('Image', styles['TableHead']),
         Paragraph('Item Description', styles['TableHead']),
         Paragraph('Qty', styles['TableHead']),
         Paragraph('Unit Price', styles['TableHead']),
@@ -111,14 +112,22 @@ def generate_invoice_pdf(sale):
     data = [table_header]
 
     for item in sale.items.all():
+        img_obj = ''
+        if item.product.image and hasattr(item.product.image, 'path'):
+            try:
+                img_obj = Image(item.product.image.path, width=15*mm, height=15*mm)
+            except Exception:
+                img_obj = '' # Fails gracefully
+
         data.append([
+            img_obj,
             Paragraph(item.product.name, styles['TableCell']),
             Paragraph(f"{item.quantity}", styles['TableCellRight']),
             Paragraph(f"${item.unit_price:,.2f}", styles['TableCellRight']),
             Paragraph(f"${item.line_total:,.2f}", styles['TableCellRight']),
         ])
 
-    items_table = Table(data, colWidths=[90 * mm, 20 * mm, 30 * mm, 30 * mm])
+    items_table = Table(data, colWidths=[20 * mm, 70 * mm, 20 * mm, 30 * mm, 30 * mm])
     items_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F4F4F')),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
