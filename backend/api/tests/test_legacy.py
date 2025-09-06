@@ -560,7 +560,12 @@ class SupplierDetailsIncludeSalesTest(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
-        self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), created_by=self.user)
+        self.product = Product.objects.create(
+            name='Prod',
+            sale_price=Decimal('10.00'),
+            stock_quantity=Decimal('10'),
+            created_by=self.user,
+        )
 
         serializer = SaleWriteSerializer(
             data={

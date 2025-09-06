@@ -52,7 +52,10 @@ class InvoicePDFCurrencyTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="curuser", password="pw")
         self.product = Product.objects.create(
-            name="Prod", sale_price=Decimal("10.00"), created_by=self.user
+            name="Prod",
+            sale_price=Decimal("10.00"),
+            stock_quantity=Decimal("10"),
+            created_by=self.user,
         )
 
     def _get_request(self):
