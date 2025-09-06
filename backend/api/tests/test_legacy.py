@@ -103,8 +103,8 @@ class BankAccountTransactionTest(TestCase):
         Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
-            amount=Decimal('100.00'),
-            currency='USD',
+            original_amount=Decimal('100.00'),
+            original_currency='USD',
             method='Cash',
             account=self.account,
             created_by=self.user,
@@ -136,6 +136,7 @@ class PurchaseAccountTransactionTest(TestCase):
             purchase_date=date.today(),
             account=self.account,
             created_by=self.user,
+            original_currency='USD',
         )
         PurchaseItem.objects.create(
             purchase=purchase,
@@ -143,7 +144,8 @@ class PurchaseAccountTransactionTest(TestCase):
             quantity=Decimal('2'),
             unit_price=Decimal('5.00'),
         )
-        purchase.total_amount = Decimal('10.00')
+        purchase.original_amount = Decimal('10.00')
+        purchase.exchange_rate = Decimal('1')
         purchase.save()
 
         self.account.refresh_from_db()
@@ -249,14 +251,14 @@ class CustomerBalanceTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='ub', password='pw')
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
-        Sale.objects.create(customer=self.customer, total_amount=Decimal('100.00'), created_by=self.user)
+        Sale.objects.create(customer=self.customer, original_currency='USD', original_amount=Decimal('100.00'), created_by=self.user)
 
     def test_payment_reduces_customer_balance(self):
         Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
-            amount=Decimal('40.00'),
-            currency='USD',
+            original_amount=Decimal('40.00'),
+            original_currency='USD',
             method='Cash',
             created_by=self.user,
         )
@@ -267,8 +269,8 @@ class CustomerBalanceTest(TestCase):
         payment = Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
-            amount=Decimal('25.00'),
-            currency='USD',
+            original_amount=Decimal('25.00'),
+            original_currency='USD',
             method='Cash',
             created_by=self.user,
         )
@@ -280,12 +282,12 @@ class CustomerBalanceTest(TestCase):
         payment = Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
-            amount=Decimal('30.00'),
-            currency='USD',
+            original_amount=Decimal('30.00'),
+            original_currency='USD',
             method='Cash',
             created_by=self.user,
         )
-        payment.amount = Decimal('50.00')
+        payment.original_amount = Decimal('50.00')
         payment.save()
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.balance, Decimal('50.00'))
@@ -295,7 +297,7 @@ class CrossCurrencyPaymentTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='xc', password='pw')
         self.customer = Customer.objects.create(name='Cust', currency='USD', created_by=self.user)
-        Sale.objects.create(customer=self.customer, total_amount=Decimal('200.00'), created_by=self.user)
+        Sale.objects.create(customer=self.customer, original_currency='USD', original_amount=Decimal('200.00'), created_by=self.user)
         self.account = BankAccount.objects.create(name='Euro', currency='EUR', created_by=self.user)
 
     @patch('api.models.get_exchange_rate', return_value=Decimal('1.10'))
@@ -303,8 +305,13 @@ class CrossCurrencyPaymentTest(TestCase):
         Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
+ codex/create-exchange-rates-service-module
             amount=Decimal('100.00'),
-            currency='EUR',
+            currency
+            original_amount=Decimal('100.00'),
+            original_currency='EUR',
+            exchange_rate=Decimal('1.10'),
+
             method='Cash',
             account=self.account,
             created_by=self.user,
@@ -319,8 +326,8 @@ class CrossCurrencyPaymentTest(TestCase):
     def test_exchange_rate_auto_fetched_when_currencies_differ(self, mock_rate):
         data = {
             'payment_date': date.today(),
-            'amount': Decimal('50.00'),
-            'currency': 'EUR',
+            'original_amount': Decimal('50.00'),
+            'original_currency': 'EUR',
             'method': 'Cash',
             'account': self.account.id,
         }
@@ -333,15 +340,25 @@ class CrossCurrencyPaymentTest(TestCase):
     def test_currency_must_match_account(self, mock_rate):
         data = {
             'payment_date': date.today(),
+ codex/create-exchange-rates-service-module
             'amount': Decimal('50.00'),
             'currency': 'USD',
+
+            'original_amount': Decimal('50.00'),
+            'original_currency': 'USD',
+            'exchange_rate': Decimal('1'),
+
             'method': 'Cash',
             'account': self.account.id,
         }
         serializer = PaymentSerializer(data=data, context={'customer': self.customer})
         self.assertFalse(serializer.is_valid())
+ codex/create-exchange-rates-service-module
         self.assertIn('currency', serializer.errors)
         mock_rate.assert_not_called()
+
+        self.assertIn('original_currency', serializer.errors)
+
 
 
 class ActivityRestoreTest(TestCase):
@@ -474,7 +491,8 @@ class SaleDeletionTest(TestCase):
         sale = Sale.objects.create(
             customer=self.customer,
             sale_date=date.today(),
-            total_amount=Decimal('100.00'),
+            original_currency='USD',
+            original_amount=Decimal('100.00'),
             created_by=self.user,
         )
         SaleItem.objects.create(
@@ -494,8 +512,8 @@ class SaleDeletionTest(TestCase):
             customer=self.customer,
             sale=sale,
             payment_date=date.today(),
-            amount=Decimal('60.00'),
-            currency='USD',
+            original_amount=Decimal('60.00'),
+            original_currency='USD',
             method='Cash',
             created_by=self.user,
         )
