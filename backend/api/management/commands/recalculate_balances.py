@@ -11,7 +11,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         for customer in Customer.objects.all():
             sales_total = customer.sales.aggregate(
-                total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
+                total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
             )['total']
             payments_total = customer.payments.aggregate(
                 total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
