@@ -11,6 +11,7 @@ function SaleDetailPage() {
     const navigate = useNavigate();
     const [sale, setSale] = useState(null);
     const [payments, setPayments] = useState([]); // <-- State for payments
+    const [customerCurrency, setCustomerCurrency] = useState('USD');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -20,13 +21,19 @@ function SaleDetailPage() {
     const fetchSaleData = async () => {
         setLoading(true);
         try {
-            // Use Promise.all to fetch sale details and payments concurrently
-            const [saleRes, paymentsRes] = await Promise.all([
-                axiosInstance.get(`/sales/${id}/`),
-                axiosInstance.get(`/sales/${id}/payments/`) // <-- Fetch payments for this sale
-            ]);
-            setSale(saleRes.data);
-            setPayments(paymentsRes.data);
+            
+const saleRes = await axiosInstance.get(`/sales/${id}/`);
+const [paymentsRes, customerRes] = await Promise.all([
+    axiosInstance.get(`/sales/${id}/payments/`), // <-- Fetch payments for this sale
+    axiosInstance.get(`/customers/${saleRes.data.customer}/`)
+]);
+setSale(saleRes.data);
+const paymentsData = paymentsRes.data.map(p => ({
+    ...p,
+    converted_amount: p.converted_amount ?? p.amount,
+}));
+setPayments(paymentsData);
+setCustomerCurrency(customerRes.data.currency || 'USD');
             setError('');
         } catch (error) {
             console.error('Failed to fetch sale data:', error);
@@ -80,9 +87,15 @@ function SaleDetailPage() {
         }
     };
 
-    // Calculate total payments and balance due
-    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-    const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
+    
+const formatCurrency = (amount) => {
+    const value = isNaN(Number(amount)) ? 0 : Number(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: customerCurrency }).format(value);
+};
+
+// Calculate total payments and balance due
+const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.converted_amount ?? p.amount), 0);
+const balanceDue = sale ? parseFloat(sale.total_amount) - totalPaid : 0;
 
     if (loading) {
         return <div className="text-center"><Spinner animation="border" /></div>;
@@ -129,8 +142,8 @@ function SaleDetailPage() {
                                         <td>{index + 1}</td>
                                         <td>{item.product_name}</td>
                                         <td>{item.quantity}</td>
-                                        <td>${parseFloat(item.unit_price).toFixed(2)}</td>
-                                        <td>${(item.quantity * item.unit_price).toFixed(2)}</td>
+                                        <td>{formatCurrency(item.unit_price)}</td>
+                                        <td>{formatCurrency(item.quantity * item.unit_price)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -155,7 +168,7 @@ function SaleDetailPage() {
                                         {payments.length > 0 ? payments.map(p => (
                                             <tr key={p.id}>
                                                 <td>{new Date(p.payment_date).toLocaleDateString()}</td>
-                                                <td>${parseFloat(p.amount).toFixed(2)}</td>
+                                                <td>{formatCurrency(p.converted_amount ?? p.amount)}</td>
                                                 <td>{p.method}</td>
                                                 <td>{p.notes || 'N/A'}</td>
                                             </tr>
@@ -180,16 +193,16 @@ function SaleDetailPage() {
                             <Col md={4} className="text-end">
                                 <p className="mb-1">
                                     <strong>Subtotal:</strong>
-                                    <span className="float-end">${parseFloat(sale.total_amount).toFixed(2)}</span>
+                                    <span className="float-end">{formatCurrency(sale.total_amount)}</span>
                                 </p>
                                 <p className="mb-1">
                                     <strong>Total Paid:</strong>
-                                    <span className="float-end text-success">-${totalPaid.toFixed(2)}</span>
+                                    <span className="float-end text-success">{formatCurrency(-totalPaid)}</span>
                                 </p>
                                 <hr />
                                 <h4 className="mb-0">
                                     <strong>Balance Due:</strong>
-                                    <span className="float-end text-danger">${balanceDue.toFixed(2)}</span>
+                                    <span className="float-end text-danger">{formatCurrency(balanceDue)}</span>
                                 </h4>
                             </Col>
                         </Row>
