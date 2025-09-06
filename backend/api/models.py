@@ -61,13 +61,13 @@ class Customer(models.Model):
     def balance(self):
         """Current balance derived from sales, purchases, and payments."""
         sales_total = self.sales.aggregate(
-            total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
+            total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
         )['total']
         payments_total = self.payments.aggregate(
             total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
         )['total']
         purchases_total = self.purchases.aggregate(
-            total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField())
+            total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
         )['total']
         return sales_total - payments_total - purchases_total
 
@@ -78,6 +78,10 @@ class Sale(models.Model):
     supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     sale_date = models.DateField(auto_now_add=True)
     invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     details = models.TextField(blank=True, null=True)  # e.g., "5 x RAISINS @ 9500"
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sales')
@@ -87,6 +91,14 @@ class Sale(models.Model):
         if self.customer_id:
             return f"Sale #{self.id} for {self.customer.name}"
         return f"Sale #{self.id} to {self.supplier.name}"
+
+    def save(self, *args, **kwargs):
+        # Compute converted amount from original amount
+        self.converted_amount = (
+            Decimal(self.original_amount) * Decimal(self.exchange_rate)
+        ).quantize(Decimal('0.01')) if self.original_amount else Decimal('0')
+        self.total_amount = self.converted_amount
+        super().save(*args, **kwargs)
 
 
 class Offer(models.Model):
@@ -132,8 +144,8 @@ class Payment(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='payments', blank=True, null=True)
 
     payment_date = models.DateField()
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
+    original_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
     converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='Cash')
@@ -144,16 +156,16 @@ class Payment(models.Model):
 
     def __str__(self):
         if self.sale_id:
-            return f"Payment of {self.amount} for Sale #{self.sale.id}"
-        return f"Payment of {self.amount} from {self.customer.name}"
+            return f"Payment of {self.original_amount} for Sale #{self.sale.id}"
+        return f"Payment of {self.original_amount} from {self.customer.name}"
 
     def save(self, *args, **kwargs):
         # determine converted amount
-        if self.currency == self.customer.currency:
+        if self.original_currency == self.customer.currency:
             self.exchange_rate = Decimal('1')
-            self.converted_amount = self.amount
+            self.converted_amount = self.original_amount
         else:
-            self.converted_amount = (Decimal(self.amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
+            self.converted_amount = (Decimal(self.original_amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
 
         with transaction.atomic():
             if self.pk:
@@ -170,23 +182,23 @@ class Payment(models.Model):
                 # Update bank account balance using payment amounts
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.amount)
+                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.original_amount)
                     if self.account_id:
-                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.original_amount)
                 elif self.account_id:
-                    delta = self.amount - old.amount
+                    delta = self.original_amount - old.original_amount
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + delta)
             else:
                 Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.converted_amount)
                 if self.account_id:
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.original_amount)
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') + self.converted_amount)
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.original_amount)
             super().delete(*args, **kwargs)
 
 
@@ -377,6 +389,10 @@ class Purchase(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     purchase_date = models.DateField()
     bill_number = models.CharField(max_length=50, blank=True, null=True)
+    original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
@@ -389,10 +405,14 @@ class Purchase(models.Model):
 
     def save(self, *args, **kwargs):
         with transaction.atomic():
-            current_total = Decimal(self.total_amount)
+            self.converted_amount = (
+                Decimal(self.original_amount) * Decimal(self.exchange_rate)
+            ).quantize(Decimal('0.01')) if self.original_amount else Decimal('0')
+            self.total_amount = self.converted_amount
+            current_total = Decimal(self.converted_amount)
             if self.pk:
                 old = Purchase.objects.get(pk=self.pk)
-                old_total = Decimal(old.total_amount)
+                old_total = Decimal(old.converted_amount)
                 if old.account_id != self.account_id:
                     if old.account_id:
                         BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') + old_total)
@@ -408,7 +428,7 @@ class Purchase(models.Model):
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + Decimal(self.total_amount))
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + Decimal(self.converted_amount))
             super().delete(*args, **kwargs)
 
 class PurchaseItem(models.Model):
