@@ -498,3 +498,27 @@ class CompanyInfo(models.Model):
     def load(cls):
         obj, created = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class CompanySettings(models.Model):
+    """Singleton model to store company-wide settings."""
+    base_currency = models.CharField(
+        max_length=3,
+        choices=Customer.CURRENCY_CHOICES,
+        default="USD",
+    )
+
+    class Meta:
+        verbose_name_plural = "Company Settings"
+
+    def __str__(self):
+        return self.base_currency
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super(CompanySettings, self).save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj

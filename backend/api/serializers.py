@@ -24,6 +24,7 @@ from .models import (
     Offer,
     OfferItem,
     CompanyInfo,
+    CompanySettings,
 )
 from rest_framework.validators import UniqueValidator
 
@@ -32,6 +33,12 @@ class CompanyInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanyInfo
         fields = ['name', 'address', 'phone', 'email', 'website', 'logo']
+
+
+class CompanySettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanySettings
+        fields = ['base_currency']
 
 
 class ActivitySerializer(serializers.ModelSerializer):
