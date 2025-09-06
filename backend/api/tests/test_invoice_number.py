@@ -13,7 +13,10 @@ class InvoiceNumberGenerationTest(TestCase):
         self.user = User.objects.create_user(username="invuser", password="pw")
         self.customer = Customer.objects.create(name="C", created_by=self.user)
         self.product = Product.objects.create(
-            name="P", sale_price=Decimal("10.00"), created_by=self.user
+            name="P",
+            sale_price=Decimal("10.00"),
+            stock_quantity=Decimal("10"),
+            created_by=self.user,
         )
 
     def _get_request(self):
