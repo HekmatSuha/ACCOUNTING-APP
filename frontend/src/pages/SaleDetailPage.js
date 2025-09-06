@@ -61,7 +61,9 @@ function SaleDetailPage() {
         const printWindow = window.open('', '_blank', 'height=800,width=600');
         // Ensure a fresh document for each print to avoid caching previous invoice content
         printWindow.document.open();
-        printWindow.document.write(`<!DOCTYPE html><html><head><title>Sale Invoice</title></head><body>${printContents}</body></html>`);
+        printWindow.document.write(`<!DOCTYPE html><html><head><title>Sale Invoice</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+        </head><body>${printContents}</body></html>`);
         printWindow.document.close();
         printWindow.focus();
         printWindow.print();
@@ -154,7 +156,14 @@ function SaleDetailPage() {
                                         )}
                                     </tbody>
                                 </Table>
-                                <Button variant="success" size="sm" onClick={() => setShowPaymentModal(true)}>+ Add Payment</Button>
+                                <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="d-print-none"
+                                >
+                                    + Add Payment
+                                </Button>
                             </Col>
 
                             {/* --- NEW FINANCIAL SUMMARY SECTION --- */}
@@ -175,7 +184,7 @@ function SaleDetailPage() {
                             </Col>
                         </Row>
                     </Card.Body>
-                    <Card.Footer className="text-end">
+                    <Card.Footer className="text-end d-print-none">
                         <Button variant="primary" className="me-2" onClick={handlePrint}>Print Invoice</Button>
                         {/* --- 2. UPDATE THE BUTTONS --- */}
                         <Button as={Link} to={`/sales/${id}/edit`} variant="warning" className="me-2">
