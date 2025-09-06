@@ -206,6 +206,14 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
                 product = Product.objects.get(id=product_id, created_by=created_by)
+                quantity = Decimal(item_data['quantity'])
+
+                if product.stock_quantity < quantity:
+                    raise serializers.ValidationError(
+                        {
+                            'items': f"Insufficient stock for product '{product.name}'."
+                        }
+                    )
 
                 sale_item = SaleItem.objects.create(
                     sale=sale,
