@@ -27,6 +27,18 @@ def generate_invoice_pdf(sale):
     # --- Fetch Company Info ---
     company = CompanyInfo.load()
 
+    # --- Currency Handling ---
+    currency_code = 'USD'
+    if getattr(sale, 'customer', None) and getattr(sale.customer, 'currency', None):
+        currency_code = sale.customer.currency or 'USD'
+    currency_symbols = {
+        'USD': '$',
+        'EUR': '€',
+        'KZT': '₸',
+        'TRY': '₺',
+    }
+    currency_symbol = currency_symbols.get(currency_code, '$')
+
     # --- Styles ---
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name='CompanyName', fontSize=18, fontName='Helvetica-Bold'))
@@ -123,8 +135,8 @@ def generate_invoice_pdf(sale):
             img_obj,
             Paragraph(item.product.name, styles['TableCell']),
             Paragraph(f"{item.quantity}", styles['TableCellRight']),
-            Paragraph(f"${item.unit_price:,.2f}", styles['TableCellRight']),
-            Paragraph(f"${item.line_total:,.2f}", styles['TableCellRight']),
+            Paragraph(f"{currency_symbol}{item.unit_price:,.2f}", styles['TableCellRight']),
+            Paragraph(f"{currency_symbol}{item.line_total:,.2f}", styles['TableCellRight']),
         ])
 
     items_table = Table(data, colWidths=[20 * mm, 70 * mm, 20 * mm, 30 * mm, 30 * mm])
@@ -145,10 +157,10 @@ def generate_invoice_pdf(sale):
     balance_due = sale.total_amount - total_paid
 
     totals_data = [
-        [Paragraph('Subtotal:', styles['TotalLabel']), Paragraph(f'${sale.total_amount:,.2f}', styles['TotalValue'])],
-        [Paragraph('Total Paid:', styles['TotalLabel']), Paragraph(f'${total_paid:,.2f}', styles['TotalValue'])],
+        [Paragraph('Subtotal:', styles['TotalLabel']), Paragraph(f'{currency_symbol}{sale.total_amount:,.2f}', styles['TotalValue'])],
+        [Paragraph('Total Paid:', styles['TotalLabel']), Paragraph(f'{currency_symbol}{total_paid:,.2f}', styles['TotalValue'])],
         [], # Spacer
-        [Paragraph('Balance Due:', styles['GrandTotalLabel']), Paragraph(f'${balance_due:,.2f}', styles['GrandTotalLabel'])],
+        [Paragraph('Balance Due:', styles['GrandTotalLabel']), Paragraph(f'{currency_symbol}{balance_due:,.2f}', styles['GrandTotalLabel'])],
     ]
 
     totals_table = Table(totals_data, colWidths=[40 * mm, 30 * mm])
