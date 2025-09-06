@@ -75,7 +75,21 @@ class CustomerSerializer(serializers.ModelSerializer):
 class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
-        fields = ['id', 'customer', 'supplier', 'sale_date', 'total_amount', 'details', 'created_at', 'invoice_number', 'created_by']
+        fields = [
+            'id',
+            'customer',
+            'supplier',
+            'sale_date',
+            'original_currency',
+            'original_amount',
+            'exchange_rate',
+            'converted_amount',
+            'total_amount',
+            'details',
+            'created_at',
+            'invoice_number',
+            'created_by',
+        ]
 
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
@@ -86,8 +100,8 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'payment_date',
-            'amount',
-            'currency',
+            'original_amount',
+            'original_currency',
             'exchange_rate',
             'converted_amount',
             'method',
@@ -102,14 +116,14 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         account = attrs.get('account') or (self.instance.account if self.instance else None)
-        currency = attrs.get('currency') or (account.currency if account else None)
+        currency = attrs.get('original_currency') or (account.currency if account else None)
         if account and currency and account.currency != currency:
-            raise serializers.ValidationError({'currency': 'Currency must match selected account currency.'})
+            raise serializers.ValidationError({'original_currency': 'Currency must match selected account currency.'})
 
         customer = self.context.get('customer') or (self.instance.customer if self.instance else None)
         if customer:
-            attrs['currency'] = currency or customer.currency
-            if attrs['currency'] != customer.currency:
+            attrs['original_currency'] = currency or customer.currency
+            if attrs['original_currency'] != customer.currency:
                 exchange_rate = attrs.get('exchange_rate')
                 if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
                     raise serializers.ValidationError({'exchange_rate': 'Exchange rate required when currencies differ.'})
@@ -162,7 +176,21 @@ class SaleReadSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
     class Meta:
         model = Sale
-        fields = ['id', 'customer', 'customer_name', 'supplier', 'supplier_name', 'sale_date', 'invoice_number', 'total_amount', 'items']
+        fields = [
+            'id',
+            'customer',
+            'customer_name',
+            'supplier',
+            'supplier_name',
+            'sale_date',
+            'invoice_number',
+            'original_currency',
+            'original_amount',
+            'exchange_rate',
+            'converted_amount',
+            'total_amount',
+            'items',
+        ]
 
 # This serializer is for CREATING a full sale
 class SaleWriteSerializer(serializers.ModelSerializer):
@@ -172,7 +200,7 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sale
-        fields = ['customer_id', 'supplier_id', 'sale_date', 'items', 'invoice_number', 'details']
+        fields = ['customer_id', 'supplier_id', 'sale_date', 'items', 'invoice_number', 'details', 'original_currency', 'exchange_rate']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
@@ -202,12 +230,15 @@ class SaleWriteSerializer(serializers.ModelSerializer):
                     invoice_number = str(next_number)
                 validated_data['invoice_number'] = invoice_number
 
+            exchange_rate = validated_data.pop('exchange_rate', Decimal('1'))
+            original_currency = validated_data.pop('original_currency', None)
+
             if customer_id:
                 customer = Customer.objects.get(id=customer_id, created_by=created_by)
-                sale = Sale.objects.create(created_by=created_by, customer=customer, **validated_data)
+                sale = Sale.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, **validated_data)
             else:
                 supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-                sale = Sale.objects.create(created_by=created_by, supplier=supplier, **validated_data)
+                sale = Sale.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or 'USD', **validated_data)
 
             total_sale_amount = 0
             for item_data in items_data:
@@ -232,13 +263,13 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
                 total_sale_amount += sale_item.line_total
 
-            sale.total_amount = total_sale_amount
+            sale.original_amount = total_sale_amount
             sale.save()
 
             if sale.customer_id:
-                Customer.objects.filter(id=sale.customer.id).update(open_balance=F('open_balance') + total_sale_amount)
+                Customer.objects.filter(id=sale.customer.id).update(open_balance=F('open_balance') + sale.converted_amount)
             else:
-                Supplier.objects.filter(id=sale.supplier.id).update(open_balance=F('open_balance') - total_sale_amount)
+                Supplier.objects.filter(id=sale.supplier.id).update(open_balance=F('open_balance') - sale.converted_amount)
 
         return sale
 
@@ -254,9 +285,9 @@ class SaleWriteSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             # Revert old transaction data
             if instance.customer_id:
-                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.total_amount)
+                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.converted_amount)
             elif instance.supplier_id:
-                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + instance.total_amount)
+                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + instance.converted_amount)
             for item in instance.items.all():
                 Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
 
@@ -274,6 +305,10 @@ class SaleWriteSerializer(serializers.ModelSerializer):
                     instance.customer = None
 
             # Create new items
+            exchange_rate = validated_data.get('exchange_rate', instance.exchange_rate)
+            instance.exchange_rate = exchange_rate
+            instance.original_currency = validated_data.get('original_currency', instance.original_currency)
+
             new_total_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
@@ -289,16 +324,16 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
                 new_total_amount += sale_item.line_total
 
-            instance.total_amount = new_total_amount
+            instance.original_amount = new_total_amount
             instance.sale_date = validated_data.get('sale_date', instance.sale_date)
             instance.invoice_number = validated_data.get('invoice_number', instance.invoice_number)
             instance.details = validated_data.get('details', instance.details)
             instance.save()
 
             if instance.customer_id:
-                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + new_total_amount)
+                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + instance.converted_amount)
             elif instance.supplier_id:
-                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') - new_total_amount)
+                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') - instance.converted_amount)
 
         return instance
 
@@ -484,7 +519,23 @@ class PurchaseReadSerializer(serializers.ModelSerializer):
     account_name = serializers.CharField(source='account.name', read_only=True, allow_null=True)
     class Meta:
         model = Purchase
-        fields = ['id', 'supplier', 'supplier_name', 'customer', 'customer_name', 'purchase_date', 'bill_number', 'total_amount', 'account', 'account_name', 'items']
+        fields = [
+            'id',
+            'supplier',
+            'supplier_name',
+            'customer',
+            'customer_name',
+            'purchase_date',
+            'bill_number',
+            'original_currency',
+            'original_amount',
+            'exchange_rate',
+            'converted_amount',
+            'total_amount',
+            'account',
+            'account_name',
+            'items',
+        ]
 
 # For creating/writing a purchase
 class PurchaseWriteSerializer(serializers.ModelSerializer):
@@ -493,7 +544,7 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
     customer_id = serializers.IntegerField(required=False)
     class Meta:
         model = Purchase
-        fields = ['supplier_id', 'customer_id', 'purchase_date', 'bill_number', 'account', 'items']
+        fields = ['supplier_id', 'customer_id', 'purchase_date', 'bill_number', 'account', 'items', 'original_currency', 'exchange_rate']
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
@@ -506,12 +557,15 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
         created_by = self.context['request'].user
 
         with transaction.atomic():
+            exchange_rate = validated_data.pop('exchange_rate', Decimal('1'))
+            original_currency = validated_data.pop('original_currency', None)
+
             if supplier_id:
                 supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, **validated_data)
+                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or 'USD', **validated_data)
             else:
                 customer = Customer.objects.get(id=customer_id, created_by=created_by)
-                purchase = Purchase.objects.create(created_by=created_by, customer=customer, **validated_data)
+                purchase = Purchase.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, **validated_data)
 
             total_purchase_amount = 0
             for item_data in items_data:
@@ -528,14 +582,14 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 
                 total_purchase_amount += purchase_item.line_total
 
-            purchase.total_amount = total_purchase_amount
+            purchase.original_amount = total_purchase_amount
             purchase.save()
 
             if not purchase.account_id:
                 if purchase.supplier_id:
-                    Supplier.objects.filter(id=purchase.supplier.id).update(open_balance=F('open_balance') + total_purchase_amount)
+                    Supplier.objects.filter(id=purchase.supplier.id).update(open_balance=F('open_balance') + purchase.converted_amount)
                 else:
-                    Customer.objects.filter(id=purchase.customer.id).update(open_balance=F('open_balance') - total_purchase_amount)
+                    Customer.objects.filter(id=purchase.customer.id).update(open_balance=F('open_balance') - purchase.converted_amount)
 
         return purchase
 
@@ -553,9 +607,9 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
             old_customer = instance.customer
             if not instance.account_id:
                 if old_supplier:
-                    Supplier.objects.filter(id=old_supplier.id).update(open_balance=F('open_balance') - instance.total_amount)
+                    Supplier.objects.filter(id=old_supplier.id).update(open_balance=F('open_balance') - instance.converted_amount)
                 elif old_customer:
-                    Customer.objects.filter(id=old_customer.id).update(open_balance=F('open_balance') + instance.total_amount)
+                    Customer.objects.filter(id=old_customer.id).update(open_balance=F('open_balance') + instance.converted_amount)
 
             # Handle partner switch
             if supplier_id != instance.supplier_id or customer_id != instance.customer_id:
@@ -576,6 +630,10 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 
             instance.items.all().delete()
 
+            exchange_rate = validated_data.get('exchange_rate', instance.exchange_rate)
+            instance.exchange_rate = exchange_rate
+            instance.original_currency = validated_data.get('original_currency', instance.original_currency)
+
             new_total_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
@@ -586,7 +644,7 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 
                 new_total_amount += purchase_item.line_total
 
-            instance.total_amount = new_total_amount
+            instance.original_amount = new_total_amount
             instance.purchase_date = validated_data.get('purchase_date', instance.purchase_date)
             instance.bill_number = validated_data.get('bill_number', instance.bill_number)
             instance.account = validated_data.get('account', instance.account)
@@ -594,9 +652,9 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 
             if not instance.account_id:
                 if instance.supplier_id:
-                    Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + new_total_amount)
+                    Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + instance.converted_amount)
                 else:
-                    Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - new_total_amount)
+                    Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.converted_amount)
 
         return instance
 
