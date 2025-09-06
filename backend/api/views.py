@@ -39,8 +39,10 @@ from .models import (
     BankAccount,
     Offer,
     OfferItem,
+    CompanyInfo,
 )
 from .serializers import (
+    CompanyInfoSerializer,
     ActivitySerializer,
     UserSerializer,
     CustomerSerializer,
@@ -108,6 +110,34 @@ def dashboard_summary(request):
         'today_incoming': today_incoming,
     }
     return Response(data)
+
+
+class CompanyInfoViewSet(viewsets.GenericViewSet):
+    """
+    A viewset for viewing and editing the singleton CompanyInfo instance.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = CompanyInfoSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get the company info instance.
+        """
+        instance = CompanyInfo.load()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Update the company info instance.
+        Using POST to handle creating/updating the singleton.
+        """
+        instance = CompanyInfo.load()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class CreateUserView(generics.CreateAPIView):

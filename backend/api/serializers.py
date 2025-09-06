@@ -23,8 +23,16 @@ from .models import (
     Activity,
     Offer,
     OfferItem,
+    CompanyInfo,
 )
 from rest_framework.validators import UniqueValidator
+
+
+class CompanyInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyInfo
+        fields = ['name', 'address', 'phone', 'email', 'website', 'logo']
+
 
 class ActivitySerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
