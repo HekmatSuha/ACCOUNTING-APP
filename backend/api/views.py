@@ -40,9 +40,11 @@ from .models import (
     Offer,
     OfferItem,
     CompanyInfo,
+    CompanySettings,
 )
 from .serializers import (
     CompanyInfoSerializer,
+    CompanySettingsSerializer,
     ActivitySerializer,
     UserSerializer,
     CustomerSerializer,
@@ -134,6 +136,24 @@ class CompanyInfoViewSet(viewsets.GenericViewSet):
         Using POST to handle creating/updating the singleton.
         """
         instance = CompanyInfo.load()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class CompanySettingsViewSet(viewsets.GenericViewSet):
+    """Viewset for retrieving and updating company settings."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = CompanySettingsSerializer
+
+    def list(self, request, *args, **kwargs):
+        instance = CompanySettings.load()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        instance = CompanySettings.load()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
