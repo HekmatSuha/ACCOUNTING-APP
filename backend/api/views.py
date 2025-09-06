@@ -13,10 +13,12 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter
+from django.http import HttpResponse
 import json
 from django.contrib.contenttypes.models import ContentType
 from rest_framework.exceptions import NotFound
 from .activity_logger import log_activity
+from .invoice_pdf import generate_invoice_pdf
 
 from .models import (
     Activity,
@@ -285,6 +287,16 @@ class SaleViewSet(viewsets.ModelViewSet):
             Supplier.objects.filter(id=supplier.id).update(open_balance=F('open_balance') + instance.total_amount)
 
         instance.delete()
+
+    @action(detail=True, methods=['get'])
+    def invoice_pdf(self, request, pk=None):
+        """Return a PDF representation of the sale invoice."""
+        sale = self.get_object()
+        pdf_bytes = generate_invoice_pdf(sale)
+        filename = f"invoice_{sale.invoice_number or sale.id}.pdf"
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class OfferViewSet(viewsets.ModelViewSet):
