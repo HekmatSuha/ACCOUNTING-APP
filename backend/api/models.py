@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
+from .exchange_rates import get_exchange_rate
 
 class Activity(models.Model):
     ACTION_TYPES = (
@@ -165,7 +166,13 @@ class Payment(models.Model):
             self.exchange_rate = Decimal('1')
             self.converted_amount = self.original_amount
         else:
+ codex/create-exchange-rates-service-module
+            if not self.exchange_rate or self.exchange_rate == 1:
+                self.exchange_rate = get_exchange_rate(self.currency, self.customer.currency)
+            self.converted_amount = (Decimal(self.amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
+
             self.converted_amount = (Decimal(self.original_amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
+ main
 
         with transaction.atomic():
             if self.pk:
