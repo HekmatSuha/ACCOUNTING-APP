@@ -164,15 +164,10 @@ class Payment(models.Model):
         # determine converted amount
         if self.original_currency == self.customer.currency:
             self.exchange_rate = Decimal('1')
-            self.converted_amount = self.original_amount
-        else:
- codex/create-exchange-rates-service-module
-            if not self.exchange_rate or self.exchange_rate == 1:
-                self.exchange_rate = get_exchange_rate(self.currency, self.customer.currency)
-            self.converted_amount = (Decimal(self.amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
+        elif not self.exchange_rate:
+            self.exchange_rate = get_exchange_rate(self.original_currency, self.customer.currency)
 
-            self.converted_amount = (Decimal(self.original_amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
- main
+        self.converted_amount = (Decimal(self.original_amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
 
         with transaction.atomic():
             if self.pk:
