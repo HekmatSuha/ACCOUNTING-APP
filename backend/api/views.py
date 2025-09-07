@@ -210,13 +210,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
             'purchases': PurchaseReadSerializer(purchases, many=True).data,
             'summary': {
                 # Use the dynamically calculated balance so the frontend can
-                # correctly show whether the customer has an outstanding debt
-                # or credit.  The frontend expects this value under the
-                # ``open_balance`` key (matching the supplier details view),
-                # but the previous implementation provided ``balance`` which
-                # resulted in the open balance card always showing as
-                # "Settled".  Expose the value using the expected key.
-                'open_balance': customer.balance,
+                # Use the ``open_balance`` field, which is updated
+                # automatically when sales and payments are made.
+                'open_balance': customer.open_balance,
                 'check_balance': 0.00,  # Placeholder
                 'note_balance': 0.00,  # Placeholder
                 'turnover': total_turnover
