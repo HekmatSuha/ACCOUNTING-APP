@@ -67,6 +67,14 @@ from .serializers import (
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_currency_options(request):
+    """
+    Provides the available currency options.
+    """
+    return Response(Customer.CURRENCY_CHOICES)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def dashboard_summary(request):
     """
     Provides summary data for the dashboard.

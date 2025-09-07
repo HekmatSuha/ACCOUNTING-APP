@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
-import { fetchExchangeRate, currencyOptions } from '../config/currency';
+import { getCurrencyOptions, loadCurrencyOptions } from '../config/currency';
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
@@ -23,29 +23,38 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
     const [exchangeRate, setExchangeRate] = useState(1);
     const [convertedAmount, setConvertedAmount] = useState('');
     const [error, setError] = useState('');
+    const [currencyOptions, setCurrencyOptions] = useState([]);
 
     useEffect(() => {
-        const fetchAccounts = async () => {
+        const fetchInitialData = async () => {
             try {
-                const res = await axiosInstance.get('/accounts/');
-                setAccounts(res.data);
+                const accountsRes = await axiosInstance.get('/accounts/');
+                setAccounts(accountsRes.data);
+
+                const options = getCurrencyOptions();
+                if (options.length === 0) {
+                    const loadedOptions = await loadCurrencyOptions();
+                    setCurrencyOptions(loadedOptions);
+                } else {
+                    setCurrencyOptions(options);
+                }
             } catch (err) {
-                console.error('Failed to fetch accounts:', err);
+                console.error('Failed to fetch initial data:', err);
             }
         };
         if (show) {
-            fetchAccounts();
+            fetchInitialData();
         }
     }, [show]);
 
     useEffect(() => {
         if (show && payment) {
             setPaymentDate(payment.payment_date);
-            setAmount(payment.amount);
+            setAmount(payment.original_amount);
             setMethod(payment.method);
             setNotes(payment.notes || '');
             setAccount(payment.account || '');
-            setPaymentCurrency(payment.currency || customerCurrency);
+            setPaymentCurrency(payment.original_currency || customerCurrency);
             setExchangeRate(payment.exchange_rate ? Number(payment.exchange_rate) : 1);
             setConvertedAmount(payment.converted_amount ? String(payment.converted_amount) : '');
         } else if (show && !payment) {
@@ -73,19 +82,14 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
     }, [account, accounts, customerCurrency]);
 
     useEffect(() => {
-        const convert = async () => {
-            const amt = parseFloat(amount) || 0;
-            if (paymentCurrency !== customerCurrency) {
-                const rate = await fetchExchangeRate(paymentCurrency, customerCurrency);
-                setExchangeRate(rate);
-                setConvertedAmount((amt * rate).toFixed(2));
-            } else {
-                setExchangeRate(1);
-                setConvertedAmount(amount);
-            }
-        };
-        convert();
-    }, [amount, paymentCurrency, customerCurrency]);
+        const amt = parseFloat(amount) || 0;
+        if (paymentCurrency !== customerCurrency) {
+            setConvertedAmount((amt * exchangeRate).toFixed(2));
+        } else {
+            setExchangeRate(1);
+            setConvertedAmount(amount);
+        }
+    }, [amount, paymentCurrency, customerCurrency, exchangeRate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -98,10 +102,10 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
 
         const paymentData = {
             payment_date: paymentDate,
-            amount: parseFloat(amount),
+            original_amount: parseFloat(amount),
             method,
             notes,
-            currency: paymentCurrency,
+            original_currency: paymentCurrency,
         };
 
         if (account) {

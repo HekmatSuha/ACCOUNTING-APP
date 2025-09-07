@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 from .views import (
+    get_currency_options,
     CustomerViewSet, dashboard_summary, ProductViewSet, SaleViewSet,
     SupplierViewSet, PaymentViewSet, PurchaseViewSet, CustomerPaymentViewSet,
     ActivityViewSet, OfferViewSet, SupplierPaymentViewSet, PurchaseReturnViewSet,
@@ -49,6 +50,7 @@ router.register(r'sale-returns', SaleReturnViewSet, basename='sale-return')
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
+    path('currencies/', get_currency_options, name='currencies'),
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/register/', CreateUserView.as_view(), name='register'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),

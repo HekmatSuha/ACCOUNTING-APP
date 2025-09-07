@@ -117,30 +117,24 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         account = attrs.get('account') or (self.instance.account if self.instance else None)
-        currency = attrs.get('original_currency') or (account.currency if account else None)
-        if account and currency and account.currency != currency:
+        original_currency = attrs.get('original_currency') or (account.currency if account else None)
+        if account and original_currency and account.currency != original_currency:
             raise serializers.ValidationError({'original_currency': 'Currency must match selected account currency.'})
 
         customer = self.context.get('customer') or (self.instance.customer if self.instance else None)
         if customer:
- codex/create-exchange-rates-service-module
-            attrs['currency'] = currency or customer.currency
-            if attrs['currency'] != customer.currency:
-                manual_rate = attrs.get('exchange_rate')
-                try:
-                    attrs['exchange_rate'] = get_exchange_rate(
-                        attrs['currency'], customer.currency, manual_rate=manual_rate
-                    )
-                except ValueError:
-                    raise serializers.ValidationError(
-                        {'exchange_rate': 'Exchange rate required when currencies differ.'}
-                    )
-            attrs['original_currency'] = currency or customer.currency
+            attrs['original_currency'] = original_currency or customer.currency
             if attrs['original_currency'] != customer.currency:
                 exchange_rate = attrs.get('exchange_rate')
                 if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
-                    raise serializers.ValidationError({'exchange_rate': 'Exchange rate required when currencies differ.'})
-
+                    try:
+                        attrs['exchange_rate'] = get_exchange_rate(
+                            attrs['original_currency'], customer.currency
+                        )
+                    except ValueError:
+                        raise serializers.ValidationError(
+                            {'exchange_rate': 'Exchange rate required when currencies differ.'}
+                        )
             else:
                 attrs['exchange_rate'] = Decimal('1')
         return attrs

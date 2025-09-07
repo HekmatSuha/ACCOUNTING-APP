@@ -1,7 +1,7 @@
-import axios from 'axios';
 import axiosInstance from '../utils/axiosInstance';
 
 let baseCurrency = 'USD';
+let currencyOptions = [];
 
 export const getBaseCurrency = () => baseCurrency;
 
@@ -17,18 +17,17 @@ export const loadBaseCurrency = async () => {
   return baseCurrency;
 };
 
-export const fetchExchangeRate = async (from, to) => {
-  if (!from || !to || from === to) {
-    return 1;
-  }
-  try {
-    const res = await axios.get(`https://api.exchangerate.host/convert?from=${from}&to=${to}`);
-    return res.data?.result || 1;
-  } catch (err) {
-    console.error('Failed to fetch exchange rate', err);
-    return 1;
-  }
-};
+export const getCurrencyOptions = () => currencyOptions;
 
-export const currencyOptions = ['USD', 'EUR', 'KZT', 'TRY'];
+export const loadCurrencyOptions = async () => {
+  try {
+    const res = await axiosInstance.get('/currencies/');
+    if (res.data && Array.isArray(res.data)) {
+      currencyOptions = res.data;
+    }
+  } catch (err) {
+    console.error('Failed to fetch currency options', err);
+  }
+  return currencyOptions;
+};
 
