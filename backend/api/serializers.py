@@ -70,26 +70,6 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'email', 'phone', 'address', 'open_balance', 'currency', 'created_at', 'image']
         read_only_fields = ['created_by', 'open_balance']
 
-
-class SaleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Sale
-        fields = [
-            'id',
-            'customer',
-            'supplier',
-            'sale_date',
-            'original_currency',
-            'original_amount',
-            'exchange_rate',
-            'converted_amount',
-            'total_amount',
-            'details',
-            'created_at',
-            'invoice_number',
-            'created_by',
-        ]
-
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
