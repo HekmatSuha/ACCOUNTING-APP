@@ -60,17 +60,15 @@ class Customer(models.Model):
 
     @property
     def balance(self):
-        """Current balance derived from sales, purchases, and payments."""
-        sales_total = self.sales.aggregate(
-            total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
-        )['total']
-        payments_total = self.payments.aggregate(
-            total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
-        )['total']
-        purchases_total = self.purchases.aggregate(
-            total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
-        )['total']
-        return sales_total - payments_total - purchases_total
+        """
+        Returns the customer's current open balance.
+
+        This property is an accessor to the ``open_balance`` field, which is
+        the single source of truth for the customer's balance. The
+        ``open_balance`` field is updated transactionally when sales,
+        payments, or purchases are made.
+        """
+        return self.open_balance
 
 
 class Sale(models.Model):
