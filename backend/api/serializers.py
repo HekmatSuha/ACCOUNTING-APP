@@ -65,12 +65,10 @@ class UserSerializer(serializers.ModelSerializer):
         return user
     
 class CustomerSerializer(serializers.ModelSerializer):
-    balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-
     class Meta:
         model = Customer
-        fields = ['id', 'name', 'email', 'phone', 'address', 'balance', 'currency', 'created_at', 'image']
-        read_only_fields = ['created_by']
+        fields = ['id', 'name', 'email', 'phone', 'address', 'open_balance', 'currency', 'created_at', 'image']
+        read_only_fields = ['created_by', 'open_balance']
 
 
 class SaleSerializer(serializers.ModelSerializer):
