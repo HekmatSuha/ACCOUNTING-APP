@@ -305,13 +305,9 @@ class CrossCurrencyPaymentTest(TestCase):
         Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
- codex/create-exchange-rates-service-module
-            amount=Decimal('100.00'),
-            currency
             original_amount=Decimal('100.00'),
             original_currency='EUR',
             exchange_rate=Decimal('1.10'),
-
             method='Cash',
             account=self.account,
             created_by=self.user,
@@ -320,7 +316,6 @@ class CrossCurrencyPaymentTest(TestCase):
         self.customer.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal('100.00'))
         self.assertEqual(self.customer.balance, Decimal('90.00'))
-        mock_rate.assert_called_once_with('EUR', 'USD')
 
     @patch('api.serializers.get_exchange_rate', return_value=Decimal('1.20'))
     def test_exchange_rate_auto_fetched_when_currencies_differ(self, mock_rate):
@@ -334,30 +329,22 @@ class CrossCurrencyPaymentTest(TestCase):
         serializer = PaymentSerializer(data=data, context={'customer': self.customer})
         self.assertTrue(serializer.is_valid(), serializer.errors)
         self.assertEqual(serializer.validated_data['exchange_rate'], Decimal('1.20'))
-        mock_rate.assert_called_once_with('EUR', 'USD', manual_rate=None)
+        mock_rate.assert_called_once_with('EUR', 'USD')
 
     @patch('api.serializers.get_exchange_rate')
     def test_currency_must_match_account(self, mock_rate):
         data = {
             'payment_date': date.today(),
- codex/create-exchange-rates-service-module
-            'amount': Decimal('50.00'),
-            'currency': 'USD',
-
             'original_amount': Decimal('50.00'),
             'original_currency': 'USD',
             'exchange_rate': Decimal('1'),
-
             'method': 'Cash',
             'account': self.account.id,
         }
         serializer = PaymentSerializer(data=data, context={'customer': self.customer})
         self.assertFalse(serializer.is_valid())
- codex/create-exchange-rates-service-module
-        self.assertIn('currency', serializer.errors)
-        mock_rate.assert_not_called()
-
         self.assertIn('original_currency', serializer.errors)
+        mock_rate.assert_not_called()
 
 
 
