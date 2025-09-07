@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
-import { fetchExchangeRate, currencyOptions } from '../config/currency';
+import { getCurrencyOptions, loadCurrencyOptions } from '../config/currency';
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
@@ -26,28 +26,31 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
     const [exchangeRate, setExchangeRate] = useState(1);
     const [convertedAmount, setConvertedAmount] = useState('');
     const [error, setError] = useState('');
+    const [currencyOptions, setCurrencyOptions] = useState([]);
 
     useEffect(() => {
-        const fetchAccounts = async () => {
+        const fetchInitialData = async () => {
             try {
-                const res = await axiosInstance.get('/accounts/');
-                setAccounts(res.data);
-            } catch (err) {
-                console.error('Failed to fetch accounts:', err);
-            }
-        };
-        const fetchCurrency = async () => {
-            try {
+                const accountsRes = await axiosInstance.get('/accounts/');
+                setAccounts(accountsRes.data);
+
                 const saleRes = await axiosInstance.get(`/sales/${saleId}/`);
                 const custRes = await axiosInstance.get(`/customers/${saleRes.data.customer}/`);
                 setCustomerCurrency(custRes.data.currency);
                 setPaymentCurrency(custRes.data.currency);
+
+                const options = getCurrencyOptions();
+                if (options.length === 0) {
+                    const loadedOptions = await loadCurrencyOptions();
+                    setCurrencyOptions(loadedOptions);
+                } else {
+                    setCurrencyOptions(options);
+                }
             } catch (err) {
-                console.error('Failed to fetch currency info', err);
+                console.error('Failed to fetch initial data:', err);
             }
         };
-        fetchAccounts();
-        fetchCurrency();
+        fetchInitialData();
     }, [saleId]);
 
     useEffect(() => {
@@ -62,19 +65,14 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
     }, [account, accounts, customerCurrency]);
 
     useEffect(() => {
-        const convert = async () => {
-            const amt = parseFloat(amount) || 0;
-            if (paymentCurrency !== customerCurrency) {
-                const rate = await fetchExchangeRate(paymentCurrency, customerCurrency);
-                setExchangeRate(rate);
-                setConvertedAmount((amt * rate).toFixed(2));
-            } else {
-                setExchangeRate(1);
-                setConvertedAmount(amount);
-            }
-        };
-        convert();
-    }, [amount, paymentCurrency, customerCurrency]);
+        const amt = parseFloat(amount) || 0;
+        if (paymentCurrency !== customerCurrency) {
+            setConvertedAmount((amt * exchangeRate).toFixed(2));
+        } else {
+            setExchangeRate(1);
+            setConvertedAmount(amount);
+        }
+    }, [amount, paymentCurrency, customerCurrency, exchangeRate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -87,10 +85,10 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
 
         const paymentData = {
             payment_date: paymentDate,
-            amount: parseFloat(amount),
+            original_amount: parseFloat(amount),
             method,
             notes,
-            currency: paymentCurrency,
+            original_currency: paymentCurrency,
         };
 
         if (account) {
