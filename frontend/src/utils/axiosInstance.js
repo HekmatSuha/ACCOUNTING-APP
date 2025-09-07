@@ -4,7 +4,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import dayjs from 'dayjs';
 
-const baseURL = 'http://127.0.0.1:8000/api';
+const baseURL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 const axiosInstance = axios.create({
     baseURL,
@@ -18,7 +18,15 @@ axiosInstance.interceptors.request.use(async req => {
         return req;
     }
 
-    const user = jwtDecode(accessToken);
+    let user;
+    try {
+        user = jwtDecode(accessToken);
+    } catch (error) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return req;
+    }
     const isExpired = dayjs.unix(user.exp).diff(dayjs()) < 1;
 
     if (!isExpired) {
