@@ -466,8 +466,8 @@ class SupplierViewSet(viewsets.ModelViewSet):
         purchases = supplier.purchases.all().order_by('-purchase_date')
         sales = supplier.sales.all().order_by('-sale_date')
 
-        # 'payments' is the related_name from Expense model's supplier field
-        payments = supplier.payments.all().order_by('-expense_date')
+        # 'expenses' is the related_name from Expense model's supplier field
+        expenses = supplier.expenses.all().order_by('-expense_date')
 
         purchase_total = purchases.aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal('0.00')
         sales_total = sales.aggregate(Sum('total_amount'))['total_amount__sum'] or Decimal('0.00')
@@ -477,7 +477,7 @@ class SupplierViewSet(viewsets.ModelViewSet):
             'supplier': SupplierSerializer(supplier).data,
             'purchases': PurchaseReadSerializer(purchases, many=True).data,
             'sales': SaleReadSerializer(sales, many=True).data,
-            'payments': ExpenseSerializer(payments, many=True).data,
+            'expenses': ExpenseSerializer(expenses, many=True).data,
             'summary': {
                 'open_balance': supplier.open_balance,
                 'check_balance': 0.00,  # Placeholder
