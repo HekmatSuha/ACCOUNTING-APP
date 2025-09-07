@@ -123,7 +123,7 @@ function SupplierDetailPage() {
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
     if (error) return <Alert variant="danger">{error}</Alert>;
 
-    const { supplier, purchases, sales, payments, summary } = data;
+    const { supplier, purchases, sales, expenses, summary } = data;
 
     return (
         <Container fluid>
@@ -283,7 +283,7 @@ function SupplierDetailPage() {
                         <Card.Header as="h5">Previous Payments</Card.Header>
                         <Card.Body>
                             <Accordion>
-                                {payments.map((payment, index) => (
+                                {expenses.map((payment, index) => (
                                     <Accordion.Item eventKey={index.toString()} key={payment.id}>
                                         <Accordion.Header style={{ backgroundColor: '#d4edda' }}>
                                             <div className="d-flex justify-content-between w-100 pe-3">
