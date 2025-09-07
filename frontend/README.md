@@ -2,6 +2,10 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Environment Variables
+
+The application uses the `REACT_APP_API_BASE_URL` variable to determine the base URL for API requests. If not set, it defaults to `http://127.0.0.1:8000/api`.
+
 ## Available Scripts
 
 In the project directory, you can run:
