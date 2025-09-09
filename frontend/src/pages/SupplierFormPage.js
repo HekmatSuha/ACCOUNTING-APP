@@ -30,7 +30,7 @@ function SupplierFormPage() {
         if (isEditing) {
             const fetchSupplier = async () => {
                 try {
-                    const response = await axiosInstance.get(`/suppliers/${id}/`);
+                    const response = await axiosInstance.get(`suppliers/${id}/`);
                     setFormData(response.data);
                     if (response.data.image) {
                         setImagePreview(`${API_BASE_URL}${response.data.image}`);
@@ -69,8 +69,8 @@ function SupplierFormPage() {
         }
 
         const apiCall = isEditing
-            ? axiosInstance.patch(`/suppliers/${id}/`, submissionData)
-            : axiosInstance.post('/suppliers/', submissionData);
+            ? axiosInstance.patch(`suppliers/${id}/`, submissionData)
+            : axiosInstance.post('suppliers/', submissionData);
 
         try {
             await apiCall;

@@ -32,7 +32,7 @@ function EditPurchasePage() {
         const fetchInitialData = async () => {
             try {
                 const [suppliersRes, productsRes, accountsRes, purchaseRes] = await Promise.all([
-                    axiosInstance.get('/suppliers/'),
+                    axiosInstance.get('suppliers/'),
                     axiosInstance.get('/products/'),
                     axiosInstance.get('/accounts/'),
                     axiosInstance.get(`/purchases/${id}/`)
