@@ -31,6 +31,8 @@ def generate_invoice_pdf(sale):
     currency_code = 'USD'
     if getattr(sale, 'customer', None) and getattr(sale.customer, 'currency', None):
         currency_code = sale.customer.currency or 'USD'
+    elif getattr(sale, 'supplier', None) and getattr(sale.supplier, 'currency', None):
+        currency_code = sale.supplier.currency or 'USD'
     currency_symbols = {
         'USD': '$',
         'EUR': '€',

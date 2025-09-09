@@ -250,7 +250,7 @@ class SaleWriteSerializer(serializers.ModelSerializer):
                 sale = Sale.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, **validated_data)
             else:
                 supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-                sale = Sale.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or 'USD', **validated_data)
+                sale = Sale.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or supplier.currency, **validated_data)
 
             total_sale_amount = 0
             for item_data in items_data:
@@ -428,7 +428,7 @@ class OfferWriteSerializer(serializers.ModelSerializer):
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'email', 'phone', 'address', 'open_balance', 'created_at', 'image']
+        fields = ['id', 'name', 'email', 'phone', 'address', 'currency', 'open_balance', 'created_at', 'image']
         read_only_fields = ['created_by']
 
 
@@ -560,7 +560,7 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 
             if supplier_id:
                 supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or 'USD', **validated_data)
+                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or supplier.currency, **validated_data)
             else:
                 customer = Customer.objects.get(id=customer_id, created_by=created_by)
                 purchase = Purchase.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, **validated_data)
