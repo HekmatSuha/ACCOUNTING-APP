@@ -76,9 +76,9 @@ class CustomerSerializer(serializers.ModelSerializer):
     expose ``balance`` as a read‑only alias of ``open_balance``.
     """
 
-    # expose ``balance`` derived from the model's ``balance`` property
+    # expose ``balance`` derived from the model's ``open_balance`` field
     balance = serializers.DecimalField(
-        source='balance', max_digits=12, decimal_places=2, read_only=True
+        source='open_balance', max_digits=12, decimal_places=2, read_only=True
     )
 
     class Meta:
@@ -90,12 +90,11 @@ class CustomerSerializer(serializers.ModelSerializer):
             'phone',
             'address',
             'balance',
-            'open_balance',
             'currency',
             'created_at',
             'image',
         ]
-        read_only_fields = ['created_by', 'open_balance', 'balance']
+        read_only_fields = ['created_by']
 
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
@@ -279,11 +278,6 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             sale.original_amount = total_sale_amount
             sale.save()
 
-            if sale.customer_id:
-                Customer.objects.filter(id=sale.customer.id).update(open_balance=F('open_balance') + sale.converted_amount)
-            else:
-                Supplier.objects.filter(id=sale.supplier.id).update(open_balance=F('open_balance') - sale.converted_amount)
-
         return sale
 
     def update(self, instance, validated_data):
@@ -297,10 +291,6 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Revert old transaction data
-            if instance.customer_id:
-                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') - instance.converted_amount)
-            elif instance.supplier_id:
-                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') + instance.converted_amount)
             for item in instance.items.all():
                 Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
 
@@ -342,11 +332,6 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             instance.invoice_number = validated_data.get('invoice_number', instance.invoice_number)
             instance.details = validated_data.get('details', instance.details)
             instance.save()
-
-            if instance.customer_id:
-                Customer.objects.filter(id=instance.customer.id).update(open_balance=F('open_balance') + instance.converted_amount)
-            elif instance.supplier_id:
-                Supplier.objects.filter(id=instance.supplier.id).update(open_balance=F('open_balance') - instance.converted_amount)
 
         return instance
 
