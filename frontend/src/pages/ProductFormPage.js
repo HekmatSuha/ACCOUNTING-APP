@@ -20,7 +20,8 @@ function ProductFormPage() {
         if (isEditing) {
             axiosInstance.get(`/products/${id}/`)
                 .then(response => {
-                    setFormData(response.data);
+                    const { id: _removed, image, ...data } = response.data;
+                    setFormData(data);
                 })
                 .catch(error => setError('Failed to fetch product details.'));
         }
@@ -41,7 +42,7 @@ function ProductFormPage() {
         e.preventDefault();
         const submissionData = new FormData();
         Object.keys(formData).forEach(key => {
-            if (key !== 'image') {
+            if (key !== 'image' && key !== 'id') {
                 submissionData.append(key, formData[key]);
             }
         });
