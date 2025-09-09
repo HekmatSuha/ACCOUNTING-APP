@@ -90,9 +90,10 @@ class InvoicePDFCurrencyTest(TestCase):
         self.assertIn("€10.00", text)
         self.assertNotIn("$", text)
 
-    def test_pdf_defaults_to_usd_when_no_customer(self):
-        supplier = Supplier.objects.create(name="Supp", created_by=self.user)
+    def test_pdf_uses_supplier_currency_symbol(self):
+        supplier = Supplier.objects.create(name="Supp", currency="EUR", created_by=self.user)
         sale = self._create_sale(supplier=supplier)
         pdf = generate_invoice_pdf(sale)
         text = extract_pdf_text(pdf)
-        self.assertIn("$10.00", text)
+        self.assertIn("€10.00", text)
+        self.assertNotIn("$", text)

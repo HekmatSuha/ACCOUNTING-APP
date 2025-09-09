@@ -3,7 +3,7 @@ import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { getCurrencyOptions, loadCurrencyOptions, getBaseCurrency, loadBaseCurrency } from '../config/currency';
 
-function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, payment }) {
+function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, payment, supplierCurrency }) {
     const [amount, setAmount] = useState('');
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
     const [method, setMethod] = useState('Cash');
@@ -48,7 +48,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             setMethod(payment.method);
             setNotes(payment.notes);
             setAccount(payment.account);
-            setPaymentCurrency(payment.currency || getBaseCurrency());
+            setPaymentCurrency(payment.currency || supplierCurrency || getBaseCurrency());
             setExchangeRate(payment.exchange_rate ? Number(payment.exchange_rate) : 1);
             setConvertedAmount(payment.converted_amount ? String(payment.converted_amount) : '');
         } else {
@@ -57,7 +57,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             setMethod('Cash');
             setNotes('');
             setAccount('');
-            setPaymentCurrency(getBaseCurrency());
+            setPaymentCurrency(supplierCurrency || getBaseCurrency());
             setExchangeRate(1);
             setConvertedAmount('');
         }
@@ -70,9 +70,9 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                 setPaymentCurrency(acc.currency);
             }
         } else {
-            setPaymentCurrency(baseCurrency);
+            setPaymentCurrency(supplierCurrency || baseCurrency);
         }
-    }, [account, accounts, baseCurrency]);
+    }, [account, accounts, baseCurrency, supplierCurrency]);
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
