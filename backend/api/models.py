@@ -321,6 +321,7 @@ class Supplier(models.Model):
     email = models.EmailField(max_length=254, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='supplier_images/', blank=True, null=True)
     open_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='suppliers')
     created_at = models.DateTimeField(auto_now_add=True)
