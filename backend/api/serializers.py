@@ -428,7 +428,7 @@ class OfferWriteSerializer(serializers.ModelSerializer):
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
-        fields = ['id', 'name', 'email', 'phone', 'address', 'open_balance', 'created_at']
+        fields = ['id', 'name', 'email', 'phone', 'address', 'open_balance', 'created_at', 'image']
         read_only_fields = ['created_by']
 
 
