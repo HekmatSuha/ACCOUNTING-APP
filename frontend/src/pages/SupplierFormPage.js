@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Alert, Row, Col, Image as BootstrapImage } from 'react-bootstrap';
+import { Container, Card, Form, Button, Alert, Row, Col, Image as BootstrapImage, Tabs, Tab } from 'react-bootstrap';
 import { Image as ImageIcon } from 'react-bootstrap-icons';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -95,12 +95,35 @@ function SupplierFormPage() {
                     <Card.Body>
                         {error && <Alert variant="danger">{error}</Alert>}
                         {success && <Alert variant="success">{success}</Alert>}
-                        <Row>
-                            <Col md={8}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Name <span className="text-danger">*</span></Form.Label>
-                                    <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required />
-                                </Form.Group>
+                        <Tabs defaultActiveKey="identity" className="mb-3">
+                            <Tab eventKey="identity" title="Identity">
+                                <Row>
+                                    <Col md={8}>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Name <span className="text-danger">*</span></Form.Label>
+                                            <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required />
+                                        </Form.Group>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Opening Balance</Form.Label>
+                                            <Form.Control type="number" step="0.01" name="open_balance" value={formData.open_balance} onChange={handleChange} />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Form.Group>
+                                            <Form.Label>Supplier Image</Form.Label>
+                                            <div className="d-flex flex-column align-items-center justify-content-center h-100 border rounded bg-light p-2">
+                                                {imagePreview ? (
+                                                    <BootstrapImage src={imagePreview} thumbnail style={{ maxHeight: '150px', marginBottom: '10px' }} />
+                                                ) : (
+                                                    <ImageIcon size={50} className="mb-2" />
+                                                )}
+                                                <Form.Control type="file" onChange={handleImageChange} />
+                                            </div>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+                            </Tab>
+                            <Tab eventKey="contact" title="Contact">
                                 <Form.Group className="mb-3">
                                     <Form.Label>Email</Form.Label>
                                     <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} />
@@ -109,29 +132,12 @@ function SupplierFormPage() {
                                     <Form.Label>Phone</Form.Label>
                                     <Form.Control type="text" name="phone" value={formData.phone} onChange={handleChange} />
                                 </Form.Group>
-                                <Form.Group className="mb-3">
+                                <Form.Group>
                                     <Form.Label>Address</Form.Label>
                                     <Form.Control as="textarea" rows={3} name="address" value={formData.address} onChange={handleChange} />
                                 </Form.Group>
-                                <Form.Group>
-                                    <Form.Label>Opening Balance</Form.Label>
-                                    <Form.Control type="number" step="0.01" name="open_balance" value={formData.open_balance} onChange={handleChange} />
-                                </Form.Group>
-                            </Col>
-                            <Col md={4}>
-                                <Form.Group>
-                                    <Form.Label>Supplier Image</Form.Label>
-                                    <div className="d-flex flex-column align-items-center justify-content-center h-100 border rounded bg-light p-2">
-                                        {imagePreview ? (
-                                            <BootstrapImage src={imagePreview} thumbnail style={{ maxHeight: '150px', marginBottom: '10px' }} />
-                                        ) : (
-                                            <ImageIcon size={50} className="mb-2" />
-                                        )}
-                                        <Form.Control type="file" onChange={handleImageChange} />
-                                    </div>
-                                </Form.Group>
-                            </Col>
-                        </Row>
+                            </Tab>
+                        </Tabs>
                     </Card.Body>
                 </Card>
             </Form>
