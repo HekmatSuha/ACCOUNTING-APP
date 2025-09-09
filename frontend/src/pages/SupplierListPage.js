@@ -83,7 +83,7 @@ function SupplierListPage() {
                             suppliers.map((supplier) => (
                                 <tr key={supplier.id} onClick={() => navigate(`/suppliers/${supplier.id}`)} style={{ cursor: 'pointer' }}>
                                     <td>{supplier.name}</td>
-                                    <td>{formatCurrency(supplier.open_balance, 'USD')}</td>
+                                    <td>{formatCurrency(supplier.open_balance, supplier.currency)}</td>
                                 </tr>
                             ))
                         ) : (
