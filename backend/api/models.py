@@ -92,12 +92,29 @@ class Sale(models.Model):
         return f"Sale #{self.id} to {self.supplier.name}"
 
     def save(self, *args, **kwargs):
-        # Compute converted amount from original amount
-        self.converted_amount = (
-            Decimal(self.original_amount) * Decimal(self.exchange_rate)
-        ).quantize(Decimal('0.01')) if self.original_amount else Decimal('0')
-        self.total_amount = self.converted_amount
-        super().save(*args, **kwargs)
+        with transaction.atomic():
+            # If the object is already in the database, get its old state
+            if self.pk:
+                old_sale = Sale.objects.get(pk=self.pk)
+                # Revert the old balance change before applying the new one
+                if old_sale.customer:
+                    Customer.objects.filter(pk=old_sale.customer.pk).update(open_balance=F('open_balance') - old_sale.total_amount)
+                elif old_sale.supplier:
+                    Supplier.objects.filter(pk=old_sale.supplier.pk).update(open_balance=F('open_balance') + old_sale.total_amount)
+
+            # Compute converted amount from original amount
+            self.converted_amount = (
+                Decimal(self.original_amount) * Decimal(self.exchange_rate)
+            ).quantize(Decimal('0.01')) if self.original_amount else Decimal('0')
+            self.total_amount = self.converted_amount
+
+            super().save(*args, **kwargs)
+
+            # Apply the new balance change
+            if self.customer:
+                Customer.objects.filter(pk=self.customer.pk).update(open_balance=F('open_balance') + self.total_amount)
+            elif self.supplier:
+                Supplier.objects.filter(pk=self.supplier.pk).update(open_balance=F('open_balance') - self.total_amount)
 
 
 class Offer(models.Model):
