@@ -24,7 +24,7 @@ function SupplierListPage() {
 
     const fetchSuppliers = async () => {
         try {
-            const response = await axiosInstance.get('/suppliers/', {
+            const response = await axiosInstance.get('suppliers/', {
                 params: { search: searchTerm }
             });
             setSuppliers(response.data);

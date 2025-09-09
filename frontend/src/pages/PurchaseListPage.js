@@ -39,7 +39,7 @@ function PurchaseListPage() {
         try {
             const [purchasesRes, suppliersRes, productsRes, accountsRes] = await Promise.all([
                 axiosInstance.get('/purchases/'),
-                axiosInstance.get('/suppliers/'),
+                axiosInstance.get('suppliers/'),
                 axiosInstance.get('/products/'),
                 axiosInstance.get('/accounts/')
             ]);
