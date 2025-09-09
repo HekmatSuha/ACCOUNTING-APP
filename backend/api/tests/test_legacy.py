@@ -127,7 +127,7 @@ class PurchaseAccountTransactionTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='u2', password='pw')
         self.account = BankAccount.objects.create(name='Main', created_by=self.user)
-        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(name='P', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
 
     def test_purchase_updates_account_balance(self):
@@ -160,7 +160,7 @@ class PurchaseReturnTest(TestCase):
         self.user = User.objects.create_user(username='pruser', password='pw')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
 
         serializer = PurchaseWriteSerializer(
@@ -519,7 +519,7 @@ class CrossDealTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='xdeal', password='pw')
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
-        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(
             name='Prod',
             sale_price=Decimal('10.00'),
@@ -569,7 +569,7 @@ class SupplierDetailsIncludeSalesTest(TestCase):
         self.user = User.objects.create_user(username='supdetail', password='pw')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        self.supplier = Supplier.objects.create(name='Sup', created_by=self.user)
+        self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(
             name='Prod',
             sale_price=Decimal('10.00'),

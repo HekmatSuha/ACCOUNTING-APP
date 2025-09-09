@@ -18,6 +18,7 @@ function SupplierFormPage() {
         email: '',
         phone: '',
         address: '',
+        currency: 'USD',
         open_balance: 0.0,
     });
     const [imageFile, setImageFile] = useState(null);
@@ -102,6 +103,15 @@ function SupplierFormPage() {
                                         <Form.Group className="mb-3">
                                             <Form.Label>Name <span className="text-danger">*</span></Form.Label>
                                             <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required />
+                                        </Form.Group>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Currency <span className="text-danger">*</span></Form.Label>
+                                            <Form.Select name="currency" value={formData.currency} onChange={handleChange}>
+                                                <option value="USD">United States Dollar (USD)</option>
+                                                <option value="EUR">Euro (EUR)</option>
+                                                <option value="KZT">Kazakhstani Tenge (KZT)</option>
+                                                <option value="TRY">Turkish Lira (TRY)</option>
+                                            </Form.Select>
                                         </Form.Group>
                                         <Form.Group className="mb-3">
                                             <Form.Label>Opening Balance</Form.Label>

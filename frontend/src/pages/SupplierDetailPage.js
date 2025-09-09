@@ -141,16 +141,16 @@ function SupplierDetailPage() {
             {/* Summary Cards */}
             <Row className="mb-3">
                 <Col md={3} sm={6} className="mb-3">
-                    {renderOpenBalanceCard(summary.open_balance, 'USD')}
+                    {renderOpenBalanceCard(summary.open_balance, supplier.currency)}
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                    {renderSummaryCard('info', 'Check Balance', formatCurrency(summary.check_balance, 'USD'), Tag)}
+                    {renderSummaryCard('info', 'Check Balance', formatCurrency(summary.check_balance, supplier.currency), Tag)}
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                    {renderSummaryCard('warning', 'Note Balance', formatCurrency(summary.note_balance, 'USD'), Hammer)}
+                    {renderSummaryCard('warning', 'Note Balance', formatCurrency(summary.note_balance, supplier.currency), Hammer)}
                 </Col>
                 <Col md={3} sm={6} className="mb-3">
-                    {renderSummaryCard('success', 'Turnover', formatCurrency(summary.turnover, 'USD'), BarChart)}
+                    {renderSummaryCard('success', 'Turnover', formatCurrency(summary.turnover, supplier.currency), BarChart)}
                 </Col>
             </Row>
 
@@ -185,6 +185,7 @@ function SupplierDetailPage() {
                 supplierId={id}
                 onPaymentAdded={handlePaymentAdded}
                 payment={editingPayment}
+                supplierCurrency={supplier.currency}
             />
 
             {/* Transaction Lists */}
@@ -199,7 +200,7 @@ function SupplierDetailPage() {
                                         <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(purchase.purchase_date).toLocaleDateString()}</span>
-                                                <strong>{formatCurrency(purchase.total_amount, 'USD')}</strong>
+                                                <strong>{formatCurrency(purchase.total_amount, purchase.original_currency)}</strong>
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
@@ -221,8 +222,8 @@ function SupplierDetailPage() {
                                                         <tr key={item.id}>
                                                             <td>{item.product_name}</td>
                                                             <td>{item.quantity}</td>
-                                                            <td>{formatCurrency(item.unit_price, 'USD')}</td>
-                                                            <td className="text-end">{formatCurrency(item.line_total, 'USD')}</td>
+                                                            <td>{formatCurrency(item.unit_price, purchase.original_currency)}</td>
+                                                            <td className="text-end">{formatCurrency(item.line_total, purchase.original_currency)}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -243,7 +244,7 @@ function SupplierDetailPage() {
                                         <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(sale.sale_date).toLocaleDateString()}</span>
-                                                <strong>{formatCurrency(sale.total_amount, 'USD')}</strong>
+                                                <strong>{formatCurrency(sale.total_amount, sale.original_currency)}</strong>
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
@@ -265,8 +266,8 @@ function SupplierDetailPage() {
                                                         <tr key={item.id}>
                                                             <td>{item.product_name}</td>
                                                             <td>{item.quantity}</td>
-                                                            <td>{formatCurrency(item.unit_price, 'USD')}</td>
-                                                            <td className="text-end">{formatCurrency(item.line_total, 'USD')}</td>
+                                                            <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
+                                                            <td className="text-end">{formatCurrency(item.line_total, sale.original_currency)}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -289,7 +290,7 @@ function SupplierDetailPage() {
                                             <div className="d-flex justify-content-between w-100 pe-3">
                                                 <span>{new Date(payment.expense_date).toLocaleDateString()}</span>
                                                 <span>{payment.method}</span>
-                                                <strong>{formatCurrency(payment.amount, 'USD')}</strong>
+                                                <strong>{formatCurrency(payment.amount, payment.currency)}</strong>
                                             </div>
                                         </Accordion.Header>
                                         <Accordion.Body>
