@@ -164,6 +164,8 @@ class Payment(models.Model):
     original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
     converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    account_exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    account_converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='Cash')
     notes = models.TextField(blank=True, null=True)
     account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
@@ -184,6 +186,18 @@ class Payment(models.Model):
 
         self.converted_amount = (Decimal(self.original_amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
 
+        if self.account_id:
+            if self.original_currency == self.account.currency:
+                self.account_exchange_rate = Decimal('1')
+            elif not self.account_exchange_rate:
+                self.account_exchange_rate = get_exchange_rate(self.original_currency, self.account.currency)
+            self.account_converted_amount = (
+                Decimal(self.original_amount) * Decimal(self.account_exchange_rate)
+            ).quantize(Decimal('0.01'))
+        else:
+            self.account_exchange_rate = Decimal('1')
+            self.account_converted_amount = Decimal('0')
+
         with transaction.atomic():
             if self.pk:
                 old = Payment.objects.select_for_update().get(pk=self.pk)
@@ -196,26 +210,26 @@ class Payment(models.Model):
                     delta = self.converted_amount - old.converted_amount
                     Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - delta)
 
-                # Update bank account balance using payment amounts
+                # Update bank account balance using converted amounts
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.original_amount)
+                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.account_converted_amount)
                     if self.account_id:
-                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.original_amount)
+                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.account_converted_amount)
                 elif self.account_id:
-                    delta = self.original_amount - old.original_amount
+                    delta = self.account_converted_amount - old.account_converted_amount
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + delta)
             else:
                 Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.converted_amount)
                 if self.account_id:
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.original_amount)
+                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.account_converted_amount)
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') + self.converted_amount)
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.original_amount)
+                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.account_converted_amount)
             super().delete(*args, **kwargs)
 
 
