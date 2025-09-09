@@ -24,7 +24,7 @@ function SaleFormPage() {
         const fetchData = async () => {
             try {
                 const [custRes, prodRes] = await Promise.all([
-                    axiosInstance.get(isSupplierSale ? `/suppliers/${entityId}/` : `/customers/${entityId}/`),
+                    axiosInstance.get(isSupplierSale ? `suppliers/${entityId}/` : `customers/${entityId}/`),
                     axiosInstance.get('/products/')
                 ]);
                 const entityData = { currency: 'USD', ...custRes.data };

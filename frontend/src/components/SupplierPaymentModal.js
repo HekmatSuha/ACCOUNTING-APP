@@ -20,7 +20,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const accountsRes = await axiosInstance.get('/accounts/');
+                const accountsRes = await axiosInstance.get('accounts/');
                 setAccounts(accountsRes.data);
 
                 const bc = await loadBaseCurrency();
@@ -107,8 +107,8 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
 
         try {
             const url = payment
-                ? `/suppliers/${supplierId}/payments/${payment.id}/`
-                : `/suppliers/${supplierId}/payments/`;
+                ? `suppliers/${supplierId}/payments/${payment.id}/`
+                : `suppliers/${supplierId}/payments/`;
             const httpMethod = payment ? 'put' : 'post';
 
             await axiosInstance[httpMethod](url, paymentData);

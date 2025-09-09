@@ -21,7 +21,7 @@ function SupplierDetailPage() {
 
     const fetchDetails = async () => {
         try {
-            const response = await axiosInstance.get(`/suppliers/${id}/details/`);
+            const response = await axiosInstance.get(`suppliers/${id}/details/`);
             setData(response.data);
         } catch (err) {
             setError('Failed to fetch supplier details.');
@@ -66,7 +66,7 @@ function SupplierDetailPage() {
     const handleDeletePayment = async (paymentId) => {
         if (!window.confirm('Are you sure you want to delete this payment?')) return;
         try {
-            await axiosInstance.delete(`/suppliers/${id}/payments/${paymentId}/`);
+            await axiosInstance.delete(`suppliers/${id}/payments/${paymentId}/`);
             fetchDetails();
         } catch (err) {
             setError('Failed to delete payment.');
