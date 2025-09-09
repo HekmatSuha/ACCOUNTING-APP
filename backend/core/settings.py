@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,14 @@ SECRET_KEY = "django-insecure-u6so**5!z$u+g@ql2%&^__imw13!=5iuheo+%hypvw_93qaa(1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Allow requests from common local hosts by default and permit
+# customization via the ``DJANGO_ALLOWED_HOSTS`` environment variable.
+# This prevents ``DisallowedHost`` errors in development and testing
+# (e.g. when the test client uses ``testserver``) while still allowing
+# deployment environments to specify their own hosts.
+ALLOWED_HOSTS = os.environ.get(
+    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver"
+).split(",")
 
 
 # Application definition
