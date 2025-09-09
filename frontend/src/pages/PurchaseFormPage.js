@@ -20,7 +20,7 @@ function PurchaseFormPage() {
             try {
                 const [partnerRes, prodRes] = await Promise.all([
                     supplierId
-                        ? axiosInstance.get(`/suppliers/${supplierId}/`)
+                        ? axiosInstance.get(`suppliers/${supplierId}/`)
                         : axiosInstance.get(`/customers/${customerId}/`),
                     axiosInstance.get('/products/')
                 ]);
