@@ -65,10 +65,37 @@ class UserSerializer(serializers.ModelSerializer):
         return user
     
 class CustomerSerializer(serializers.ModelSerializer):
+    """Serializer for :class:`Customer` objects.
+
+    The frontend expects a ``balance`` field representing the customer's
+    current open balance.  Historically the API exposed only
+    ``open_balance`` which led to ``balance`` being ``undefined`` in the
+    customer list view. The React component then treated the missing value
+    as ``0`` causing every customer's balance to appear as ``0``.  To keep
+    backwards compatibility while satisfying the frontend expectations we
+    expose ``balance`` as a read‑only alias of ``open_balance``.
+    """
+
+    # expose ``balance`` derived from the model's ``balance`` property
+    balance = serializers.DecimalField(
+        source='balance', max_digits=12, decimal_places=2, read_only=True
+    )
+
     class Meta:
         model = Customer
-        fields = ['id', 'name', 'email', 'phone', 'address', 'open_balance', 'currency', 'created_at', 'image']
-        read_only_fields = ['created_by', 'open_balance']
+        fields = [
+            'id',
+            'name',
+            'email',
+            'phone',
+            'address',
+            'balance',
+            'open_balance',
+            'currency',
+            'created_at',
+            'image',
+        ]
+        read_only_fields = ['created_by', 'open_balance', 'balance']
 
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
