@@ -74,27 +74,27 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
 
 
     useEffect(() => {
-        if (account) {
-            const acc = accounts.find(a => a.id === parseInt(account));
-            if (acc) {
-                setAccountCurrency(acc.currency);
-                setPaymentCurrency(acc.currency);
+        const selectedAccount = accounts.find(a => a.id === parseInt(account));
+        if (selectedAccount) {
+            setPaymentCurrency(selectedAccount.currency);
+            // When account changes, recalculate exchange rate if necessary
+            if (selectedAccount.currency !== customerCurrency) {
+                // You might want to fetch a default rate here, or require user input
+            } else {
+                setExchangeRate(1);
             }
         } else {
-            setAccountCurrency(customerCurrency);
+            // Reset to customer's currency when no account is selected
             setPaymentCurrency(customerCurrency);
+            setExchangeRate(1);
         }
     }, [account, accounts, customerCurrency]);
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
-        if (paymentCurrency !== accountCurrency) {
-            setConvertedAmount((amt * exchangeRate).toFixed(2));
-        } else {
-            setExchangeRate(1);
-            setConvertedAmount(amount);
-        }
-    }, [amount, paymentCurrency, accountCurrency, exchangeRate]);
+        const rate = parseFloat(exchangeRate) || 1;
+        setConvertedAmount((amt * rate).toFixed(2));
+    }, [amount, exchangeRate]);
 
 
     const handleSubmit = async (e) => {
@@ -106,31 +106,29 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             return;
         }
 
-        if (paymentCurrency !== accountCurrency && (!exchangeRate || exchangeRate <= 0)) {
-            setError('Please provide a valid exchange rate.');
-            return;
-        }
-
         const paymentData = {
             payment_date: paymentDate,
             original_amount: parseFloat(amount),
             method,
             notes,
-            original_currency: paymentCurrency,
         };
 
-        if (account) {
-            paymentData.account = account;
+        const selectedAccount = accounts.find(a => a.id === parseInt(account));
 
-            if (paymentCurrency !== accountCurrency) {
-                paymentData.account_exchange_rate = exchangeRate;
-                paymentData.account_converted_amount = parseFloat(convertedAmount);
+        // If an account is selected, the currency is determined by the account
+        if (selectedAccount) {
+            paymentData.account = selectedAccount.id;
+            // The backend will handle currency and exchange rates
+        } else {
+            // If no account, send the chosen currency and exchange rate
+            paymentData.original_currency = paymentCurrency;
+            if (paymentCurrency !== customerCurrency) {
+                if (!exchangeRate || exchangeRate <= 0) {
+                    setError('Please provide a valid exchange rate.');
+                    return;
+                }
+                paymentData.exchange_rate = exchangeRate;
             }
-
-        }
-        if (paymentCurrency !== accountCurrency) {
-            paymentData.exchange_rate = exchangeRate;
-
         }
 
         try {
@@ -200,32 +198,33 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                     </Form.Group>
                     <Form.Group className="mb-3" controlId="paymentCurrency">
                         <Form.Label>Currency</Form.Label>
-                        <Form.Select value={paymentCurrency} onChange={(e) => setPaymentCurrency(e.target.value)}>
-                            {currencyOptions.map((c) => (
-                                <option key={c} value={c}>{c}</option>
+                        <Form.Select
+                            value={paymentCurrency}
+                            onChange={(e) => setPaymentCurrency(e.target.value)}
+                            disabled={!!account}
+                        >
+                            {currencyOptions.map(c => (
+                                <option key={c[0]} value={c[0]}>{c[1]}</option>
                             ))}
                         </Form.Select>
+                        {account && <Form.Text className="text-muted">Currency is determined by the selected bank account.</Form.Text>}
                     </Form.Group>
 
-                    {paymentCurrency !== accountCurrency && (
-
+                    {paymentCurrency !== customerCurrency && (
                         <>
                             <Form.Group className="mb-3" controlId="exchangeRate">
-                                <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
+                                <Form.Label>Exchange Rate ({paymentCurrency} to {customerCurrency})</Form.Label>
                                 <Form.Control
                                     type="number"
-                                    step="0.0001"
+                                    step="0.000001"
                                     value={exchangeRate}
-                                    onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
-
-
+                                    onChange={(e) => setExchangeRate(e.target.value)}
                                     required
-
                                 />
                             </Form.Group>
                             <Form.Group className="mb-3" controlId="convertedAmount">
-                                <Form.Label>Converted Amount ({accountCurrency})</Form.Label>
-                                <Form.Control type="number" value={convertedAmount} readOnly />
+                                <Form.Label>Converted Amount ({customerCurrency})</Form.Label>
+                                <Form.Control type="text" value={convertedAmount} readOnly />
                             </Form.Group>
                         </>
                     )}
