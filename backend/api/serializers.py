@@ -99,6 +99,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
+    original_currency = serializers.CharField(required=False)
 
     class Meta:
         model = Payment
