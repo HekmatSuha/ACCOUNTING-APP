@@ -320,48 +320,58 @@ class CrossCurrencyPaymentTest(TestCase):
         self.assertEqual(self.account.balance, Decimal('100.00'))
         self.assertEqual(self.customer.balance, Decimal('90.00'))
 
-    @patch('api.serializers.get_exchange_rate', return_value=Decimal('0.90'))
+    @patch('api.models.get_exchange_rate', return_value=Decimal('1.10'))
     def test_exchange_rate_auto_fetched_when_account_currency_differs(self, mock_rate):
-        data = {
-            'payment_date': date.today(),
-            'original_amount': Decimal('50.00'),
-            'original_currency': 'USD',
-            'method': 'Cash',
-            'account': self.account.id,
-        }
-        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        self.assertEqual(serializer.validated_data['exchange_rate'], Decimal('0.90'))
-        mock_rate.assert_called_once_with('USD', 'EUR')
+        # This test ensures that when a payment is made to an account with a
+        # different currency, the exchange rates are fetched automatically
+        # and applied correctly to both the customer and account balances.
 
+        # Customer currency: USD, Account currency: EUR
+        payment = Payment.objects.create(
+            customer=self.customer,
+            payment_date=date.today(),
+            original_amount=Decimal('100.00'),
+            method='Cash',
+            account=self.account,
+            created_by=self.user,
+        )
 
-    @patch('api.serializers.get_exchange_rate')
-    def test_currency_mismatch_account_allowed(self, mock_rate):
-        data = {
-            'payment_date': date.today(),
-            'original_amount': Decimal('50.00'),
-            'original_currency': 'USD',
-            'exchange_rate': Decimal('1'),
-            'method': 'Cash',
-            'account': self.account.id,
-        }
-        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        mock_rate.assert_not_called()
+        # The payment's original currency should be the account's currency (EUR)
+        self.assertEqual(payment.original_currency, 'EUR')
 
-    @patch('api.serializers.get_exchange_rate', side_effect=ValueError)
+        # The exchange rate from EUR (payment) to USD (customer) should be fetched.
+        mock_rate.assert_any_call('EUR', 'USD')
+        self.assertEqual(payment.exchange_rate, Decimal('1.10'))
+        self.assertEqual(payment.converted_amount, Decimal('110.00')) # 100 EUR -> 110 USD
+
+        # The exchange rate for the account should be 1, as the payment is in EUR.
+        self.assertEqual(payment.account_exchange_rate, Decimal('1'))
+        self.assertEqual(payment.account_converted_amount, Decimal('100.00'))
+
+        self.customer.refresh_from_db()
+        self.account.refresh_from_db()
+
+        # Customer balance started at 200 USD. After a 110 USD equivalent payment, it should be 90 USD.
+        self.assertEqual(self.customer.balance, Decimal('90.00'))
+        # Account balance started at 0 EUR. After a 100 EUR payment, it should be 100 EUR.
+        self.assertEqual(self.account.balance, Decimal('100.00'))
+
+    @patch('api.models.get_exchange_rate', side_effect=ValueError)
     def test_error_when_rate_unavailable_and_currencies_differ(self, mock_rate):
-        data = {
-            'payment_date': date.today(),
-            'original_amount': Decimal('50.00'),
-            'original_currency': 'USD',
-            'method': 'Cash',
-            'account': self.account.id,
-        }
-        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('exchange_rate', serializer.errors)
-        mock_rate.assert_called_once_with('USD', 'EUR')
+        # This test ensures that if an exchange rate is needed but can't be
+        # fetched, the transaction is rolled back and an error is raised.
+        with self.assertRaises(ValueError):
+            Payment.objects.create(
+                customer=self.customer,
+                payment_date=date.today(),
+                original_amount=Decimal('50.00'),
+                method='Cash',
+                account=self.account, # Account currency is EUR, customer is USD
+                created_by=self.user,
+            )
+
+        # Verify that the exchange rate for EUR to USD was requested.
+        mock_rate.assert_called_once_with('EUR', 'USD')
 
 
 
