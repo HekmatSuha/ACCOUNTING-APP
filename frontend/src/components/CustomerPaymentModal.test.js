@@ -20,7 +20,7 @@ describe('CustomerPaymentModal currency display', () => {
     jest.clearAllMocks();
   });
 
-  test('shows converted amount when account currency differs', async () => {
+  test('shows converted amount when payment currency differs from account currency', async () => {
     axiosInstance.get.mockResolvedValueOnce({
       data: [{ id: 1, name: 'Euro', currency: 'EUR' }],
     });
@@ -31,6 +31,7 @@ describe('CustomerPaymentModal currency display', () => {
     await screen.findByText(/Euro \(EUR\)/);
 
     fireEvent.change(screen.getByLabelText(/account/i), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/Currency/i), { target: { value: 'USD' } });
     fireEvent.change(screen.getByLabelText(/^Amount$/i), { target: { value: '10' } });
 
     const rateInput = await screen.findByLabelText(/exchange rate/i);
