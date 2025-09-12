@@ -320,33 +320,43 @@ class CrossCurrencyPaymentTest(TestCase):
         self.assertEqual(self.account.balance, Decimal('100.00'))
         self.assertEqual(self.customer.balance, Decimal('90.00'))
 
-    @patch('api.serializers.get_exchange_rate', return_value=Decimal('1.20'))
-    def test_exchange_rate_auto_fetched_when_currencies_differ(self, mock_rate):
-        data = {
-            'payment_date': date.today(),
-            'original_amount': Decimal('50.00'),
-            'original_currency': 'EUR',
-            'method': 'Cash',
-            'account': self.account.id,
-        }
-        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        self.assertEqual(serializer.validated_data['exchange_rate'], Decimal('1.20'))
-        mock_rate.assert_called_once_with('EUR', 'USD')
-
-    @patch('api.serializers.get_exchange_rate')
-    def test_currency_mismatch_account_allowed(self, mock_rate):
+    @patch('api.serializers.get_exchange_rate', return_value=Decimal('0.90'))
+    def test_exchange_rate_auto_fetched_when_account_currency_differs(self, mock_rate):
         data = {
             'payment_date': date.today(),
             'original_amount': Decimal('50.00'),
             'original_currency': 'USD',
-            'exchange_rate': Decimal('1'),
             'method': 'Cash',
             'account': self.account.id,
         }
         serializer = PaymentSerializer(data=data, context={'customer': self.customer})
         self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['exchange_rate'], Decimal('0.90'))
+        mock_rate.assert_called_once_with('USD', 'EUR')
+
+
+    @patch('api.serializers.get_exchange_rate')
+    def test_currency_mismatch_account_allowed(self, mock_rate):
+
+    @patch('api.serializers.get_exchange_rate', side_effect=ValueError)
+    def test_error_when_rate_unavailable_and_currencies_differ(self, mock_rate):
+
+        data = {
+            'payment_date': date.today(),
+            'original_amount': Decimal('50.00'),
+            'original_currency': 'USD',
+            'method': 'Cash',
+            'account': self.account.id,
+        }
+        serializer = PaymentSerializer(data=data, context={'customer': self.customer})
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
         mock_rate.assert_not_called()
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('exchange_rate', serializer.errors)
+        mock_rate.assert_called_once_with('USD', 'EUR')
+
 
 
 
