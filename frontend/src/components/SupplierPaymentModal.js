@@ -83,23 +83,12 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
-        if (account && paymentCurrency !== accountCurrency) {
-
-    const selectedAccount = account ? accounts.find(a => a.id === parseInt(account)) : null;
-    const accountCurrency = selectedAccount ? selectedAccount.currency : baseCurrency;
-
-    useEffect(() => {
-        const amt = parseFloat(amount) || 0;
         if (paymentCurrency !== accountCurrency) {
-
             setConvertedAmount((amt * exchangeRate).toFixed(2));
         } else {
             setExchangeRate(1);
             setConvertedAmount(amount);
         }
-
-    }, [amount, paymentCurrency, accountCurrency, account, exchangeRate]);
-
     }, [amount, paymentCurrency, accountCurrency, exchangeRate]);
 
 
@@ -129,10 +118,9 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
         if (account && paymentCurrency !== accountCurrency) {
             paymentData.account_exchange_rate = exchangeRate;
             paymentData.account_converted_amount = parseFloat(convertedAmount);
-
+        }
         if (paymentCurrency !== accountCurrency) {
             paymentData.exchange_rate = exchangeRate;
-
         }
 
         try {
@@ -203,8 +191,6 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             ))}
                         </Form.Select>
                     </Form.Group>
-
-                    {account && paymentCurrency !== accountCurrency && (
 
                     {paymentCurrency !== accountCurrency && (
 

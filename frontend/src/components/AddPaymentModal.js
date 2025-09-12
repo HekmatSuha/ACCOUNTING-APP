@@ -71,23 +71,12 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
-        if (account && paymentCurrency !== accountCurrency) {
-
-    const selectedAccount = account ? accounts.find(a => a.id === parseInt(account)) : null;
-    const accountCurrency = selectedAccount ? selectedAccount.currency : customerCurrency;
-
-    useEffect(() => {
-        const amt = parseFloat(amount) || 0;
         if (paymentCurrency !== accountCurrency) {
-
             setConvertedAmount((amt * exchangeRate).toFixed(2));
         } else {
             setExchangeRate(1);
             setConvertedAmount(amount);
         }
-
-    }, [amount, paymentCurrency, accountCurrency, account, exchangeRate]);
-
     }, [amount, paymentCurrency, accountCurrency, exchangeRate]);
 
 
@@ -201,8 +190,6 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                             ))}
                         </Form.Select>
                     </Form.Group>
-
-                    {account && paymentCurrency !== accountCurrency && (
 
                     {paymentCurrency !== accountCurrency && (
 
