@@ -21,6 +21,7 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
     const [notes, setNotes] = useState('');
     const [accounts, setAccounts] = useState([]);
     const [account, setAccount] = useState('');
+    const [accountCurrency, setAccountCurrency] = useState('');
     const [paymentCurrency, setPaymentCurrency] = useState('USD');
     const [customerCurrency, setCustomerCurrency] = useState('USD');
     const [exchangeRate, setExchangeRate] = useState(1);
@@ -38,6 +39,7 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                 const custRes = await axiosInstance.get(`/customers/${saleRes.data.customer}/`);
                 setCustomerCurrency(custRes.data.currency);
                 setPaymentCurrency(custRes.data.currency);
+                setAccountCurrency(custRes.data.currency);
 
                 const options = getCurrencyOptions();
                 if (options.length === 0) {
@@ -53,18 +55,41 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
         fetchInitialData();
     }, [saleId]);
 
+
+    useEffect(() => {
+        if (account) {
+            const acc = accounts.find(a => a.id === parseInt(account));
+            if (acc) {
+                setAccountCurrency(acc.currency);
+                setPaymentCurrency(acc.currency);
+            }
+        } else {
+            setAccountCurrency(customerCurrency);
+            setPaymentCurrency(customerCurrency);
+        }
+    }, [account, accounts, customerCurrency]);
+
+    useEffect(() => {
+        const amt = parseFloat(amount) || 0;
+        if (account && paymentCurrency !== accountCurrency) {
+
     const selectedAccount = account ? accounts.find(a => a.id === parseInt(account)) : null;
     const accountCurrency = selectedAccount ? selectedAccount.currency : customerCurrency;
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
         if (paymentCurrency !== accountCurrency) {
+
             setConvertedAmount((amt * exchangeRate).toFixed(2));
         } else {
             setExchangeRate(1);
             setConvertedAmount(amount);
         }
+
+    }, [amount, paymentCurrency, accountCurrency, account, exchangeRate]);
+
     }, [amount, paymentCurrency, accountCurrency, exchangeRate]);
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -90,9 +115,16 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
 
         if (account) {
             paymentData.account = account;
+
+            if (paymentCurrency !== accountCurrency) {
+                paymentData.account_exchange_rate = exchangeRate;
+                paymentData.account_converted_amount = parseFloat(convertedAmount);
+            }
+
         }
         if (paymentCurrency !== accountCurrency) {
             paymentData.exchange_rate = exchangeRate;
+
         }
 
         try {
@@ -169,7 +201,11 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                             ))}
                         </Form.Select>
                     </Form.Group>
+
+                    {account && paymentCurrency !== accountCurrency && (
+
                     {paymentCurrency !== accountCurrency && (
+
                         <>
                             <Form.Group className="mb-3" controlId="exchangeRate">
                                 <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
@@ -178,7 +214,10 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                                     step="0.0001"
                                     value={exchangeRate}
                                     onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+
+
                                     required
+
                                 />
                             </Form.Group>
                             <Form.Group className="mb-3" controlId="convertedAmount">
