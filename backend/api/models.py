@@ -162,9 +162,9 @@ class Payment(models.Model):
     payment_date = models.DateField()
     original_amount = models.DecimalField(max_digits=12, decimal_places=2)
     original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
-    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
     converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    account_exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    account_exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
     account_converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='Cash')
     notes = models.TextField(blank=True, null=True)
@@ -178,22 +178,27 @@ class Payment(models.Model):
         return f"Payment of {self.original_amount} from {self.customer.name}"
 
     def save(self, *args, **kwargs):
-        # determine converted amount
+        # If original_currency is not set, default it.
+        if not self.original_currency:
+            if self.account:
+                self.original_currency = self.account.currency
+            else:
+                self.original_currency = self.customer.currency
+
+        # Determine exchange rate for customer's balance.
         if self.original_currency == self.customer.currency:
             self.exchange_rate = Decimal('1')
-        elif not self.exchange_rate:
+        elif not self.exchange_rate or self.exchange_rate <= 0:
             self.exchange_rate = get_exchange_rate(self.original_currency, self.customer.currency)
+        self.converted_amount = (Decimal(self.original_amount) * self.exchange_rate).quantize(Decimal('0.01'))
 
-        self.converted_amount = (Decimal(self.original_amount) * Decimal(self.exchange_rate)).quantize(Decimal('0.01'))
-
+        # Determine exchange rate for account's balance.
         if self.account_id:
             if self.original_currency == self.account.currency:
                 self.account_exchange_rate = Decimal('1')
-            elif not self.account_exchange_rate:
+            elif not self.account_exchange_rate or self.account_exchange_rate <= 0:
                 self.account_exchange_rate = get_exchange_rate(self.original_currency, self.account.currency)
-            self.account_converted_amount = (
-                Decimal(self.original_amount) * Decimal(self.account_exchange_rate)
-            ).quantize(Decimal('0.01'))
+            self.account_converted_amount = (Decimal(self.original_amount) * self.account_exchange_rate).quantize(Decimal('0.01'))
         else:
             self.account_exchange_rate = Decimal('1')
             self.account_converted_amount = Decimal('0')
