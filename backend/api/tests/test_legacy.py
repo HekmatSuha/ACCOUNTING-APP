@@ -302,7 +302,7 @@ class CrossCurrencyPaymentTest(TestCase):
 
     @patch('api.models.get_exchange_rate', return_value=Decimal('1.10'))
     def test_cross_currency_payment_updates_balances(self, mock_rate):
-        Payment.objects.create(
+        payment = Payment.objects.create(
             customer=self.customer,
             payment_date=date.today(),
             original_amount=Decimal('100.00'),
@@ -312,8 +312,11 @@ class CrossCurrencyPaymentTest(TestCase):
             account=self.account,
             created_by=self.user,
         )
+        payment.refresh_from_db()
         self.account.refresh_from_db()
         self.customer.refresh_from_db()
+        self.assertEqual(payment.account_converted_amount, Decimal('100.00'))
+        self.assertEqual(payment.account_exchange_rate, Decimal('1'))
         self.assertEqual(self.account.balance, Decimal('100.00'))
         self.assertEqual(self.customer.balance, Decimal('90.00'))
 
@@ -331,8 +334,13 @@ class CrossCurrencyPaymentTest(TestCase):
         self.assertEqual(serializer.validated_data['exchange_rate'], Decimal('0.90'))
         mock_rate.assert_called_once_with('USD', 'EUR')
 
+
+    @patch('api.serializers.get_exchange_rate')
+    def test_currency_mismatch_account_allowed(self, mock_rate):
+
     @patch('api.serializers.get_exchange_rate', side_effect=ValueError)
     def test_error_when_rate_unavailable_and_currencies_differ(self, mock_rate):
+
         data = {
             'payment_date': date.today(),
             'original_amount': Decimal('50.00'),
@@ -341,9 +349,14 @@ class CrossCurrencyPaymentTest(TestCase):
             'account': self.account.id,
         }
         serializer = PaymentSerializer(data=data, context={'customer': self.customer})
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        mock_rate.assert_not_called()
+
         self.assertFalse(serializer.is_valid())
         self.assertIn('exchange_rate', serializer.errors)
         mock_rate.assert_called_once_with('USD', 'EUR')
+
 
 
 
