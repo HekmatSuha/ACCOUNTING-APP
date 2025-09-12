@@ -122,62 +122,6 @@ class PaymentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_by', 'customer', 'account_name', 'converted_amount', 'account_converted_amount', 'account_exchange_rate']
 
-    def validate(self, attrs):
-        account = attrs.get('account') or (self.instance.account if self.instance else None)
-
-        original_currency = attrs.get('original_currency') or (account.currency if account else None)
-
-        customer = self.context.get('customer') or (self.instance.customer if self.instance else None)
-        if customer:
-            attrs['original_currency'] = original_currency or customer.currency
-            if attrs['original_currency'] != customer.currency:
-                exchange_rate = attrs.get('exchange_rate')
-                if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
-                    try:
-                        attrs['exchange_rate'] = get_exchange_rate(
-                            attrs['original_currency'], customer.currency
-                        )
-                    except ValueError:
-                        raise serializers.ValidationError(
-                            {'exchange_rate': 'Exchange rate required when currencies differ.'}
-                        )
-            else:
-                attrs['exchange_rate'] = Decimal('1')
-
-        original_currency = attrs.get('original_currency') or (
-            self.instance.original_currency if self.instance else None
-        )
-
-        customer = self.context.get('customer') or (
-            self.instance.customer if self.instance else None
-        )
-        if customer and not original_currency:
-            original_currency = attrs['original_currency'] = customer.currency
-
-        target_currency = account.currency if account else (
-            customer.currency if customer else None
-        )
-
-        if (
-            original_currency
-            and target_currency
-            and original_currency != target_currency
-        ):
-            exchange_rate = attrs.get('exchange_rate')
-            if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
-                try:
-                    attrs['exchange_rate'] = get_exchange_rate(
-                        original_currency, target_currency
-                    )
-                except ValueError:
-                    raise serializers.ValidationError(
-                        {'exchange_rate': 'Exchange rate required when currencies differ.'}
-                    )
-        else:
-            attrs['exchange_rate'] = Decimal('1')
-
-
-        return attrs
 
 class ProductSerializer(serializers.ModelSerializer):
     sku = serializers.CharField(
