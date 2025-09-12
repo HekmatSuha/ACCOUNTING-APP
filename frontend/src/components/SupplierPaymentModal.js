@@ -10,6 +10,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
     const [notes, setNotes] = useState('');
     const [account, setAccount] = useState('');
     const [accounts, setAccounts] = useState([]);
+    const [accountCurrency, setAccountCurrency] = useState(getBaseCurrency());
     const [paymentCurrency, setPaymentCurrency] = useState('USD');
     const [baseCurrency, setBaseCurrency] = useState(getBaseCurrency());
     const [exchangeRate, setExchangeRate] = useState(1);
@@ -25,6 +26,8 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
 
                 const bc = await loadBaseCurrency();
                 setBaseCurrency(bc);
+                setAccountCurrency(supplierCurrency || bc);
+                setPaymentCurrency(supplierCurrency || bc);
 
                 const options = getCurrencyOptions();
                 if (options.length === 0) {
@@ -49,8 +52,8 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             setNotes(payment.notes);
             setAccount(payment.account);
             setPaymentCurrency(payment.currency || supplierCurrency || getBaseCurrency());
-            setExchangeRate(payment.exchange_rate ? Number(payment.exchange_rate) : 1);
-            setConvertedAmount(payment.converted_amount ? String(payment.converted_amount) : '');
+            setExchangeRate(payment.account_exchange_rate ? Number(payment.account_exchange_rate) : 1);
+            setConvertedAmount(payment.account_converted_amount ? String(payment.account_converted_amount) : '');
         } else {
             setAmount('');
             setPaymentDate(new Date().toISOString().slice(0, 10));
@@ -58,31 +61,34 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             setNotes('');
             setAccount('');
             setPaymentCurrency(supplierCurrency || getBaseCurrency());
+            setAccountCurrency(supplierCurrency || getBaseCurrency());
             setExchangeRate(1);
             setConvertedAmount('');
         }
-    }, [payment, show]);
+    }, [payment, show, supplierCurrency]);
 
     useEffect(() => {
         if (account) {
             const acc = accounts.find(a => a.id === parseInt(account));
             if (acc) {
+                setAccountCurrency(acc.currency);
                 setPaymentCurrency(acc.currency);
             }
         } else {
+            setAccountCurrency(supplierCurrency || baseCurrency);
             setPaymentCurrency(supplierCurrency || baseCurrency);
         }
     }, [account, accounts, baseCurrency, supplierCurrency]);
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
-        if (paymentCurrency !== baseCurrency) {
+        if (account && paymentCurrency !== accountCurrency) {
             setConvertedAmount((amt * exchangeRate).toFixed(2));
         } else {
             setExchangeRate(1);
             setConvertedAmount(amount);
         }
-    }, [amount, paymentCurrency, baseCurrency, exchangeRate]);
+    }, [amount, paymentCurrency, accountCurrency, account, exchangeRate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -101,8 +107,9 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             account: account || null,
             currency: paymentCurrency,
         };
-        if (paymentCurrency !== baseCurrency) {
-            paymentData.exchange_rate = exchangeRate;
+        if (account && paymentCurrency !== accountCurrency) {
+            paymentData.account_exchange_rate = exchangeRate;
+            paymentData.account_converted_amount = parseFloat(convertedAmount);
         }
 
         try {
@@ -173,11 +180,22 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             ))}
                         </Form.Select>
                     </Form.Group>
-                    {paymentCurrency !== baseCurrency && (
-                        <Form.Group className="mb-3">
-                            <Form.Label>Converted Amount ({baseCurrency})</Form.Label>
-                            <Form.Control type="number" value={convertedAmount} readOnly />
-                        </Form.Group>
+                    {account && paymentCurrency !== accountCurrency && (
+                        <>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    step="0.0001"
+                                    value={exchangeRate}
+                                    onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                                />
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Converted Amount ({accountCurrency})</Form.Label>
+                                <Form.Control type="number" value={convertedAmount} readOnly />
+                            </Form.Group>
+                        </>
                     )}
                     <Form.Group className="mb-3">
                         <Form.Label>Notes</Form.Label>
