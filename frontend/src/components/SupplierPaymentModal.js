@@ -63,26 +63,18 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
         }
     }, [payment, show]);
 
-    useEffect(() => {
-        if (account) {
-            const acc = accounts.find(a => a.id === parseInt(account));
-            if (acc) {
-                setPaymentCurrency(acc.currency);
-            }
-        } else {
-            setPaymentCurrency(supplierCurrency || baseCurrency);
-        }
-    }, [account, accounts, baseCurrency, supplierCurrency]);
+    const selectedAccount = account ? accounts.find(a => a.id === parseInt(account)) : null;
+    const accountCurrency = selectedAccount ? selectedAccount.currency : baseCurrency;
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
-        if (paymentCurrency !== baseCurrency) {
+        if (paymentCurrency !== accountCurrency) {
             setConvertedAmount((amt * exchangeRate).toFixed(2));
         } else {
             setExchangeRate(1);
             setConvertedAmount(amount);
         }
-    }, [amount, paymentCurrency, baseCurrency, exchangeRate]);
+    }, [amount, paymentCurrency, accountCurrency, exchangeRate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -90,6 +82,11 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
 
         if (!amount || parseFloat(amount) <= 0) {
             setError('Please enter a valid positive amount.');
+            return;
+        }
+
+        if (paymentCurrency !== accountCurrency && (!exchangeRate || exchangeRate <= 0)) {
+            setError('Please provide a valid exchange rate.');
             return;
         }
 
@@ -101,7 +98,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             account: account || null,
             currency: paymentCurrency,
         };
-        if (paymentCurrency !== baseCurrency) {
+        if (paymentCurrency !== accountCurrency) {
             paymentData.exchange_rate = exchangeRate;
         }
 
@@ -173,11 +170,23 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             ))}
                         </Form.Select>
                     </Form.Group>
-                    {paymentCurrency !== baseCurrency && (
-                        <Form.Group className="mb-3">
-                            <Form.Label>Converted Amount ({baseCurrency})</Form.Label>
-                            <Form.Control type="number" value={convertedAmount} readOnly />
-                        </Form.Group>
+                    {paymentCurrency !== accountCurrency && (
+                        <>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    step="0.0001"
+                                    value={exchangeRate}
+                                    onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                                    required
+                                />
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Converted Amount ({accountCurrency})</Form.Label>
+                                <Form.Control type="number" value={convertedAmount} readOnly />
+                            </Form.Group>
+                        </>
                     )}
                     <Form.Group className="mb-3">
                         <Form.Label>Notes</Form.Label>
