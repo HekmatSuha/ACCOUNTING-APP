@@ -109,6 +109,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'original_currency',
             'exchange_rate',
             'converted_amount',
+            'account_exchange_rate',
+            'account_converted_amount',
             'method',
             'notes',
             'account',
@@ -117,10 +119,30 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_by',
             'customer',
         ]
-        read_only_fields = ['created_by', 'customer', 'account_name', 'converted_amount']
+        read_only_fields = ['created_by', 'customer', 'account_name', 'converted_amount', 'account_converted_amount', 'account_exchange_rate']
 
     def validate(self, attrs):
         account = attrs.get('account') or (self.instance.account if self.instance else None)
+
+        original_currency = attrs.get('original_currency') or (account.currency if account else None)
+
+        customer = self.context.get('customer') or (self.instance.customer if self.instance else None)
+        if customer:
+            attrs['original_currency'] = original_currency or customer.currency
+            if attrs['original_currency'] != customer.currency:
+                exchange_rate = attrs.get('exchange_rate')
+                if not exchange_rate or Decimal(str(exchange_rate)) <= 0:
+                    try:
+                        attrs['exchange_rate'] = get_exchange_rate(
+                            attrs['original_currency'], customer.currency
+                        )
+                    except ValueError:
+                        raise serializers.ValidationError(
+                            {'exchange_rate': 'Exchange rate required when currencies differ.'}
+                        )
+            else:
+                attrs['exchange_rate'] = Decimal('1')
+
         original_currency = attrs.get('original_currency') or (
             self.instance.original_currency if self.instance else None
         )
@@ -152,6 +174,7 @@ class PaymentSerializer(serializers.ModelSerializer):
                     )
         else:
             attrs['exchange_rate'] = Decimal('1')
+
 
         return attrs
 
