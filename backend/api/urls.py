@@ -1,20 +1,22 @@
-# backend/api/urls.py
+"""URL routing for the accounting API."""
 
-from django.urls import path, include
-from .views import CreateUserView, ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report, sales_report
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-# --- Import the router and the viewset ---
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
-from .views import (
-    get_currency_options,
-    CustomerViewSet, dashboard_summary, ProductViewSet, SaleViewSet,
-    SupplierViewSet, PaymentViewSet, PurchaseViewSet, CustomerPaymentViewSet,
-    ActivityViewSet, OfferViewSet, SupplierPaymentViewSet, PurchaseReturnViewSet,
-    SaleReturnViewSet, BankAccountViewSet, CompanyInfoViewSet, CompanySettingsViewSet
-)
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-# Create a router and register our viewsets with it.
+from .views.activities import ActivityViewSet
+from .views.auth import CreateUserView
+from .views.banking import BankAccountViewSet
+from .views.common import dashboard_summary, get_currency_options
+from .views.company import CompanyInfoViewSet, CompanySettingsViewSet
+from .views.customers import CustomerPaymentViewSet, CustomerViewSet
+from .views.expenses import ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report
+from .views.products import ProductViewSet
+from .views.purchases import PurchaseReturnViewSet, PurchaseViewSet
+from .views.sales import OfferViewSet, PaymentViewSet, SaleReturnViewSet, SaleViewSet, sales_report
+from .views.suppliers import SupplierPaymentViewSet, SupplierViewSet
+
 router = DefaultRouter()
 router.register(r'company-info', CompanyInfoViewSet, basename='company-info')
 router.register(r'settings', CompanySettingsViewSet, basename='company-settings')
@@ -25,28 +27,22 @@ router.register(r'sales', SaleViewSet, basename='sale')
 router.register(r'offers', OfferViewSet, basename='offer')
 router.register(r'suppliers', SupplierViewSet, basename='supplier')
 router.register(r'accounts', BankAccountViewSet, basename='account')
-# Create a nested router for payments under sales
-sales_router = routers.NestedSimpleRouter(router, r'sales', lookup='sale')
-sales_router.register(r'payments', PaymentViewSet, basename='sale-payments')
-
-# Create a nested router for payments under customers
-customers_router = routers.NestedSimpleRouter(router, r'customers', lookup='customer')
-customers_router.register(r'payments', CustomerPaymentViewSet, basename='customer-payments')
-# Allow creating and listing offers scoped to a specific customer
-customers_router.register(r'offers', OfferViewSet, basename='customer-offers')
-
-# Create a nested router for payments under suppliers
-suppliers_router = routers.NestedSimpleRouter(router, r'suppliers', lookup='supplier')
-suppliers_router.register(r'payments', SupplierPaymentViewSet, basename='supplier-payments')
-
-router.register(r'expense-categories', ExpenseCategoryViewSet, basename='expense-category') # <-- Add this
+router.register(r'expense-categories', ExpenseCategoryViewSet, basename='expense-category')
 router.register(r'expenses', ExpenseViewSet, basename='expense')
 router.register(r'purchases', PurchaseViewSet, basename='purchase')
 router.register(r'purchase-returns', PurchaseReturnViewSet, basename='purchase-return')
 router.register(r'sale-returns', SaleReturnViewSet, basename='sale-return')
 
+sales_router = routers.NestedSimpleRouter(router, r'sales', lookup='sale')
+sales_router.register(r'payments', PaymentViewSet, basename='sale-payments')
 
-# The API URLs are now determined automatically by the router.
+customers_router = routers.NestedSimpleRouter(router, r'customers', lookup='customer')
+customers_router.register(r'payments', CustomerPaymentViewSet, basename='customer-payments')
+customers_router.register(r'offers', OfferViewSet, basename='customer-offers')
+
+suppliers_router = routers.NestedSimpleRouter(router, r'suppliers', lookup='supplier')
+suppliers_router.register(r'payments', SupplierPaymentViewSet, basename='supplier-payments')
+
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
@@ -55,9 +51,6 @@ urlpatterns = [
     path('auth/register/', CreateUserView.as_view(), name='register'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),
     path('reports/sales/', sales_report, name='sales-report'),
-
-
-    # --- Add the router's URLs ---
     path('', include(router.urls)),
     path('', include(sales_router.urls)),
     path('', include(customers_router.urls)),
