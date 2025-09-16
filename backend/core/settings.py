@@ -151,5 +151,11 @@ REST_FRAMEWORK = {
 }
 
 
+EXCHANGE_RATE_API_URL = os.environ.get(
+    "EXCHANGE_RATE_API_URL",
+    "https://api.exchangerate.host/latest",
+)
+
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
