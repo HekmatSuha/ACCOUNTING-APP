@@ -6,3 +6,4 @@ drf-nested-routers
 Pillow
 reportlab
 requests
+psycopg2-binary
