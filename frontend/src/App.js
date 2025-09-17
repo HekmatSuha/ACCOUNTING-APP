@@ -28,6 +28,7 @@ import PurchaseListPage from './pages/PurchaseListPage';
 import PurchaseDetailPage from './pages/PurchaseDetailPage';
 import EditPurchasePage from './pages/EditPurchasePage';
 import BankAccountListPage from './pages/BankAccountListPage';
+import BankAccountDetailPage from './pages/BankAccountDetailPage';
 import OfferListPage from './pages/OfferListPage';
 import OfferDetailPage from './pages/OfferDetailPage';
 import ActivityPage from './pages/ActivityPage';
@@ -81,10 +82,11 @@ function App() {
                   <Route path="sales/:id/edit" element={<EditSalePage />} /> {/* <-- Add Route */}
                   <Route path="purchases" element={<PurchaseListPage />} /> {/* <-- Add Route */}
                   <Route path="purchases/:id" element={<PurchaseDetailPage />} /> {/* <-- Add Route */}
-                    <Route path="purchases/:id/edit" element={<EditPurchasePage />} /> {/* <-- Add Route */}
-                    <Route path="accounts" element={<BankAccountListPage />} />
-                    <Route path="activities" element={<ActivityPage />} />
-                    <Route path="settings/company-info" element={<CompanyInfoPage />} />
+                  <Route path="purchases/:id/edit" element={<EditPurchasePage />} /> {/* <-- Add Route */}
+                  <Route path="accounts" element={<BankAccountListPage />} />
+                  <Route path="accounts/:id" element={<BankAccountDetailPage />} />
+                  <Route path="activities" element={<ActivityPage />} />
+                  <Route path="settings/company-info" element={<CompanyInfoPage />} />
 
                 </Routes>
 
