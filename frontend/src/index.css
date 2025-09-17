@@ -11,3 +11,26 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Provide a consistent elevated appearance for all cards */
+.card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:not(.shadow-none) {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.card:not(.shadow-none):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.card.shadow-sm {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+}
+
+.card.shadow-sm:hover {
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12) !important;
+}
