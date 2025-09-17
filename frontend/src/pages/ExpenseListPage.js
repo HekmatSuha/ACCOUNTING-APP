@@ -6,6 +6,7 @@ import { Table, Button, Card, Modal, Form, Alert, Row, Col, ListGroup, InputGrou
 import { FaTrash, FaEdit } from 'react-icons/fa';
 import ActionMenu from '../components/ActionMenu';
 import { formatCurrency } from '../utils/format';
+import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
 
 // This is the new, self-contained component for managing categories
 const CategoryManagerModal = ({ show, handleClose, categories, onUpdate }) => {
@@ -91,6 +92,7 @@ function ExpenseListPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [currentExpense, setCurrentExpense] = useState(null);
     const [showCategoryModal, setShowCategoryModal] = useState(false); // State for the new modal
+    const [baseCurrency, setBaseCurrency] = useState(getBaseCurrency());
     const [formData, setFormData] = useState({
         amount: '',
         expense_date: getTodayDate(),
@@ -118,6 +120,10 @@ function ExpenseListPage() {
 
     useEffect(() => {
         fetchData();
+    }, []);
+
+    useEffect(() => {
+        loadBaseCurrency().then(setBaseCurrency);
     }, []);
 
     const handleInputChange = (e) => {
@@ -218,7 +224,7 @@ function ExpenseListPage() {
                                     <td>{expense.category_name || 'Uncategorized'}</td>
                                     <td>{expense.account_name || 'N/A'}</td>
                                     <td>{expense.description}</td>
-                                    <td>{formatCurrency(expense.amount)}</td>
+                                    <td>{formatCurrency(expense.amount, expense.account_currency || baseCurrency)}</td>
                                     <td className="text-nowrap">
                                         <ActionMenu
                                             actions={[
