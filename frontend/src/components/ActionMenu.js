@@ -6,12 +6,11 @@ import './ActionMenu.css';
 
 const buildClassName = (classes) => classes.filter(Boolean).join(' ');
 
-function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel, stopPropagation, id, ...rest }) {
+function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel, id, ...rest }) {
     const generatedId = useId();
     const dropdownId = id || `action-menu-${generatedId}`;
     const dropdownClassName = buildClassName(['action-menu', className]);
     const menuClasses = buildClassName(['dropdown-menu show', 'action-menu-dropdown', menuClassName]);
-    const handleClickCapture = stopPropagation ? (event) => event.stopPropagation() : undefined;
     const [show, setShow] = useState(false);
     const toggleRef = useRef(null);
     const placement = (() => {
@@ -34,9 +33,7 @@ function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel,
 
     const handleToggle = (event) => {
         event.preventDefault();
-        if (stopPropagation) {
-            event.stopPropagation();
-        }
+        event.stopPropagation();
         setShow((previous) => !previous);
     };
 
@@ -44,10 +41,29 @@ function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel,
         setShow(false);
     };
 
+    const handleItemClick = (event, action) => {
+        event.stopPropagation();
+
+        if (action.disabled) {
+            event.preventDefault();
+            return;
+        }
+
+        if (typeof action.onClick === 'function') {
+            action.onClick(event);
+        }
+
+        if (!action.href) {
+            event.preventDefault();
+        }
+
+        handleHide();
+    };
+
     return (
         <div
             className={dropdownClassName}
-            onClickCapture={handleClickCapture}
+            onClick={(e) => e.stopPropagation()}
             {...rest}
         >
             <Button
@@ -94,25 +110,7 @@ function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel,
                                     key={itemKey}
                                     className={itemClasses}
                                     {...itemProps}
-                                    onClick={(event) => {
-                                        if (stopPropagation) {
-                                            event.stopPropagation();
-                                        }
-                                        if (action.disabled) {
-                                            event.preventDefault();
-                                            return;
-                                        }
-
-                                        if (typeof action.onClick === 'function') {
-                                            action.onClick(event);
-                                        }
-
-                                        if (!action.href) {
-                                            event.preventDefault();
-                                        }
-
-                                        handleHide();
-                                    }}
+                                    onClick={(event) => handleItemClick(event, action)}
                                     {...(action.disabled ? { tabIndex: -1, 'aria-disabled': true } : {})}
                                 >
                                     {action.icon && <span className="action-menu-item-icon">{action.icon}</span>}
@@ -144,7 +142,6 @@ ActionMenu.propTypes = {
     className: PropTypes.string,
     menuClassName: PropTypes.string,
     toggleAriaLabel: PropTypes.string,
-    stopPropagation: PropTypes.bool,
     id: PropTypes.string,
 };
 
@@ -153,7 +150,6 @@ ActionMenu.defaultProps = {
     className: '',
     menuClassName: '',
     toggleAriaLabel: 'Open actions menu',
-    stopPropagation: false,
     id: undefined,
 };
 

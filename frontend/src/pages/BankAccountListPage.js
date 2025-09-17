@@ -223,7 +223,6 @@ function BankAccountListPage() {
                                                         </div>
                                                         <div className="d-flex justify-content-end mt-3">
                                                             <ActionMenu
-                                                                stopPropagation
                                                                 toggleAriaLabel={`Account actions for ${account.name}`}
                                                                 actions={[
                                                                     {
