@@ -1,6 +1,6 @@
-import React, { useId } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Dropdown } from 'react-bootstrap';
+import { Button, Overlay } from 'react-bootstrap';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import './ActionMenu.css';
 
@@ -10,54 +10,114 @@ function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel,
     const generatedId = useId();
     const dropdownId = id || `action-menu-${generatedId}`;
     const dropdownClassName = buildClassName(['action-menu', className]);
-    const menuClasses = buildClassName(['action-menu-dropdown', menuClassName]);
+    const menuClasses = buildClassName(['dropdown-menu show', 'action-menu-dropdown', menuClassName]);
     const handleClickCapture = stopPropagation ? (event) => event.stopPropagation() : undefined;
+    const [show, setShow] = useState(false);
+    const toggleRef = useRef(null);
+    const placement = (() => {
+        if (typeof align === 'string') {
+            return align === 'start' ? 'bottom-start' : 'bottom-end';
+        }
+
+        if (align && typeof align === 'object') {
+            const directions = Object.values(align);
+            if (directions.includes('start')) {
+                return 'bottom-start';
+            }
+            if (directions.includes('end')) {
+                return 'bottom-end';
+            }
+        }
+
+        return 'bottom-end';
+    })();
+
+    const handleToggle = (event) => {
+        event.preventDefault();
+        setShow((previous) => !previous);
+    };
+
+    const handleHide = () => {
+        setShow(false);
+    };
 
     return (
-        <Dropdown
-            align={align}
+        <div
             className={dropdownClassName}
             onClickCapture={handleClickCapture}
             {...rest}
         >
-            <Dropdown.Toggle
+            <Button
+                ref={toggleRef}
                 id={dropdownId}
                 variant="light"
                 size="sm"
                 className="action-menu-toggle"
                 aria-label={toggleAriaLabel}
+                aria-expanded={show}
+                aria-haspopup="true"
+                onClick={handleToggle}
             >
                 <span className="visually-hidden">{toggleAriaLabel}</span>
                 <BsThreeDotsVertical aria-hidden="true" />
-            </Dropdown.Toggle>
-            <Dropdown.Menu className={menuClasses}>
-                {actions.map((action, index) => {
-                    const itemKey = action.key ?? index;
-                    const itemClasses = buildClassName([
-                        'd-flex align-items-center gap-2',
-                        action.variant,
-                    ]);
-                    const itemProps = action.href ? { href: action.href } : {};
+            </Button>
+            <Overlay
+                target={toggleRef.current}
+                show={show}
+                placement={placement}
+                rootClose
+                flip
+                onHide={handleHide}
+            >
+                {({ ref, style, ...overlayProps }) => (
+                    <div
+                        ref={ref}
+                        style={style}
+                        className={menuClasses}
+                        {...overlayProps}
+                    >
+                        {actions.map((action, index) => {
+                            const itemKey = action.key ?? index;
+                            const itemClasses = buildClassName([
+                                'dropdown-item d-flex align-items-center gap-2',
+                                action.variant,
+                                action.disabled ? 'disabled' : '',
+                            ]);
+                            const ItemComponent = action.href ? 'a' : 'button';
+                            const itemProps = action.href ? { href: action.href } : { type: 'button' };
 
-                    return (
-                        <Dropdown.Item
-                            key={itemKey}
-                            className={itemClasses}
-                            disabled={action.disabled}
-                            {...itemProps}
-                            onClick={(event) => {
-                                if (typeof action.onClick === 'function') {
-                                    action.onClick(event);
-                                }
-                            }}
-                        >
-                            {action.icon && <span className="action-menu-item-icon">{action.icon}</span>}
-                            <span>{action.label}</span>
-                        </Dropdown.Item>
-                    );
-                })}
-            </Dropdown.Menu>
-        </Dropdown>
+                            return (
+                                <ItemComponent
+                                    key={itemKey}
+                                    className={itemClasses}
+                                    {...itemProps}
+                                    onClick={(event) => {
+                                        if (action.disabled) {
+                                            event.preventDefault();
+                                            return;
+                                        }
+
+                                        if (typeof action.onClick === 'function') {
+                                            action.onClick(event);
+                                        }
+
+                                        if (!action.href) {
+                                            event.preventDefault();
+                                        }
+
+                                        handleHide();
+                                    }}
+                                    {...(action.disabled ? { tabIndex: -1, 'aria-disabled': true } : {})}
+                                >
+                                    {action.icon && <span className="action-menu-item-icon">{action.icon}</span>}
+                                    <span>{action.label}</span>
+                                </ItemComponent>
+                            );
+                        })}
+                    </div>
+                )}
+            </Overlay>
+        </div>
     );
 }
 
