@@ -137,14 +137,68 @@ class Offer(models.Model):
 
 
 class BankAccount(models.Model):
+    CASH = 'cash'
+    BANK = 'bank'
+    POS = 'pos'
+    PARTNER = 'partner'
+    CREDIT_CARD = 'credit_card'
+    LIABILITY = 'liability'
+    OTHER = 'other'
+
+    ACCOUNT_CATEGORY_CHOICES = [
+        (CASH, 'Cash Accounts'),
+        (BANK, 'Bank Accounts'),
+        (POS, 'POS Accounts'),
+        (PARTNER, 'Partner Accounts'),
+        (CREDIT_CARD, 'Credit Cards'),
+        (LIABILITY, 'Liability Accounts'),
+        (OTHER, 'Other Accounts'),
+    ]
+
     name = models.CharField(max_length=255)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    category = models.CharField(max_length=20, choices=ACCOUNT_CATEGORY_CHOICES, default=OTHER)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+
+class BankAccountTransaction(models.Model):
+    DEPOSIT = 'deposit'
+    WITHDRAWAL = 'withdrawal'
+    TRANSFER_IN = 'transfer_in'
+    TRANSFER_OUT = 'transfer_out'
+
+    TRANSACTION_TYPE_CHOICES = [
+        (DEPOSIT, 'Deposit'),
+        (WITHDRAWAL, 'Withdrawal'),
+        (TRANSFER_IN, 'Transfer In'),
+        (TRANSFER_OUT, 'Transfer Out'),
+    ]
+
+    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name='transactions')
+    related_account = models.ForeignKey(
+        BankAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='related_transactions',
+    )
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
+    description = models.CharField(max_length=255, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_account_transactions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_transaction_type_display()} - {self.amount} {self.currency}"
 
 
 class Payment(models.Model):
