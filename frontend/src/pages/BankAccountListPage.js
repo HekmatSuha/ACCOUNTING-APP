@@ -3,8 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
 import { ACCOUNT_CATEGORY_MAP, ACCOUNT_CATEGORY_OPTIONS, getCategoryConfig } from '../utils/bankAccountCategories';
+import ActionMenu from '../components/ActionMenu';
 
 const AVAILABLE_CURRENCIES = ['USD', 'EUR', 'KZT', 'TRY'];
 
@@ -219,27 +221,24 @@ function BankAccountListPage() {
                                                                 {account.category_label || ACCOUNT_CATEGORY_MAP[account.category]?.label}
                                                             </Badge>
                                                         </div>
-                                                        <div className="d-flex justify-content-end gap-2 mt-3">
-                                                            <Button
-                                                                variant="outline-secondary"
-                                                                size="sm"
-                                                                onClick={(event) => {
-                                                                    event.stopPropagation();
-                                                                    handleShowModal(account);
-                                                                }}
-                                                            >
-                                                                Edit
-                                                            </Button>
-                                                            <Button
-                                                                variant="outline-danger"
-                                                                size="sm"
-                                                                onClick={(event) => {
-                                                                    event.stopPropagation();
-                                                                    handleDelete(account.id);
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </Button>
+                                                        <div className="d-flex justify-content-end mt-3">
+                                                            <ActionMenu
+                                                                stopPropagation
+                                                                toggleAriaLabel={`Account actions for ${account.name}`}
+                                                                actions={[
+                                                                    {
+                                                                        label: 'Edit Account',
+                                                                        icon: <FaEdit />,
+                                                                        onClick: () => handleShowModal(account),
+                                                                    },
+                                                                    {
+                                                                        label: 'Delete Account',
+                                                                        icon: <FaTrash />,
+                                                                        variant: 'text-danger',
+                                                                        onClick: () => handleDelete(account.id),
+                                                                    },
+                                                                ]}
+                                                            />
                                                         </div>
                                                     </Card.Body>
                                                 </Card>

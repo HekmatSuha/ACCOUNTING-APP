@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { Table, Button, Card, Modal, Form, Alert, Row, Col, ListGroup, InputGroup } from 'react-bootstrap';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaEdit } from 'react-icons/fa';
+import ActionMenu from '../components/ActionMenu';
 
 // This is the new, self-contained component for managing categories
 const CategoryManagerModal = ({ show, handleClose, categories, onUpdate }) => {
@@ -217,9 +218,22 @@ function ExpenseListPage() {
                                     <td>{expense.account_name || 'N/A'}</td>
                                     <td>{expense.description}</td>
                                     <td>${parseFloat(expense.amount).toFixed(2)}</td>
-                                    <td>
-                                        <Button variant="warning" size="sm" className="me-2" onClick={() => handleShowModal(expense)}>Edit</Button>
-                                        <Button variant="danger" size="sm" onClick={() => handleDelete(expense.id)}>Delete</Button>
+                                    <td className="text-nowrap">
+                                        <ActionMenu
+                                            actions={[
+                                                {
+                                                    label: 'Edit Expense',
+                                                    icon: <FaEdit />,
+                                                    onClick: () => handleShowModal(expense),
+                                                },
+                                                {
+                                                    label: 'Delete Expense',
+                                                    icon: <FaTrash />,
+                                                    variant: 'text-danger',
+                                                    onClick: () => handleDelete(expense.id),
+                                                },
+                                            ]}
+                                        />
                                     </td>
                                 </tr>
                             ))}
