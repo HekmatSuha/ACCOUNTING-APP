@@ -21,6 +21,7 @@ from .models import (
     PurchaseReturn,
     PurchaseReturnItem,
     BankAccount,
+    BankAccountTransaction,
     Activity,
     Offer,
     OfferItem,
@@ -672,7 +673,53 @@ class PurchaseReturnSerializer(serializers.ModelSerializer):
 
 
 class BankAccountSerializer(serializers.ModelSerializer):
+    category_label = serializers.CharField(source='get_category_display', read_only=True)
+
     class Meta:
         model = BankAccount
-        fields = ['id', 'name', 'balance', 'currency']
-        read_only_fields = ['balance', 'created_by']
+        fields = ['id', 'name', 'balance', 'currency', 'category', 'category_label', 'created_at']
+        read_only_fields = ['balance', 'created_by', 'created_at']
+
+
+class BankAccountTransactionSerializer(serializers.ModelSerializer):
+    account_name = serializers.CharField(source='account.name', read_only=True)
+    related_account_name = serializers.CharField(source='related_account.name', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    amount_in = serializers.SerializerMethodField()
+    amount_out = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BankAccountTransaction
+        fields = [
+            'id',
+            'account',
+            'account_name',
+            'related_account',
+            'related_account_name',
+            'transaction_type',
+            'amount',
+            'amount_in',
+            'amount_out',
+            'currency',
+            'description',
+            'created_by',
+            'created_by_name',
+            'created_at',
+        ]
+        read_only_fields = ['created_by', 'created_at']
+
+    def get_amount_in(self, obj):
+        if obj.transaction_type in {
+            BankAccountTransaction.DEPOSIT,
+            BankAccountTransaction.TRANSFER_IN,
+        }:
+            return obj.amount
+        return Decimal('0.00')
+
+    def get_amount_out(self, obj):
+        if obj.transaction_type in {
+            BankAccountTransaction.WITHDRAWAL,
+            BankAccountTransaction.TRANSFER_OUT,
+        }:
+            return obj.amount
+        return Decimal('0.00')
