@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 
 function PurchaseDetailPage() {
     const { id } = useParams();
@@ -63,13 +64,13 @@ function PurchaseDetailPage() {
                                     <tr key={item.id}>
                                         <td>{item.product_name}</td>
                                         <td>{item.quantity}</td>
-                                        <td>${parseFloat(item.unit_price).toFixed(2)}</td>
-                                        <td>${parseFloat(item.line_total).toFixed(2)}</td>
+                                        <td>{formatCurrency(item.unit_price, purchase.original_currency || 'USD')}</td>
+                                        <td>{formatCurrency(item.line_total, purchase.original_currency || 'USD')}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </Table>
-                        <h4 className="text-end mt-3">Total: ${parseFloat(purchase.total_amount).toFixed(2)}</h4>
+                        <h4 className="text-end mt-3">Total: {formatCurrency(purchase.total_amount, purchase.original_currency || 'USD')}</h4>
                     </Card.Body>
                     <Card.Footer className="text-end">
                         <Button as={Link} to={`/purchases/${purchase.id}/edit`} variant="warning" className="me-2">Edit</Button>

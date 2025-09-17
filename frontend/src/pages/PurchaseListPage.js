@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { Link } from 'react-router-dom';
 import { Form, Button, Card, Row, Col, Table, Alert, Modal, Spinner } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 import { FaTrash } from 'react-icons/fa';
 
 const getTodayDate = () => {
@@ -171,7 +172,7 @@ function PurchaseListPage() {
                                     <td>{purchase.supplier_name}</td>
                                     <td>{purchase.bill_number || 'N/A'}</td>
                                     <td>{purchase.account_name || 'N/A'}</td>
-                                    <td>${parseFloat(purchase.total_amount).toFixed(2)}</td>
+                                    <td>{formatCurrency(purchase.total_amount, purchase.original_currency || 'USD')}</td>
                                     <td>
                                         <Button as={Link} to={`/purchases/${purchase.id}`} variant="info" size="sm">View</Button>
                                     </td>

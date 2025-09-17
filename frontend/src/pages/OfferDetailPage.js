@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 
 function OfferDetailPage() {
     const { id } = useParams();
@@ -85,8 +86,8 @@ function OfferDetailPage() {
                                         <td>{index + 1}</td>
                                         <td>{item.product_name}</td>
                                         <td>{item.quantity}</td>
-                                        <td>${parseFloat(item.unit_price).toFixed(2)}</td>
-                                        <td>${(item.quantity * item.unit_price).toFixed(2)}</td>
+                                        <td>{formatCurrency(item.unit_price)}</td>
+                                        <td>{formatCurrency(item.quantity * item.unit_price)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -98,7 +99,7 @@ function OfferDetailPage() {
                             <Col md={12} className="text-end">
                                 <h4 className="mb-0">
                                     <strong>Total:</strong>
-                                    <span className="float-end">${parseFloat(offer.total_amount).toFixed(2)}</span>
+                                    <span className="float-end">{formatCurrency(offer.total_amount)}</span>
                                 </h4>
                             </Col>
                         </Row>
