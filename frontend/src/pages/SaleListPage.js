@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Table, Alert, Spinner } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 
 function SaleListPage() {
     const [sales, setSales] = useState([]);
@@ -63,7 +64,7 @@ function SaleListPage() {
                                     {/* 'customer_name' comes from our SaleReadSerializer */}
                                     <td>{sale.customer_name}</td>
                                     <td>{new Date(sale.sale_date).toLocaleDateString()}</td>
-                                    <td>${parseFloat(sale.total_amount).toFixed(2)}</td>
+                                    <td>{formatCurrency(sale.total_amount, sale.original_currency || 'USD')}</td>
                                     <td>
                                         <Button as={Link} to={`/sales/${sale.id}`} variant="info" size="sm">
                                         View
