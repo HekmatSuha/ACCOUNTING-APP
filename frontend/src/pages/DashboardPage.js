@@ -5,15 +5,26 @@ import { Card, Row, Col, Spinner, Alert, ProgressBar } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import RecentActivities from '../components/RecentActivities';
 import BankAccountsOverview from '../components/BankAccountsOverview';
+import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
 
 // Helper to format currency values and avoid NaN outputs
-const formatCurrency = (value) => {
+const formatCurrency = (value, currency) => {
     const num = Number(value);
-    return `$${isNaN(num) ? '0.00' : num.toFixed(2)}`;
+    const safeValue = Number.isNaN(num) ? 0 : num;
+
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency || 'USD',
+        }).format(safeValue);
+    } catch (err) {
+        // Fall back to a simple formatted string if Intl.NumberFormat fails
+        return `${currency || 'USD'} ${safeValue.toFixed(2)}`;
+    }
 };
 
 // A card that displays items with progress bars similar to the reference dashboard
-const ProgressCard = ({ title, items, headerColor = 'primary' }) => {
+const ProgressCard = ({ title, items, headerColor = 'primary', currency = 'USD' }) => {
     const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
     return (
         <Card className="progress-card shadow-sm mb-4">
@@ -25,7 +36,7 @@ const ProgressCard = ({ title, items, headerColor = 'primary' }) => {
                         <div key={idx} className="mb-3">
                             <div className="d-flex justify-content-between">
                                 <span>{label}</span>
-                                <span>{formatCurrency(value)}</span>
+                                <span>{formatCurrency(value, currency)}</span>
                             </div>
                             <ProgressBar now={percentage} variant={variant || headerColor} />
                         </div>
@@ -40,6 +51,16 @@ function DashboardPage() {
     const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [baseCurrency, setBaseCurrency] = useState(getBaseCurrency());
+
+    useEffect(() => {
+        const initialiseCurrency = async () => {
+            const loadedCurrency = await loadBaseCurrency();
+            setBaseCurrency(loadedCurrency || 'USD');
+        };
+
+        initialiseCurrency();
+    }, []);
 
     useEffect(() => {
         const fetchSummaryData = async () => {
@@ -89,13 +110,13 @@ function DashboardPage() {
             {summary && (
                 <Row className="g-4 mb-4">
                     <Col md={6} lg={4}>
-                        <ProgressCard title="Assets" items={assetItems} headerColor="success" />
+                        <ProgressCard title="Assets" items={assetItems} headerColor="success" currency={baseCurrency} />
                     </Col>
                     <Col md={6} lg={4}>
-                        <ProgressCard title="Liabilities" items={liabilityItems} headerColor="danger" />
+                        <ProgressCard title="Liabilities" items={liabilityItems} headerColor="danger" currency={baseCurrency} />
                     </Col>
                     <Col md={6} lg={4}>
-                        <ProgressCard title="Performance" items={performanceItems} headerColor="primary" />
+                        <ProgressCard title="Performance" items={performanceItems} headerColor="primary" currency={baseCurrency} />
                     </Col>
                 </Row>
             )}
