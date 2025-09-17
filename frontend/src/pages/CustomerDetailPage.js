@@ -263,13 +263,22 @@ function CustomerDetailPage() {
                             <Accordion>
                                 {payments.map((payment, index) => {
                                     const paymentDate = new Date(payment.payment_date).toLocaleDateString();
+                                    const paymentAmount =
+                                        payment.converted_amount ??
+                                        payment.original_amount ??
+                                        payment.amount ??
+                                        0;
+                                    const paymentCurrency =
+                                        payment.converted_amount !== undefined && payment.converted_amount !== null
+                                            ? customer.currency
+                                            : payment.original_currency || customer.currency;
                                     return (
                                         <Accordion.Item eventKey={index.toString()} key={payment.id}>
                                             <Accordion.Header style={{ backgroundColor: '#d4edda' }}>
                                                 <div className="d-flex justify-content-between w-100 pe-3">
                                                     <span>{paymentDate}</span>
                                                     <span>{payment.method}</span>
-                                                    <strong>{formatCurrency(payment.amount, customer.currency)}</strong>
+                                                    <strong>{formatCurrency(paymentAmount, paymentCurrency)}</strong>
                                                 </div>
                                             </Accordion.Header>
                                             <Accordion.Body>
