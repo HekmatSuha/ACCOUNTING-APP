@@ -34,6 +34,9 @@ function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel,
 
     const handleToggle = (event) => {
         event.preventDefault();
+        if (stopPropagation) {
+            event.stopPropagation();
+        }
         setShow((previous) => !previous);
     };
 
@@ -92,6 +95,9 @@ function ActionMenu({ actions, align, className, menuClassName, toggleAriaLabel,
                                     className={itemClasses}
                                     {...itemProps}
                                     onClick={(event) => {
+                                        if (stopPropagation) {
+                                            event.stopPropagation();
+                                        }
                                         if (action.disabled) {
                                             event.preventDefault();
                                             return;
