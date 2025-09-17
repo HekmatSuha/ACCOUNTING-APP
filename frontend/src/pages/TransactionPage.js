@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { useNavigate } from 'react-router-dom';
 import { Form, Button, Card, Row, Col, Table, Alert } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 import { FaTrash } from 'react-icons/fa';
 
 function TransactionPage() {
@@ -66,8 +67,10 @@ function TransactionPage() {
     // Calculate the total amount of the sale
     const calculateTotal = () => {
         return saleItems.reduce((total, item) => {
-            return total + (Number(item.quantity) * Number(item.unit_price));
-        }, 0).toFixed(2);
+            const quantity = Number(item.quantity) || 0;
+            const price = Number(item.unit_price) || 0;
+            return total + quantity * price;
+        }, 0);
     };
 
     // Handle form submission
@@ -176,7 +179,7 @@ function TransactionPage() {
                                         />
                                     </td>
                                     <td>
-                                        ${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}
+                                        {formatCurrency((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
                                     </td>
                                     <td>
                                         <Button variant="danger" onClick={() => handleRemoveItem(index)}>
@@ -193,7 +196,7 @@ function TransactionPage() {
                     </Button>
 
                     <div className="text-end">
-                        <h3>Total: ${calculateTotal()}</h3>
+                        <h3>Total: {formatCurrency(calculateTotal())}</h3>
                     </div>
 
                     <div className="mt-3">

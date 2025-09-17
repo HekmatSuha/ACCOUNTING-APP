@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Form, Row, Col, Spinner, Alert, Table, Collapse } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 
 // Helper to get the first day of the current month
 const getFirstDayOfMonth = () => {
@@ -45,11 +46,6 @@ function SalesReportPage() {
             setLoading(false);
         }
     };
-
-    const formatCurrency = (amount) => {
-        return `$${parseFloat(amount).toFixed(2)}`;
-    };
-
     const toggleRow = (id) => {
         setOpenRows(prev => ({ ...prev, [id]: !prev[id] }));
     };

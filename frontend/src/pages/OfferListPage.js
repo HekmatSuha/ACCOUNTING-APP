@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Table, Alert, Spinner } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 
 function OfferListPage() {
     const [offers, setOffers] = useState([]);
@@ -61,7 +62,7 @@ function OfferListPage() {
                                     <td>{offer.customer_name}</td>
                                     <td>{new Date(offer.offer_date).toLocaleDateString()}</td>
                                     <td>{offer.status}</td>
-                                    <td>${parseFloat(offer.total_amount).toFixed(2)}</td>
+                                    <td>{formatCurrency(offer.total_amount)}</td>
                                     <td>
                                         <Button as={Link} to={`/offers/${offer.id}`} variant="info" size="sm">
                                         View

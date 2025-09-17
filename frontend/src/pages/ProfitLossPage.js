@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Form, Row, Col, Spinner, Alert, Table } from 'react-bootstrap';
+import { formatCurrency } from '../utils/format';
 
 // Helper to get the first day of the current month
 const getFirstDayOfMonth = () => {
@@ -47,16 +48,6 @@ function ProfitLossPage() {
             setLoading(false);
         }
     };
-
-    const formatCurrency = (amount) => {
-        const value = parseFloat(amount);
-        const formatted = value.toFixed(2);
-        if (value < 0) {
-            return `-$${Math.abs(value).toFixed(2)}`;
-        }
-        return `$${formatted}`;
-    };
-
     return (
         <Card>
             <Card.Header>

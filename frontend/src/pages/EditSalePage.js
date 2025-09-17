@@ -5,6 +5,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Form, Button, Card, Row, Col, Table, Alert, Spinner } from 'react-bootstrap';
 import { FaTrash } from 'react-icons/fa';
+import { formatCurrency } from '../utils/format';
 
 function EditSalePage() {
     const { id } = useParams();
@@ -66,8 +67,10 @@ function EditSalePage() {
     };
     const calculateTotal = () => {
         return saleItems.reduce((total, item) => {
-            return total + (Number(item.quantity) * Number(item.unit_price));
-        }, 0).toFixed(2);
+            const quantity = Number(item.quantity) || 0;
+            const price = Number(item.unit_price) || 0;
+            return total + quantity * price;
+        }, 0);
     };
     // -----------------------------------------
 
@@ -140,7 +143,7 @@ function EditSalePage() {
                                     <td>
                                         <Form.Control type="number" name="unit_price" value={item.unit_price} onChange={e => handleItemChange(index, e)} step="0.01" required />
                                     </td>
-                                    <td>${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}</td>
+                                    <td>{formatCurrency((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}</td>
                                     <td>
                                         <Button variant="danger" onClick={() => handleRemoveItem(index)}><FaTrash /></Button>
                                     </td>
@@ -150,7 +153,7 @@ function EditSalePage() {
                     </Table>
                     <Button variant="secondary" onClick={handleAddItem} className="mb-3">+ Add Item</Button>
                     <div className="text-end">
-                        <h3>Total: ${calculateTotal()}</h3>
+                        <h3>Total: {formatCurrency(calculateTotal())}</h3>
                     </div>
                     <div className="mt-3">
                         <Button variant="primary" type="submit">Update Sale</Button>

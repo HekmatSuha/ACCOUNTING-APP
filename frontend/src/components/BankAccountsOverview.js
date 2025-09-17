@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Spinner, Alert, ListGroup } from 'react-bootstrap';
 import { FaLandmark } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
+import { formatNumber } from '../utils/format';
 
 function BankAccountsOverview() {
   const [accounts, setAccounts] = useState([]);
@@ -47,7 +48,7 @@ function BankAccountsOverview() {
             {Object.entries(totals).map(([currency, amount]) => (
               <ListGroup.Item key={currency} className="d-flex justify-content-between align-items-center">
                 <span className="fw-bold">{currency}</span>
-                <span className="badge bg-primary rounded-pill fs-6">{amount.toFixed(2)}</span>
+                <span className="badge bg-primary rounded-pill fs-6">{formatNumber(amount)}</span>
               </ListGroup.Item>
             ))}
           </ListGroup>
@@ -61,7 +62,7 @@ function BankAccountsOverview() {
                 <FaLandmark size={30} className="me-3 text-muted" />
                 <div>
                   <h6 className="mb-1">{account.name}</h6>
-                  <h4 className="mb-0">{parseFloat(account.balance).toFixed(2)} <small className="text-muted">{account.currency}</small></h4>
+                  <h4 className="mb-0">{formatNumber(account.balance)} <small className="text-muted">{account.currency}</small></h4>
                 </div>
               </Card.Body>
             </Card>
