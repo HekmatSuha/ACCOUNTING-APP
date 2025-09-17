@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Spinner, Alert, ListGroup } from 'react-bootstrap';
+import { Card, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import { FaLandmark } from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
 import { formatNumber } from '../utils/format';
@@ -31,29 +31,9 @@ function BankAccountsOverview() {
     return <Alert variant="danger">{error}</Alert>;
   }
 
-  const totals = accounts.reduce((acc, account) => {
-    const currency = account.currency;
-    const amount = parseFloat(account.balance);
-    acc[currency] = (acc[currency] || 0) + amount;
-    return acc;
-  }, {});
-
   return (
     <div className="mt-5">
       <h4 className="mb-4">Bank Accounts</h4>
-      <Card className="mb-4 shadow-sm">
-        <Card.Header as="h5">Account Totals</Card.Header>
-        <Card.Body>
-          <ListGroup variant="flush">
-            {Object.entries(totals).map(([currency, amount]) => (
-              <ListGroup.Item key={currency} className="d-flex justify-content-between align-items-center">
-                <span className="fw-bold">{currency}</span>
-                <span className="badge bg-primary rounded-pill fs-6">{formatNumber(amount)}</span>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
-        </Card.Body>
-      </Card>
       <Row className="g-4">
         {accounts.map(account => (
           <Col md={6} lg={4} key={account.id}>
