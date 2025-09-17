@@ -30,14 +30,25 @@ const ProgressCard = ({ title, items, headerColor = 'primary', currency = 'USD' 
         <Card className="progress-card shadow-sm mb-4">
             <Card.Header className={`text-white bg-${headerColor}`}>{title}</Card.Header>
             <Card.Body>
-                {items.map(({ label, value, variant }, idx) => {
+                {items.map(({ label, value, variant, breakdown }, idx) => {
                     const percentage = total > 0 ? (Number(value) / total) * 100 : 0;
+                    const breakdownEntries = breakdown && Object.entries(breakdown);
                     return (
                         <div key={idx} className="mb-3">
                             <div className="d-flex justify-content-between">
                                 <span>{label}</span>
                                 <span>{formatCurrency(value, currency)}</span>
                             </div>
+                            {breakdownEntries && breakdownEntries.length > 0 && (
+                                <div className="ms-2 mt-1">
+                                    {breakdownEntries.map(([code, amount]) => (
+                                        <div key={code} className="d-flex justify-content-between text-muted small">
+                                            <span>{code}</span>
+                                            <span>{formatCurrency(amount, code)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             <ProgressBar now={percentage} variant={variant || headerColor} />
                         </div>
                     );
@@ -90,7 +101,7 @@ function DashboardPage() {
     const assetItems = summary ? [
         { label: 'Receivables', value: summary.total_receivables, variant: 'success' },
         { label: 'Stock Value', value: summary.stock_value, variant: 'info' },
-        { label: "Today's Incoming", value: summary.today_incoming, variant: 'warning' }
+        { label: "Today's Incoming", value: summary.today_incoming, variant: 'warning', breakdown: summary.today_incoming_breakdown || {} }
     ] : [];
 
     const liabilityItems = summary ? [
