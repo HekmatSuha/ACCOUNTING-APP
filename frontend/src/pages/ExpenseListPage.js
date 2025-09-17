@@ -5,6 +5,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { Table, Button, Card, Modal, Form, Alert, Row, Col, ListGroup, InputGroup } from 'react-bootstrap';
 import { FaTrash, FaEdit } from 'react-icons/fa';
 import ActionMenu from '../components/ActionMenu';
+import { formatCurrency } from '../utils/format';
 
 // This is the new, self-contained component for managing categories
 const CategoryManagerModal = ({ show, handleClose, categories, onUpdate }) => {
@@ -217,7 +218,7 @@ function ExpenseListPage() {
                                     <td>{expense.category_name || 'Uncategorized'}</td>
                                     <td>{expense.account_name || 'N/A'}</td>
                                     <td>{expense.description}</td>
-                                    <td>${parseFloat(expense.amount).toFixed(2)}</td>
+                                    <td>{formatCurrency(expense.amount)}</td>
                                     <td className="text-nowrap">
                                         <ActionMenu
                                             actions={[
