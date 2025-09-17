@@ -34,9 +34,7 @@ const ProgressCard = ({ title, items, headerColor = 'primary', currency = 'USD' 
                 {items.map(({ label, value, variant, breakdown }, idx) => {
                     const percentage = total > 0 ? (Number(value) / total) * 100 : 0;
                     const breakdownEntries = breakdown && Object.entries(breakdown);
-                    const displayValue = breakdownEntries && breakdownEntries.length > 0
-                        ? breakdownEntries.map(([code, amount]) => formatCurrency(amount, code)).join(', ')
-                        : formatCurrency(value, currency);
+                    const displayValue = formatCurrency(value, currency);
                     return (
                         <div key={idx} className="mb-3">
                             <div className="d-flex justify-content-between">
@@ -103,19 +101,54 @@ function DashboardPage() {
     }
 
     const assetItems = summary ? [
-        { label: 'Receivables', value: summary.total_receivables, variant: 'success' },
-        { label: 'Stock Value', value: summary.stock_value, variant: 'info' },
-        { label: "Today's Incoming", value: summary.today_incoming, variant: 'warning', breakdown: summary.today_incoming_breakdown || {} }
+        {
+            label: 'Receivables',
+            value: summary.total_receivables,
+            variant: 'success',
+            breakdown: summary.total_receivables_breakdown || {},
+        },
+        {
+            label: 'Stock Value',
+            value: summary.stock_value,
+            variant: 'info',
+            breakdown: summary.stock_value_breakdown || {},
+        },
+        {
+            label: "Today's Incoming",
+            value: summary.today_incoming,
+            variant: 'warning',
+            breakdown: summary.today_incoming_breakdown || {},
+        }
     ] : [];
 
     const liabilityItems = summary ? [
-        { label: 'Payables', value: summary.total_payables, variant: 'danger' },
-        { label: 'Expenses', value: summary.expenses, variant: 'secondary' }
+        {
+            label: 'Payables',
+            value: summary.total_payables,
+            variant: 'danger',
+            breakdown: summary.total_payables_breakdown || {},
+        },
+        {
+            label: 'Expenses',
+            value: summary.expenses,
+            variant: 'secondary',
+            breakdown: summary.expenses_breakdown || {},
+        }
     ] : [];
 
     const performanceItems = summary ? [
-        { label: 'Turnover', value: summary.turnover, variant: 'primary' },
-        { label: "Today's Sales", value: summary.today_sales, variant: 'success' }
+        {
+            label: 'Turnover',
+            value: summary.turnover,
+            variant: 'primary',
+            breakdown: summary.turnover_breakdown || {},
+        },
+        {
+            label: "Today's Sales",
+            value: summary.today_sales,
+            variant: 'success',
+            breakdown: summary.today_sales_breakdown || {},
+        }
     ] : [];
 
     return (
