@@ -1,0 +1,35 @@
+.action-menu {
+    position: relative;
+}
+
+.action-menu-toggle {
+    padding: 0.25rem;
+    line-height: 1;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-menu-toggle:hover,
+.action-menu-toggle:focus {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.action-menu-toggle:focus-visible {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.35) !important;
+}
+
+.action-menu-dropdown {
+    min-width: 12rem;
+    font-size: 0.9rem;
+}
+
+.action-menu-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

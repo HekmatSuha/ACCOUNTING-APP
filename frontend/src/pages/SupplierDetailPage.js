@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
-import { PersonCircle, Cash, Tag, Hammer, BarChart } from 'react-bootstrap-icons';
+import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash } from 'react-bootstrap-icons';
 import './SupplierDetailPage.css';
 import SupplierPaymentModal from '../components/SupplierPaymentModal';
+import ActionMenu from '../components/ActionMenu';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -195,42 +196,59 @@ function SupplierDetailPage() {
                         <Card.Header as="h5">Previous Purchases</Card.Header>
                         <Card.Body>
                             <Accordion>
-                                {purchases.map((purchase, index) => (
-                                    <Accordion.Item eventKey={index.toString()} key={purchase.id}>
-                                        <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
-                                            <div className="d-flex justify-content-between w-100 pe-3">
-                                                <span>{new Date(purchase.purchase_date).toLocaleDateString()}</span>
-                                                <strong>{formatCurrency(purchase.total_amount, purchase.original_currency)}</strong>
-                                            </div>
-                                        </Accordion.Header>
-                                        <Accordion.Body>
-                                            <div className="d-flex justify-content-end mb-2">
-                                                <Button size="sm" variant="warning" onClick={() => navigate(`/purchases/${purchase.id}/edit`)}>Edit</Button>
-                                                <Button size="sm" variant="danger" className="ms-2" onClick={() => handleDeletePurchase(purchase.id)}>Delete</Button>
-                                            </div>
-                                            <Table striped bordered hover size="sm">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Product</th>
-                                                        <th>Quantity</th>
-                                                        <th>Unit Price</th>
-                                                        <th className="text-end">Line Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {purchase.items.map(item => (
-                                                        <tr key={item.id}>
-                                                            <td>{item.product_name}</td>
-                                                            <td>{item.quantity}</td>
-                                                            <td>{formatCurrency(item.unit_price, purchase.original_currency)}</td>
-                                                            <td className="text-end">{formatCurrency(item.line_total, purchase.original_currency)}</td>
+                                {purchases.map((purchase, index) => {
+                                    const purchaseDate = new Date(purchase.purchase_date).toLocaleDateString();
+                                    return (
+                                        <Accordion.Item eventKey={index.toString()} key={purchase.id}>
+                                            <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
+                                                <div className="d-flex justify-content-between w-100 pe-3">
+                                                    <span>{purchaseDate}</span>
+                                                    <strong>{formatCurrency(purchase.total_amount, purchase.original_currency)}</strong>
+                                                </div>
+                                            </Accordion.Header>
+                                            <Accordion.Body>
+                                                <div className="d-flex justify-content-end mb-2">
+                                                    <ActionMenu
+                                                        toggleAriaLabel={`Purchase actions for ${purchaseDate}`}
+                                                        actions={[
+                                                            {
+                                                                label: 'Edit Purchase',
+                                                                icon: <PencilSquare />,
+                                                                onClick: () => navigate(`/purchases/${purchase.id}/edit`),
+                                                            },
+                                                            {
+                                                                label: 'Delete Purchase',
+                                                                icon: <Trash />,
+                                                                variant: 'text-danger',
+                                                                onClick: () => handleDeletePurchase(purchase.id),
+                                                            },
+                                                        ]}
+                                                    />
+                                                </div>
+                                                <Table striped bordered hover size="sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Product</th>
+                                                            <th>Quantity</th>
+                                                            <th>Unit Price</th>
+                                                            <th className="text-end">Line Total</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </Table>
-                                        </Accordion.Body>
-                                    </Accordion.Item>
-                                ))}
+                                                    </thead>
+                                                    <tbody>
+                                                        {purchase.items.map(item => (
+                                                            <tr key={item.id}>
+                                                                <td>{item.product_name}</td>
+                                                                <td>{item.quantity}</td>
+                                                                <td>{formatCurrency(item.unit_price, purchase.original_currency)}</td>
+                                                                <td className="text-end">{formatCurrency(item.line_total, purchase.original_currency)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </Table>
+                                            </Accordion.Body>
+                                        </Accordion.Item>
+                                    );
+                                })}
                             </Accordion>
                         </Card.Body>
                     </Card>
@@ -239,42 +257,59 @@ function SupplierDetailPage() {
                         <Card.Header as="h5">Previous Sales</Card.Header>
                         <Card.Body>
                             <Accordion>
-                                {sales.map((sale, index) => (
-                                    <Accordion.Item eventKey={index.toString()} key={sale.id}>
-                                        <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
-                                            <div className="d-flex justify-content-between w-100 pe-3">
-                                                <span>{new Date(sale.sale_date).toLocaleDateString()}</span>
-                                                <strong>{formatCurrency(sale.total_amount, sale.original_currency)}</strong>
-                                            </div>
-                                        </Accordion.Header>
-                                        <Accordion.Body>
-                                            <div className="d-flex justify-content-end mb-2">
-                                                <Button size="sm" variant="warning" onClick={() => navigate(`/sales/${sale.id}/edit`)}>Edit</Button>
-                                                <Button size="sm" variant="danger" className="ms-2" onClick={() => handleDeleteSale(sale.id)}>Delete</Button>
-                                            </div>
-                                            <Table striped bordered hover size="sm">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Product</th>
-                                                        <th>Quantity</th>
-                                                        <th>Unit Price</th>
-                                                        <th className="text-end">Line Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {sale.items.map(item => (
-                                                        <tr key={item.id}>
-                                                            <td>{item.product_name}</td>
-                                                            <td>{item.quantity}</td>
-                                                            <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
-                                                            <td className="text-end">{formatCurrency(item.line_total, sale.original_currency)}</td>
+                                {sales.map((sale, index) => {
+                                    const saleDate = new Date(sale.sale_date).toLocaleDateString();
+                                    return (
+                                        <Accordion.Item eventKey={index.toString()} key={sale.id}>
+                                            <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
+                                                <div className="d-flex justify-content-between w-100 pe-3">
+                                                    <span>{saleDate}</span>
+                                                    <strong>{formatCurrency(sale.total_amount, sale.original_currency)}</strong>
+                                                </div>
+                                            </Accordion.Header>
+                                            <Accordion.Body>
+                                                <div className="d-flex justify-content-end mb-2">
+                                                    <ActionMenu
+                                                        toggleAriaLabel={`Sale actions for ${saleDate}`}
+                                                        actions={[
+                                                            {
+                                                                label: 'Edit Sale',
+                                                                icon: <PencilSquare />,
+                                                                onClick: () => navigate(`/sales/${sale.id}/edit`),
+                                                            },
+                                                            {
+                                                                label: 'Delete Sale',
+                                                                icon: <Trash />,
+                                                                variant: 'text-danger',
+                                                                onClick: () => handleDeleteSale(sale.id),
+                                                            },
+                                                        ]}
+                                                    />
+                                                </div>
+                                                <Table striped bordered hover size="sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Product</th>
+                                                            <th>Quantity</th>
+                                                            <th>Unit Price</th>
+                                                            <th className="text-end">Line Total</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </Table>
-                                        </Accordion.Body>
-                                    </Accordion.Item>
-                                ))}
+                                                    </thead>
+                                                    <tbody>
+                                                        {sale.items.map(item => (
+                                                            <tr key={item.id}>
+                                                                <td>{item.product_name}</td>
+                                                                <td>{item.quantity}</td>
+                                                                <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
+                                                                <td className="text-end">{formatCurrency(item.line_total, sale.original_currency)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </Table>
+                                            </Accordion.Body>
+                                        </Accordion.Item>
+                                    );
+                                })}
                             </Accordion>
                         </Card.Body>
                     </Card>
@@ -284,35 +319,52 @@ function SupplierDetailPage() {
                         <Card.Header as="h5">Previous Payments</Card.Header>
                         <Card.Body>
                             <Accordion>
-                                {expenses.map((payment, index) => (
-                                    <Accordion.Item eventKey={index.toString()} key={payment.id}>
-                                        <Accordion.Header style={{ backgroundColor: '#d4edda' }}>
-                                            <div className="d-flex justify-content-between w-100 pe-3">
-                                                <span>{new Date(payment.expense_date).toLocaleDateString()}</span>
-                                                <span>{payment.method}</span>
-                                                <strong>{formatCurrency(payment.amount, payment.currency)}</strong>
-                                            </div>
-                                        </Accordion.Header>
-                                        <Accordion.Body>
-                                            <div className="d-flex justify-content-end mb-2">
-                                                <Button size="sm" variant="warning" onClick={() => handleEditPayment(payment)}>Edit</Button>
-                                                <Button size="sm" variant="danger" className="ms-2" onClick={() => handleDeletePayment(payment.id)}>Delete</Button>
-                                            </div>
-                                            <Table borderless size="sm" className="mb-0">
-                                                <tbody>
-                                                    <tr>
-                                                        <td className="fw-bold">Account</td>
-                                                        <td>{payment.account_name || 'N/A'}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td className="fw-bold">Notes</td>
-                                                        <td>{payment.description || 'No notes provided.'}</td>
-                                                    </tr>
-                                                </tbody>
-                                            </Table>
-                                        </Accordion.Body>
-                                    </Accordion.Item>
-                                ))}
+                                {expenses.map((payment, index) => {
+                                    const paymentDate = new Date(payment.expense_date).toLocaleDateString();
+                                    return (
+                                        <Accordion.Item eventKey={index.toString()} key={payment.id}>
+                                            <Accordion.Header style={{ backgroundColor: '#d4edda' }}>
+                                                <div className="d-flex justify-content-between w-100 pe-3">
+                                                    <span>{paymentDate}</span>
+                                                    <span>{payment.method}</span>
+                                                    <strong>{formatCurrency(payment.amount, payment.currency)}</strong>
+                                                </div>
+                                            </Accordion.Header>
+                                            <Accordion.Body>
+                                                <div className="d-flex justify-content-end mb-2">
+                                                    <ActionMenu
+                                                        toggleAriaLabel={`Payment actions for ${paymentDate}`}
+                                                        actions={[
+                                                            {
+                                                                label: 'Edit Payment',
+                                                                icon: <PencilSquare />,
+                                                                onClick: () => handleEditPayment(payment),
+                                                            },
+                                                            {
+                                                                label: 'Delete Payment',
+                                                                icon: <Trash />,
+                                                                variant: 'text-danger',
+                                                                onClick: () => handleDeletePayment(payment.id),
+                                                            },
+                                                        ]}
+                                                    />
+                                                </div>
+                                                <Table borderless size="sm" className="mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <td className="fw-bold">Account</td>
+                                                            <td>{payment.account_name || 'N/A'}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td className="fw-bold">Notes</td>
+                                                            <td>{payment.description || 'No notes provided.'}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </Table>
+                                            </Accordion.Body>
+                                        </Accordion.Item>
+                                    );
+                                })}
                             </Accordion>
                         </Card.Body>
                     </Card>
