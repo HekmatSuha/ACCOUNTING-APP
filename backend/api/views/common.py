@@ -35,9 +35,21 @@ def dashboard_summary(request):
     today_sales = Sale.objects.filter(
         Q(customer__created_by=user) | Q(supplier__created_by=user), sale_date=today
     ).aggregate(total=Coalesce(Sum('total_amount'), 0, output_field=DecimalField()))['total']
-    today_incoming = Payment.objects.filter(
+    today_payments_qs = Payment.objects.filter(
         customer__created_by=user, payment_date=today
-    ).aggregate(total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField()))['total']
+    )
+    today_incoming = today_payments_qs.aggregate(
+        total=Coalesce(Sum('converted_amount'), 0, output_field=DecimalField())
+    )['total']
+
+    today_incoming_currency_totals = today_payments_qs.values('original_currency').annotate(
+        total=Coalesce(Sum('original_amount'), 0, output_field=DecimalField())
+    )
+    today_incoming_breakdown = {
+        entry['original_currency']: entry['total']
+        for entry in today_incoming_currency_totals
+        if entry['total']
+    }
 
     stock_value = user.products.aggregate(
         total_value=Coalesce(Sum(F('purchase_price') * F('stock_quantity')), 0, output_field=DecimalField())
@@ -60,5 +72,6 @@ def dashboard_summary(request):
         'customer_count': user.customers.count(),
         'today_sales': today_sales,
         'today_incoming': today_incoming,
+        'today_incoming_breakdown': today_incoming_breakdown,
     }
     return Response(data)
