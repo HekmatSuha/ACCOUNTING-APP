@@ -16,6 +16,7 @@ const formatCurrency = (value, currency) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currency || 'USD',
+            currencyDisplay: 'narrowSymbol',
         }).format(safeValue);
     } catch (err) {
         // Fall back to a simple formatted string if Intl.NumberFormat fails
@@ -33,11 +34,14 @@ const ProgressCard = ({ title, items, headerColor = 'primary', currency = 'USD' 
                 {items.map(({ label, value, variant, breakdown }, idx) => {
                     const percentage = total > 0 ? (Number(value) / total) * 100 : 0;
                     const breakdownEntries = breakdown && Object.entries(breakdown);
+                    const displayValue = breakdownEntries && breakdownEntries.length > 0
+                        ? breakdownEntries.map(([code, amount]) => formatCurrency(amount, code)).join(', ')
+                        : formatCurrency(value, currency);
                     return (
                         <div key={idx} className="mb-3">
                             <div className="d-flex justify-content-between">
                                 <span>{label}</span>
-                                <span>{formatCurrency(value, currency)}</span>
+                                <span>{displayValue}</span>
                             </div>
                             {breakdownEntries && breakdownEntries.length > 0 && (
                                 <div className="ms-2 mt-1">
