@@ -13,11 +13,14 @@ import {
     Badge,
 } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
+import { downloadBlobResponse } from '../utils/download';
 
 function CustomerBalanceReportPage() {
     const [reportData, setReportData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [downloadError, setDownloadError] = useState('');
+    const [exportingFormat, setExportingFormat] = useState(null);
 
     const loadReport = async () => {
         setLoading(true);
@@ -31,6 +34,25 @@ function CustomerBalanceReportPage() {
             setError('Could not load the customer balance report. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const downloadReport = async (format) => {
+        setDownloadError('');
+        setExportingFormat(format);
+        try {
+            const response = await axiosInstance.get('/reports/customer-balances/', {
+                params: { format },
+                responseType: 'blob',
+            });
+            const extension = format === 'pdf' ? 'pdf' : 'xlsx';
+            const fallbackName = `customer-balance-report.${extension}`;
+            downloadBlobResponse(response, fallbackName);
+        } catch (err) {
+            console.error('Failed to download customer balance report:', err);
+            setDownloadError('Could not download the report. Please try again.');
+        } finally {
+            setExportingFormat(null);
         }
     };
 
@@ -101,21 +123,52 @@ function CustomerBalanceReportPage() {
 
     return (
         <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
+            <Card.Header className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h4 className="mb-0">Customer Balance Report</h4>
-                <Button variant="primary" onClick={loadReport} disabled={loading}>
-                    {loading ? (
-                        <>
-                            <Spinner as="span" animation="border" size="sm" role="status" className="me-2" />
-                            Refreshing
-                        </>
-                    ) : (
-                        'Refresh'
-                    )}
-                </Button>
+                <div className="d-flex flex-wrap gap-2">
+                    <Button
+                        variant="outline-secondary"
+                        onClick={() => downloadReport('xlsx')}
+                        disabled={loading || exportingFormat !== null}
+                    >
+                        {exportingFormat === 'xlsx' ? (
+                            <>
+                                <Spinner as="span" animation="border" size="sm" role="status" className="me-2" />
+                                Preparing...
+                            </>
+                        ) : (
+                            'Download Excel'
+                        )}
+                    </Button>
+                    <Button
+                        variant="outline-secondary"
+                        onClick={() => downloadReport('pdf')}
+                        disabled={loading || exportingFormat !== null}
+                    >
+                        {exportingFormat === 'pdf' ? (
+                            <>
+                                <Spinner as="span" animation="border" size="sm" role="status" className="me-2" />
+                                Preparing...
+                            </>
+                        ) : (
+                            'Download PDF'
+                        )}
+                    </Button>
+                    <Button variant="primary" onClick={loadReport} disabled={loading || exportingFormat !== null}>
+                        {loading ? (
+                            <>
+                                <Spinner as="span" animation="border" size="sm" role="status" className="me-2" />
+                                Refreshing
+                            </>
+                        ) : (
+                            'Refresh'
+                        )}
+                    </Button>
+                </div>
             </Card.Header>
             <Card.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
+                {downloadError && <Alert variant="danger">{downloadError}</Alert>}
                 {loading && reportData.length === 0 ? (
                     <div className="text-center py-5">
                         <Spinner animation="border" role="status" />

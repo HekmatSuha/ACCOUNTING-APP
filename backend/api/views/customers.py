@@ -1,6 +1,7 @@
 """Customer related API views."""
 
 from django.db.models import Sum
+from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound
@@ -10,6 +11,10 @@ from rest_framework.response import Response
 
 from ..activity_logger import log_activity
 from ..models import Customer, Payment
+from ..report_exports import (
+    generate_customer_balance_pdf,
+    generate_customer_balance_workbook,
+)
 from ..serializers import (
     CustomerBalanceReportSerializer,
     CustomerSerializer,
@@ -115,4 +120,24 @@ def customer_balance_report(request):
 
     queryset = Customer.objects.filter(created_by=request.user).order_by('name')
     serializer = CustomerBalanceReportSerializer(queryset, many=True)
-    return Response(serializer.data)
+    data = serializer.data
+
+    export_format = request.query_params.get('format', '').lower()
+    filename_stub = 'customer-balance-report'
+
+    if export_format in {'xlsx', 'excel'}:
+        workbook_bytes = generate_customer_balance_workbook(data)
+        response = HttpResponse(
+            workbook_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename_stub}.xlsx"'
+        return response
+
+    if export_format == 'pdf':
+        pdf_bytes = generate_customer_balance_pdf(data)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename_stub}.pdf"'
+        return response
+
+    return Response(data)

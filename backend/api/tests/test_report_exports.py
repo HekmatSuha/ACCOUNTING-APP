@@ -29,6 +29,13 @@ class ReportExportTests(TestCase):
         self.sale.refresh_from_db()
         self.sale_date = self.sale.sale_date
 
+        Customer.objects.create(
+            name="Globex", created_by=self.user, currency="EUR", open_balance=Decimal("-25.00")
+        )
+        Customer.objects.create(
+            name="Initech", created_by=self.user, currency="USD", open_balance=Decimal("0.00")
+        )
+
         category = ExpenseCategory.objects.create(name="Office", created_by=self.user)
         Expense.objects.create(
             category=category,
@@ -111,6 +118,58 @@ class ReportExportTests(TestCase):
             {
                 "start_date": "2023-01-01",
                 "end_date": "2025-01-01",
+                "format": "pdf",
+            },
+        )
+
+        self._assert_pdf_response(response)
+
+    def test_customer_balance_excel_contains_summary_and_details(self):
+        response = self.client.get(
+            "/api/reports/customer-balances/",
+            {
+                "format": "xlsx",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook.active
+
+        self.assertEqual(worksheet["A1"].value, "Customer Balance Report")
+
+        rows = list(worksheet.iter_rows(values_only=True))
+        status_counts = {
+            row[0]: row[1]
+            for row in rows
+            if row and row[0] in {"Customers Owing Us", "Customers We Owe", "Settled Customers"}
+        }
+        self.assertEqual(status_counts.get("Customers Owing Us"), 1)
+        self.assertEqual(status_counts.get("Customers We Owe"), 1)
+        self.assertEqual(status_counts.get("Settled Customers"), 1)
+
+        currency_rows = {
+            row[0]: row
+            for row in rows
+            if row and row[0] in {"USD", "EUR"}
+        }
+        self.assertAlmostEqual(currency_rows["USD"][1], float(self.sale.total_amount))
+        self.assertAlmostEqual(currency_rows["EUR"][2], 25.0)
+
+        customer_rows = [row for row in rows if row and row[0] == self.customer.name]
+        self.assertTrue(customer_rows)
+        self.assertAlmostEqual(customer_rows[0][4], float(self.sale.total_amount))
+        self.assertEqual(customer_rows[0][5], "Customers Owing Us")
+
+    def test_customer_balance_pdf_download(self):
+        response = self.client.get(
+            "/api/reports/customer-balances/",
+            {
                 "format": "pdf",
             },
         )
