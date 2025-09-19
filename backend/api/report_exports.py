@@ -1,8 +1,9 @@
 """Utilities to export accounting reports as Excel workbooks or PDFs."""
 
+from collections import Counter, defaultdict
 from decimal import Decimal
 from io import BytesIO
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -21,6 +22,8 @@ __all__ = [
     "generate_sales_report_pdf",
     "generate_profit_loss_workbook",
     "generate_profit_loss_pdf",
+    "generate_customer_balance_workbook",
+    "generate_customer_balance_pdf",
 ]
 
 
@@ -57,6 +60,38 @@ def _auto_size_columns(worksheet) -> None:
 
 def _format_currency(value: Decimal) -> str:
     return f"{_to_decimal(value):,.2f}"
+
+
+STATUS_LABELS = {
+    "owes_us": "Customers Owing Us",
+    "we_owe_them": "Customers We Owe",
+    "settled": "Settled Customers",
+}
+
+STATUS_ORDER = ("owes_us", "we_owe_them", "settled")
+
+
+def _summarize_customer_balances(customers: Sequence[Mapping]) -> tuple[Counter, dict[str, dict[str, Decimal]]]:
+    """Return status counts and currency totals for the customer balances."""
+
+    status_counts: Counter = Counter()
+    currency_totals: dict[str, dict[str, Decimal]] = defaultdict(
+        lambda: {"owe_us": Decimal("0"), "we_owe_them": Decimal("0")}
+    )
+
+    for customer in customers:
+        status = (customer.get("status") or "settled").lower()
+        status_counts[status] += 1
+
+        balance = _to_decimal(customer.get("balance"))
+        currency = customer.get("currency") or "USD"
+
+        if balance > 0:
+            currency_totals[currency]["owe_us"] += balance
+        elif balance < 0:
+            currency_totals[currency]["we_owe_them"] += abs(balance)
+
+    return status_counts, currency_totals
 
 
 def generate_sales_report_workbook(sales: Sequence, start_date: str, end_date: str) -> bytes:
@@ -357,6 +392,221 @@ def generate_profit_loss_pdf(report_data: dict) -> bytes:
 
     table.setStyle(TableStyle(table_style))
     story.append(table)
+
+    document.build(story)
+    pdf = buffer.getvalue()
+    buffer.close()
+    return pdf
+
+
+def generate_customer_balance_workbook(customers: Sequence[Mapping]) -> bytes:
+    """Return an Excel workbook summarising customer balances."""
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Customer Balances"
+
+    worksheet["A1"] = "Customer Balance Report"
+    worksheet["A1"].font = Font(size=14, bold=True)
+
+    status_counts, currency_totals = _summarize_customer_balances(customers)
+
+    worksheet.append([])
+    worksheet.append(["Status Summary"])
+    worksheet[worksheet.max_row][0].font = Font(bold=True)
+    worksheet.append(["Status", "Customers"])
+    header_row = worksheet[worksheet.max_row]
+    for cell in header_row:
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for key in STATUS_ORDER:
+        worksheet.append([STATUS_LABELS[key], int(status_counts.get(key, 0))])
+
+    worksheet.append([])
+    worksheet.append(["Currency Totals"])
+    worksheet[worksheet.max_row][0].font = Font(bold=True)
+    worksheet.append(["Currency", "Customers Owing Us", "We Owe Them"])
+    currency_header_row = worksheet[worksheet.max_row]
+    for cell in currency_header_row:
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    currency_data_start = worksheet.max_row + 1
+    if currency_totals:
+        for currency in sorted(currency_totals):
+            totals = currency_totals[currency]
+            worksheet.append([
+                currency,
+                float(totals["owe_us"]),
+                float(totals["we_owe_them"]),
+            ])
+    else:
+        worksheet.append(["—", 0.0, 0.0])
+
+    currency_data_end = worksheet.max_row
+    for row in worksheet.iter_rows(
+        min_row=currency_data_start, max_row=currency_data_end, min_col=2, max_col=3
+    ):
+        for cell in row:
+            cell.number_format = CURRENCY_NUMBER_FORMAT
+            cell.alignment = Alignment(horizontal="right")
+
+    worksheet.append([])
+    worksheet.append(["Customer Details"])
+    worksheet[worksheet.max_row][0].font = Font(bold=True)
+    worksheet.append(["Name", "Email", "Phone", "Currency", "Balance", "Status"])
+    details_header_row = worksheet[worksheet.max_row]
+    for cell in details_header_row:
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    if customers:
+        for customer in customers:
+            balance_decimal = _to_decimal(customer.get("balance"))
+            worksheet.append(
+                [
+                    customer.get("name") or "",
+                    customer.get("email") or "",
+                    customer.get("phone") or "",
+                    customer.get("currency") or "",
+                    float(balance_decimal),
+                    STATUS_LABELS.get((customer.get("status") or "").lower(), ""),
+                ]
+            )
+            row = worksheet[worksheet.max_row]
+            row[4].number_format = CURRENCY_NUMBER_FORMAT
+            row[4].alignment = Alignment(horizontal="right")
+    else:
+        worksheet.append(["No customer balances available.", "", "", "", "", ""])
+
+    _auto_size_columns(worksheet)
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def generate_customer_balance_pdf(customers: Sequence[Mapping]) -> bytes:
+    """Return a PDF document summarising customer balances."""
+
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+        title="Customer Balance Report",
+    )
+
+    styles = getSampleStyleSheet()
+
+    story = [
+        Paragraph("Customer Balance Report", styles["Title"]),
+        Spacer(1, 6 * mm),
+    ]
+
+    status_counts, currency_totals = _summarize_customer_balances(customers)
+
+    status_data: list[list[str]] = [["Status", "Customers"]]
+    for key in STATUS_ORDER:
+        status_data.append([STATUS_LABELS[key], str(int(status_counts.get(key, 0)))])
+
+    status_table = Table(status_data, colWidths=[80 * mm, 30 * mm])
+    status_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#305496")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CCCCCC")),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 1), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 2),
+            ]
+        )
+    )
+    story.append(status_table)
+    story.append(Spacer(1, 4 * mm))
+
+    currency_data: list[list[str]] = [["Currency", "Customers Owing Us", "We Owe Them"]]
+    if currency_totals:
+        for currency in sorted(currency_totals):
+            totals = currency_totals[currency]
+            currency_data.append(
+                [
+                    currency,
+                    _format_currency(totals["owe_us"]),
+                    _format_currency(totals["we_owe_them"]),
+                ]
+            )
+    else:
+        currency_data.append(["—", _format_currency(Decimal("0")), _format_currency(Decimal("0"))])
+
+    currency_table = Table(currency_data, colWidths=[40 * mm, 55 * mm, 55 * mm])
+    currency_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#305496")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                ("ALIGN", (0, 1), (0, -1), "LEFT"),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CCCCCC")),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 1), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 2),
+            ]
+        )
+    )
+    story.append(currency_table)
+    story.append(Spacer(1, 6 * mm))
+
+    details_data: list[list[str]] = [["Name", "Email", "Phone", "Currency", "Balance", "Status"]]
+    if customers:
+        for customer in customers:
+            details_data.append(
+                [
+                    customer.get("name") or "",
+                    customer.get("email") or "",
+                    customer.get("phone") or "",
+                    customer.get("currency") or "",
+                    _format_currency(customer.get("balance")),
+                    STATUS_LABELS.get((customer.get("status") or "").lower(), ""),
+                ]
+            )
+    else:
+        details_data.append(["No customer balances available.", "", "", "", "", ""])
+
+    details_table = Table(
+        details_data,
+        colWidths=[40 * mm, 55 * mm, 35 * mm, 25 * mm, 30 * mm, 50 * mm],
+        repeatRows=1,
+    )
+    details_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#305496")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (4, 1), (4, -1), "RIGHT"),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CCCCCC")),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 1), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 2),
+            ]
+        )
+    )
+    story.append(details_table)
 
     document.build(story)
     pdf = buffer.getvalue()
