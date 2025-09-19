@@ -4,6 +4,7 @@ from datetime import date
 
 from django.db.models import DecimalField, Sum
 from django.db.models.functions import Coalesce
+from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,7 @@ from rest_framework.response import Response
 
 from ..activity_logger import log_activity
 from ..models import Expense, Sale
+from ..report_exports import generate_profit_loss_pdf, generate_profit_loss_workbook
 from ..serializers import (
     ExpenseCategorySerializer,
     ExpenseSerializer,
@@ -105,5 +107,23 @@ def profit_and_loss_report(request):
         'net_profit': net_profit,
         'expenses_breakdown': list(expenses_by_category),
     }
+
+    export_format = request.query_params.get('format', '').lower()
+    filename_stub = f"profit-loss-report-{start_date_str}-to-{end_date_str}".replace(' ', '_')
+
+    if export_format in {'xlsx', 'excel'}:
+        workbook_bytes = generate_profit_loss_workbook(report_data)
+        response = HttpResponse(
+            workbook_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename_stub}.xlsx"'
+        return response
+
+    if export_format == 'pdf':
+        pdf_bytes = generate_profit_loss_pdf(report_data)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename_stub}.pdf"'
+        return response
 
     return Response(report_data)

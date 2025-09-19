@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Form, Row, Col, Spinner, Alert, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
+import { downloadBlobResponse } from '../utils/download';
 
 // Helper to get the first day of the current month
 const getFirstDayOfMonth = () => {
@@ -29,11 +30,14 @@ function ProfitLossPage() {
     const [endDate, setEndDate] = useState(getTodayDate());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [downloadError, setDownloadError] = useState('');
+    const [exportingFormat, setExportingFormat] = useState(null);
 
     const generateReport = async () => {
         setLoading(true);
         setError('');
         setReportData(null);
+        setDownloadError('');
         try {
             const params = {
                 start_date: startDate,
@@ -46,6 +50,30 @@ function ProfitLossPage() {
             setError('Could not generate the report. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const downloadReport = async (format) => {
+        setDownloadError('');
+        setExportingFormat(format);
+        try {
+            const params = {
+                start_date: startDate,
+                end_date: endDate,
+                format,
+            };
+            const response = await axiosInstance.get('/reports/profit-loss/', {
+                params,
+                responseType: 'blob',
+            });
+            const extension = format === 'pdf' ? 'pdf' : 'xlsx';
+            const fallbackName = `profit-loss-report-${startDate}-to-${endDate}.${extension}`;
+            downloadBlobResponse(response, fallbackName);
+        } catch (err) {
+            console.error('Failed to download profit and loss report:', err);
+            setDownloadError('Could not download the report. Please try again.');
+        } finally {
+            setExportingFormat(null);
         }
     };
     return (
@@ -85,35 +113,68 @@ function ProfitLossPage() {
                 </Form>
 
                 {error && <Alert variant="danger" className="mt-4">{error}</Alert>}
+                {downloadError && <Alert variant="danger" className="mt-4">{downloadError}</Alert>}
 
                 {reportData && (
-                    <div className="mt-4">
-                        <h5 className="text-center">Report for {reportData.start_date} to {reportData.end_date}</h5>
-                        <hr />
+                    <>
+                        <div className="d-flex justify-content-end gap-2 mt-4">
+                            <Button
+                                variant="outline-secondary"
+                                onClick={() => downloadReport('xlsx')}
+                                disabled={exportingFormat !== null || loading}
+                            >
+                                {exportingFormat === 'xlsx' ? (
+                                    <>
+                                        <Spinner as="span" animation="border" size="sm" className="me-2" />
+                                        Preparing...
+                                    </>
+                                ) : (
+                                    'Download Excel'
+                                )}
+                            </Button>
+                            <Button
+                                variant="outline-secondary"
+                                onClick={() => downloadReport('pdf')}
+                                disabled={exportingFormat !== null || loading}
+                            >
+                                {exportingFormat === 'pdf' ? (
+                                    <>
+                                        <Spinner as="span" animation="border" size="sm" className="me-2" />
+                                        Preparing...
+                                    </>
+                                ) : (
+                                    'Download PDF'
+                                )}
+                            </Button>
+                        </div>
+                        <div className="mt-4">
+                            <h5 className="text-center">Report for {reportData.start_date} to {reportData.end_date}</h5>
+                            <hr />
 
-                          <Table striped bordered hover responsive>
-                            <tbody>
-                                <tr className="table-success">
-                                    <td><strong>Total Revenue (Sales)</strong></td>
-                                    <td className="text-end"><strong>{formatCurrency(reportData.total_revenue)}</strong></td>
-                                </tr>
-                                <tr className="table-danger">
-                                    <td><strong>Total Expenses</strong></td>
-                                    <td className="text-end"><strong>{formatCurrency(reportData.total_expenses)}</strong></td>
-                                </tr>
-                                {reportData.expenses_breakdown.map((item, index) => (
-                                    <tr key={index}>
-                                        <td className="ps-4">- {item.category__name || 'Uncategorized'}</td>
-                                        <td className="text-end">{formatCurrency(item.total)}</td>
+                            <Table striped bordered hover responsive>
+                                <tbody>
+                                    <tr className="table-success">
+                                        <td><strong>Total Revenue (Sales)</strong></td>
+                                        <td className="text-end"><strong>{formatCurrency(reportData.total_revenue)}</strong></td>
                                     </tr>
-                                ))}
-                                <tr className="table-info">
-                                    <td><h4>Net Profit / Loss</h4></td>
-                                    <td className="text-end"><h4>{formatCurrency(reportData.net_profit)}</h4></td>
-                                </tr>
-                            </tbody>
-                        </Table>
-                    </div>
+                                    <tr className="table-danger">
+                                        <td><strong>Total Expenses</strong></td>
+                                        <td className="text-end"><strong>{formatCurrency(reportData.total_expenses)}</strong></td>
+                                    </tr>
+                                    {reportData.expenses_breakdown.map((item, index) => (
+                                        <tr key={index}>
+                                            <td className="ps-4">- {item.category__name || 'Uncategorized'}</td>
+                                            <td className="text-end">{formatCurrency(item.total)}</td>
+                                        </tr>
+                                    ))}
+                                    <tr className="table-info">
+                                        <td><h4>Net Profit / Loss</h4></td>
+                                        <td className="text-end"><h4>{formatCurrency(reportData.net_profit)}</h4></td>
+                                    </tr>
+                                </tbody>
+                            </Table>
+                        </div>
+                    </>
                 )}
             </Card.Body>
         </Card>
