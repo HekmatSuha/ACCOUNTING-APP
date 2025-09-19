@@ -10,7 +10,11 @@ from .views.auth import CreateUserView
 from .views.banking import BankAccountViewSet
 from .views.common import dashboard_summary, get_currency_options
 from .views.company import CompanyInfoViewSet, CompanySettingsViewSet
-from .views.customers import CustomerPaymentViewSet, CustomerViewSet
+from .views.customers import (
+    CustomerPaymentViewSet,
+    CustomerViewSet,
+    customer_balance_report,
+)
 from .views.expenses import ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report
 from .views.products import ProductViewSet
 from .views.purchases import PurchaseReturnViewSet, PurchaseViewSet
@@ -50,6 +54,7 @@ urlpatterns = [
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/register/', CreateUserView.as_view(), name='register'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),
+    path('reports/customer-balances/', customer_balance_report, name='customer-balance-report'),
     path('reports/sales/', sales_report, name='sales-report'),
     path('', include(router.urls)),
     path('', include(sales_router.urls)),

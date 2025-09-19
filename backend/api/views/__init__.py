@@ -5,7 +5,11 @@ from .auth import CreateUserView
 from .banking import BankAccountViewSet
 from .common import dashboard_summary, get_currency_options
 from .company import CompanyInfoViewSet, CompanySettingsViewSet
-from .customers import CustomerPaymentViewSet, CustomerViewSet
+from .customers import (
+    CustomerPaymentViewSet,
+    CustomerViewSet,
+    customer_balance_report,
+)
 from .expenses import ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report
 from .products import ProductViewSet
 from .purchases import PurchaseReturnViewSet, PurchaseViewSet
@@ -40,5 +44,6 @@ __all__ = [
     'dashboard_summary',
     'get_currency_options',
     'profit_and_loss_report',
+    'customer_balance_report',
     'sales_report',
 ]
