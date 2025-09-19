@@ -46,8 +46,17 @@ function SalesReportPage() {
             setLoading(false);
         }
     };
+    const openRow = (id) => {
+        setOpenRows(prev => ({ ...prev, [id]: true }));
+    };
+
     const toggleRow = (id) => {
         setOpenRows(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const handleToggleClick = (event, id) => {
+        event.stopPropagation();
+        toggleRow(id);
     };
 
     return (
@@ -103,8 +112,16 @@ function SalesReportPage() {
                             <tbody>
                                 {reportData.map((sale) => (
                                     <React.Fragment key={sale.id}>
-                                        <tr onClick={() => toggleRow(sale.id)} style={{ cursor: 'pointer' }}>
-                                            <td><Button variant="link" size="sm">{openRows[sale.id] ? '-' : '+'}</Button></td>
+                                        <tr onClick={() => openRow(sale.id)} style={{ cursor: 'pointer' }}>
+                                            <td>
+                                                <Button
+                                                    variant="link"
+                                                    size="sm"
+                                                    onClick={(event) => handleToggleClick(event, sale.id)}
+                                                >
+                                                    {openRows[sale.id] ? '-' : '+'}
+                                                </Button>
+                                            </td>
                                             <td>{sale.sale_date}</td>
                                             <td>{sale.invoice_number}</td>
                                             <td>{sale.customer_name}</td>
