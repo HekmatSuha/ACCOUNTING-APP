@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from ..activity_logger import log_activity
 from ..invoice_pdf import generate_invoice_pdf
 from ..models import Customer, Offer, Payment, Product, Sale, SaleItem, SaleReturn, Supplier
+from ..report_exports import generate_sales_report_pdf, generate_sales_report_workbook
 from ..serializers import (
     OfferReadSerializer,
     OfferWriteSerializer,
@@ -248,10 +249,34 @@ def sales_report(request):
     start_date_str = request.query_params.get('start_date', '2000-01-01')
     end_date_str = request.query_params.get('end_date', date.today().strftime('%Y-%m-%d'))
 
-    sales_in_range = Sale.objects.filter(
-        created_by=user,
-        sale_date__range=[start_date_str, end_date_str],
-    ).order_by('-sale_date')
+    export_format = request.query_params.get('format', '').lower()
+
+    sales_in_range = list(
+        Sale.objects.filter(
+            created_by=user,
+            sale_date__range=[start_date_str, end_date_str],
+        )
+        .select_related('customer', 'supplier')
+        .prefetch_related('items__product')
+        .order_by('-sale_date')
+    )
+
+    filename_stub = f"sales-report-{start_date_str}-to-{end_date_str}".replace(' ', '_')
+
+    if export_format in {'xlsx', 'excel'}:
+        workbook_bytes = generate_sales_report_workbook(sales_in_range, start_date_str, end_date_str)
+        response = HttpResponse(
+            workbook_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename_stub}.xlsx"'
+        return response
+
+    if export_format == 'pdf':
+        pdf_bytes = generate_sales_report_pdf(sales_in_range, start_date_str, end_date_str)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename_stub}.pdf"'
+        return response
 
     serializer = SaleReadSerializer(sales_in_range, many=True)
 
