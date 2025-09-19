@@ -13,33 +13,14 @@ import {
     FileText,
     BoxSeam,
     BarChart,
+    PlusLg,
+    DashLg,
     Bank,
     BoxArrowRight,
     List,
     PersonCircle,
     Gear
 } from 'react-bootstrap-icons';
-
-const SidebarDropdownToggle = React.forwardRef(
-    ({ children, className = '', onClick, ...props }, ref) => (
-        <button
-            type="button"
-            ref={ref}
-            className={`${className} border-0 bg-transparent text-start w-100`}
-            onClick={(event) => {
-                event.preventDefault();
-                if (onClick) {
-                    onClick(event);
-                }
-            }}
-            {...props}
-        >
-            {children}
-        </button>
-    ),
-);
-
-SidebarDropdownToggle.displayName = 'SidebarDropdownToggle';
 
 function AppLayout({ children }) {
     const navigate = useNavigate();
@@ -70,9 +51,10 @@ function AppLayout({ children }) {
     const linkClass = `text-white w-100 d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'} mb-2`;
     const iconClass = collapsed ? '' : 'me-2';
     const sidebarWidth = collapsed ? '80px' : '250px';
-    const reportsToggleClass = `${linkClass} text-decoration-none ${isReportsRoute ? 'bg-secondary bg-opacity-50 rounded' : ''}`;
-    const reportsMenuClass = `${collapsed ? '' : 'w-100 px-0'} border-0 shadow-sm`;
-    const reportsMenuStyle = collapsed ? undefined : { position: 'static', float: 'none' };
+    const reportsToggleActive = isReportsRoute || reportsOpen;
+    const reportsToggleClass = `text-white w-100 d-flex ${
+        collapsed ? 'justify-content-center' : 'align-items-center justify-content-between'
+    } mb-2 text-decoration-none px-2 py-2 rounded ${reportsToggleActive ? 'bg-secondary bg-opacity-50' : ''}`;
 
     const SidebarContent = (
         <>
@@ -102,47 +84,53 @@ function AppLayout({ children }) {
                 <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
                     <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
                 </Nav.Link>
-                <Dropdown
-                    show={reportsOpen}
-                    onToggle={(isOpen) => setReportsOpen(isOpen)}
-                    drop={collapsed ? 'end' : 'down'}
-                >
-                    <Dropdown.Toggle
-                        as={SidebarDropdownToggle}
-                        id="reports-nav-dropdown"
-                        className={reportsToggleClass}
+                <div className="position-relative">
+                    <button
+                        type="button"
+                        className={`${reportsToggleClass} border-0 bg-transparent`}
+                        onClick={() => setReportsOpen((prev) => !prev)}
                     >
-                        <BarChart className={iconClass} /> {!collapsed && 'Reports'}
-                    </Dropdown.Toggle>
-                    <Dropdown.Menu
-                        align={collapsed ? 'end' : 'start'}
-                        menuVariant="dark"
-                        className={reportsMenuClass}
-                        style={reportsMenuStyle}
-                    >
-                        <Dropdown.Item
-                            as={NavLink}
-                            to="/reports/profit-loss"
-                            className={`${!collapsed ? 'ps-4' : ''} text-white`}
+                        <span className="d-flex align-items-center">
+                            <BarChart className={iconClass} /> {!collapsed && 'Reports'}
+                        </span>
+                        {!collapsed && (reportsOpen ? <DashLg size={18} /> : <PlusLg size={18} />)}
+                    </button>
+                    {reportsOpen && (
+                        <div
+                            className={`sidebar-submenu ${
+                                collapsed
+                                    ? 'sidebar-submenu-collapsed position-absolute start-100 top-0 ms-2'
+                                    : 'mt-2 ms-2 w-100'
+                            }`}
+                            style={collapsed ? { minWidth: '220px', zIndex: 1050 } : {}}
                         >
-                            Profit &amp; Loss
-                        </Dropdown.Item>
-                        <Dropdown.Item
-                            as={NavLink}
-                            to="/reports/sales"
-                            className={`${!collapsed ? 'ps-4' : ''} text-white`}
-                        >
-                            Sales Report
-                        </Dropdown.Item>
-                        <Dropdown.Item
-                            as={NavLink}
-                            to="/reports/customer-balances"
-                            className={`${!collapsed ? 'ps-4' : ''} text-white`}
-                        >
-                            Customer Balances
-                        </Dropdown.Item>
-                    </Dropdown.Menu>
-                </Dropdown>
+                            <NavLink
+                                to="/reports/profit-loss"
+                                className={({ isActive }) =>
+                                    `sidebar-submenu-link ${isActive ? 'active' : ''}`
+                                }
+                            >
+                                Profit &amp; Loss
+                            </NavLink>
+                            <NavLink
+                                to="/reports/sales"
+                                className={({ isActive }) =>
+                                    `sidebar-submenu-link ${isActive ? 'active' : ''}`
+                                }
+                            >
+                                Sales Report
+                            </NavLink>
+                            <NavLink
+                                to="/reports/customer-balances"
+                                className={({ isActive }) =>
+                                    `sidebar-submenu-link ${isActive ? 'active' : ''}`
+                                }
+                            >
+                                Customer Balances
+                            </NavLink>
+                        </div>
+                    )}
+                </div>
                 <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
                     <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
                 </Nav.Link>
