@@ -47,3 +47,35 @@
   transform: translateY(-2px);
   box-shadow: 0 0.75rem 1.25rem rgba(0, 0, 0, 0.15);
 }
+
+.sidebar-submenu {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-left: 3px solid rgba(0, 184, 217, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.sidebar-submenu-collapsed {
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.35);
+}
+
+.sidebar-submenu-link {
+  color: rgba(255, 255, 255, 0.75);
+  display: block;
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.sidebar-submenu-link:hover,
+.sidebar-submenu-link.active {
+  color: #ffffff;
+  background: rgba(0, 184, 217, 0.28);
+  font-weight: 600;
+}
