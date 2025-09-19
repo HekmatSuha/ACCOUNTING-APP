@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Nav, Button, Dropdown, Offcanvas } from 'react-bootstrap';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     Speedometer2,
     People,
@@ -20,10 +20,33 @@ import {
     Gear
 } from 'react-bootstrap-icons';
 
+const SidebarDropdownToggle = React.forwardRef(
+    ({ children, className = '', onClick, ...props }, ref) => (
+        <button
+            type="button"
+            ref={ref}
+            className={`${className} border-0 bg-transparent text-start w-100`}
+            onClick={(event) => {
+                event.preventDefault();
+                if (onClick) {
+                    onClick(event);
+                }
+            }}
+            {...props}
+        >
+            {children}
+        </button>
+    ),
+);
+
+SidebarDropdownToggle.displayName = 'SidebarDropdownToggle';
+
 function AppLayout({ children }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
+    const [reportsOpen, setReportsOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const username = localStorage.getItem('username') || 'User';
 
@@ -33,15 +56,23 @@ function AppLayout({ children }) {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    useEffect(() => {
+        setReportsOpen(false);
+    }, [location.pathname, collapsed]);
+
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         navigate('/login');
     };
 
-    const linkClass = `text-white d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'} mb-2`;
+    const isReportsRoute = location.pathname.startsWith('/reports');
+    const linkClass = `text-white w-100 d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'} mb-2`;
     const iconClass = collapsed ? '' : 'me-2';
     const sidebarWidth = collapsed ? '80px' : '250px';
+    const reportsToggleClass = `${linkClass} text-decoration-none ${isReportsRoute ? 'bg-secondary bg-opacity-50 rounded' : ''}`;
+    const reportsMenuClass = `${collapsed ? '' : 'w-100 px-0'} border-0 shadow-sm`;
+    const reportsMenuStyle = collapsed ? undefined : { position: 'static', float: 'none' };
 
     const SidebarContent = (
         <>
@@ -71,12 +102,47 @@ function AppLayout({ children }) {
                 <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
                     <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
                 </Nav.Link>
-                <Nav.Link as={NavLink} to="/reports/profit-loss" className={linkClass}>
-                    <BarChart className={iconClass} /> {!collapsed && 'Profit & Loss'}
-                </Nav.Link>
-                <Nav.Link as={NavLink} to="/reports/sales" className={linkClass}>
-                    <BarChart className={iconClass} /> {!collapsed && 'Sales Report'}
-                </Nav.Link>
+                <Dropdown
+                    show={reportsOpen}
+                    onToggle={(isOpen) => setReportsOpen(isOpen)}
+                    drop={collapsed ? 'end' : 'down'}
+                >
+                    <Dropdown.Toggle
+                        as={SidebarDropdownToggle}
+                        id="reports-nav-dropdown"
+                        className={reportsToggleClass}
+                    >
+                        <BarChart className={iconClass} /> {!collapsed && 'Reports'}
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu
+                        align={collapsed ? 'end' : 'start'}
+                        menuVariant="dark"
+                        className={reportsMenuClass}
+                        style={reportsMenuStyle}
+                    >
+                        <Dropdown.Item
+                            as={NavLink}
+                            to="/reports/profit-loss"
+                            className={`${!collapsed ? 'ps-4' : ''} text-white`}
+                        >
+                            Profit &amp; Loss
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                            as={NavLink}
+                            to="/reports/sales"
+                            className={`${!collapsed ? 'ps-4' : ''} text-white`}
+                        >
+                            Sales Report
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                            as={NavLink}
+                            to="/reports/customer-balances"
+                            className={`${!collapsed ? 'ps-4' : ''} text-white`}
+                        >
+                            Customer Balances
+                        </Dropdown.Item>
+                    </Dropdown.Menu>
+                </Dropdown>
                 <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
                     <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
                 </Nav.Link>

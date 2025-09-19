@@ -6,27 +6,27 @@ from rest_framework import serializers
 from decimal import Decimal
 from .exchange_rates import get_exchange_rate
 from .models import (
+    Activity,
+    BankAccount,
+    BankAccountTransaction,
+    CompanyInfo,
+    CompanySettings,
     Customer,
+    Expense,
     ExpenseCategory,
-    Sale,
+    Offer,
+    OfferItem,
     Payment,
     Product,
-    SaleItem,
-    SaleReturn,
-    SaleReturnItem,
-    Supplier,
-    Expense,
     Purchase,
     PurchaseItem,
     PurchaseReturn,
     PurchaseReturnItem,
-    BankAccount,
-    BankAccountTransaction,
-    Activity,
-    Offer,
-    OfferItem,
-    CompanyInfo,
-    CompanySettings,
+    Sale,
+    SaleItem,
+    SaleReturn,
+    SaleReturnItem,
+    Supplier,
 )
 from rest_framework.validators import UniqueValidator
 
@@ -96,6 +96,26 @@ class CustomerSerializer(serializers.ModelSerializer):
             'image',
         ]
         read_only_fields = ['created_by']
+
+
+class CustomerBalanceReportSerializer(serializers.ModelSerializer):
+    """Serializer used by the customer balance report endpoint."""
+
+    balance = serializers.DecimalField(
+        source='open_balance', max_digits=12, decimal_places=2, read_only=True
+    )
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Customer
+        fields = ['id', 'name', 'email', 'phone', 'currency', 'balance', 'status']
+
+    def get_status(self, obj):
+        if obj.open_balance > 0:
+            return 'owes_us'
+        if obj.open_balance < 0:
+            return 'we_owe_them'
+        return 'settled'
 
 class PaymentSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source='customer.name', read_only=True)

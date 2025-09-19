@@ -2,7 +2,7 @@
 
 from django.db.models import Sum
 from rest_framework import viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from ..activity_logger import log_activity
 from ..models import Customer, Payment
 from ..serializers import (
+    CustomerBalanceReportSerializer,
     CustomerSerializer,
     PaymentSerializer,
     PurchaseReadSerializer,
@@ -105,3 +106,13 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def customer_balance_report(request):
+    """Return a simplified customer balance report for the current user."""
+
+    queryset = Customer.objects.filter(created_by=request.user).order_by('name')
+    serializer = CustomerBalanceReportSerializer(queryset, many=True)
+    return Response(serializer.data)
