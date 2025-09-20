@@ -5,6 +5,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Form, Row, Col, Spinner, Alert, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import { downloadBlobResponse } from '../utils/download';
+import '../styles/datatable.css';
 
 // Helper to get the first day of the current month
 const getFirstDayOfMonth = () => {
@@ -147,11 +148,11 @@ function ProfitLossPage() {
                                 )}
                             </Button>
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 data-table-container">
                             <h5 className="text-center">Report for {reportData.start_date} to {reportData.end_date}</h5>
                             <hr />
 
-                            <Table striped bordered hover responsive>
+                            <Table responsive className="data-table">
                                 <tbody>
                                     <tr className="table-success">
                                         <td><strong>Total Revenue (Sales)</strong></td>

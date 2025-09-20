@@ -14,6 +14,7 @@ import {
 } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import { downloadBlobResponse } from '../utils/download';
+import '../styles/datatable.css';
 
 function CustomerBalanceReportPage() {
     const [reportData, setReportData] = useState([]);
@@ -204,20 +205,21 @@ function CustomerBalanceReportPage() {
                                 </Card>
                             </Col>
                         </Row>
-                        <Table striped bordered hover responsive>
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Contact</th>
-                                    <th>Currency</th>
-                                    <th className="text-end">Balance</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div className="data-table-container">
+                            <Table responsive className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Contact</th>
+                                        <th>Currency</th>
+                                        <th className="text-end">Balance</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                 {reportData.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="text-center py-4 text-muted">
+                                        <td colSpan="5" className="data-table-empty">
                                             No customer balances to display.
                                         </td>
                                     </tr>
@@ -249,8 +251,9 @@ function CustomerBalanceReportPage() {
                                         );
                                     })
                                 )}
-                            </tbody>
-                        </Table>
+                                </tbody>
+                            </Table>
+                        </div>
                     </>
                 )}
             </Card.Body>

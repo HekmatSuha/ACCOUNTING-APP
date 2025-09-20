@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Form, Button, Card, Row, Col, Table, Alert } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import { FaTrash } from 'react-icons/fa';
+import '../styles/datatable.css';
 
 function TransactionPage() {
     // State for data fetched from the API
@@ -129,67 +130,69 @@ function TransactionPage() {
                         </Form.Group>
                     </Row>
 
-                      <h5>Sale Items</h5>
-                      <Table bordered hover responsive>
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                                <th>Unit Price</th>
-                                <th>Line Total</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {saleItems.map((item, index) => (
-                                <tr key={index}>
-                                    <td>
-                                        <Form.Select
-                                            name="product_id"
-                                            value={item.product_id}
-                                            onChange={e => handleItemChange(index, e)}
-                                            required
-                                        >
-                                            <option value="">Select a Product</option>
-                                            {products.map(product => (
-                                                <option key={product.id} value={product.id}>
-                                                    {product.name}
-                                                </option>
-                                            ))}
-                                        </Form.Select>
-                                    </td>
-                                    <td>
-                                        <Form.Control
-                                            type="number"
-                                            name="quantity"
-                                            value={item.quantity}
-                                            onChange={e => handleItemChange(index, e)}
-                                            min="1"
-                                            required
-                                        />
-                                    </td>
-                                    <td>
-                                        <Form.Control
-                                            type="number"
-                                            name="unit_price"
-                                            value={item.unit_price}
-                                            onChange={e => handleItemChange(index, e)}
-                                            step="0.01"
-                                            required
-                                        />
-                                    </td>
-                                    <td>
-                                        {formatCurrency((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
-                                    </td>
-                                    <td>
-                                        <Button variant="danger" onClick={() => handleRemoveItem(index)}>
-                                            <FaTrash />
-                                        </Button>
-                                    </td>
+                    <h5>Sale Items</h5>
+                    <div className="data-table-container">
+                        <Table responsive className="data-table data-table--compact">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Line Total</th>
+                                    <th>Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                                {saleItems.map((item, index) => (
+                                    <tr key={index}>
+                                        <td>
+                                            <Form.Select
+                                                name="product_id"
+                                                value={item.product_id}
+                                                onChange={(e) => handleItemChange(index, e)}
+                                                required
+                                            >
+                                                <option value="">Select a Product</option>
+                                                {products.map((product) => (
+                                                    <option key={product.id} value={product.id}>
+                                                        {product.name}
+                                                    </option>
+                                                ))}
+                                            </Form.Select>
+                                        </td>
+                                        <td>
+                                            <Form.Control
+                                                type="number"
+                                                name="quantity"
+                                                value={item.quantity}
+                                                onChange={(e) => handleItemChange(index, e)}
+                                                min="1"
+                                                required
+                                            />
+                                        </td>
+                                        <td>
+                                            <Form.Control
+                                                type="number"
+                                                name="unit_price"
+                                                value={item.unit_price}
+                                                onChange={(e) => handleItemChange(index, e)}
+                                                step="0.01"
+                                                required
+                                            />
+                                        </td>
+                                        <td>
+                                            {formatCurrency((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}
+                                        </td>
+                                        <td>
+                                            <Button variant="danger" onClick={() => handleRemoveItem(index)}>
+                                                <FaTrash />
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </div>
 
                     <Button variant="secondary" onClick={handleAddItem} className="mb-3">
                         + Add Item

@@ -8,6 +8,7 @@ import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash } from '
 import './SupplierDetailPage.css';
 import SupplierPaymentModal from '../components/SupplierPaymentModal';
 import ActionMenu from '../components/ActionMenu';
+import '../styles/datatable.css';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -225,7 +226,7 @@ function SupplierDetailPage() {
                                                         ]}
                                                     />
                                                 </div>
-                                                <Table striped bordered hover size="sm">
+                                                <Table size="sm" className="data-table data-table--compact data-table--subtle">
                                                     <thead>
                                                         <tr>
                                                             <th>Product</th>
@@ -286,7 +287,7 @@ function SupplierDetailPage() {
                                                         ]}
                                                     />
                                                 </div>
-                                                <Table striped bordered hover size="sm">
+                                                <Table size="sm" className="data-table data-table--compact data-table--subtle">
                                                     <thead>
                                                         <tr>
                                                             <th>Product</th>
@@ -349,7 +350,7 @@ function SupplierDetailPage() {
                                                         ]}
                                                     />
                                                 </div>
-                                                <Table borderless size="sm" className="mb-0">
+                                                <Table size="sm" className="data-table data-table--compact data-table--subtle mb-0">
                                                     <tbody>
                                                         <tr>
                                                             <td className="fw-bold">Account</td>

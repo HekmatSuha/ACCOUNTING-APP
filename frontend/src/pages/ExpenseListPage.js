@@ -7,6 +7,7 @@ import { FaTrash, FaEdit } from 'react-icons/fa';
 import ActionMenu from '../components/ActionMenu';
 import { formatCurrency } from '../utils/format';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
+import '../styles/datatable.css';
 
 // This is the new, self-contained component for managing categories
 const CategoryManagerModal = ({ show, handleClose, categories, onUpdate }) => {
@@ -206,46 +207,54 @@ function ExpenseListPage() {
                     </div>
                 </Card.Header>
                 <Card.Body>
-                    <Table striped bordered hover responsive>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Category</th>
-                                <th>Account</th>
-                                <th>Description</th>
-                                <th>Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {expenses.map((expense) => (
-                                <tr key={expense.id}>
-                                    <td>{expense.expense_date}</td>
-                                    <td>{expense.category_name || 'Uncategorized'}</td>
-                                    <td>{expense.account_name || 'N/A'}</td>
-                                    <td>{expense.description}</td>
-                                    <td>{formatCurrency(expense.amount, expense.account_currency || baseCurrency)}</td>
-                                    <td className="text-nowrap">
-                                        <ActionMenu
-                                            actions={[
-                                                {
-                                                    label: 'Edit Expense',
-                                                    icon: <FaEdit />,
-                                                    onClick: () => handleShowModal(expense),
-                                                },
-                                                {
-                                                    label: 'Delete Expense',
-                                                    icon: <FaTrash />,
-                                                    variant: 'text-danger',
-                                                    onClick: () => handleDelete(expense.id),
-                                                },
-                                            ]}
-                                        />
-                                    </td>
+                    <div className="data-table-container">
+                        <Table responsive className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Account</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                            {expenses.length > 0 ? (
+                                expenses.map((expense) => (
+                                    <tr key={expense.id}>
+                                        <td>{expense.expense_date}</td>
+                                        <td>{expense.category_name || 'Uncategorized'}</td>
+                                        <td>{expense.account_name || 'N/A'}</td>
+                                        <td>{expense.description}</td>
+                                        <td>{formatCurrency(expense.amount, expense.account_currency || baseCurrency)}</td>
+                                        <td className="text-nowrap">
+                                            <ActionMenu
+                                                actions={[
+                                                    {
+                                                        label: 'Edit Expense',
+                                                        icon: <FaEdit />,
+                                                        onClick: () => handleShowModal(expense),
+                                                    },
+                                                    {
+                                                        label: 'Delete Expense',
+                                                        icon: <FaTrash />,
+                                                        variant: 'text-danger',
+                                                        onClick: () => handleDelete(expense.id),
+                                                    },
+                                                ]}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="data-table-empty">No expenses have been recorded yet.</td>
+                                </tr>
+                            )}
+                            </tbody>
+                        </Table>
+                    </div>
                 </Card.Body>
             </Card>
 

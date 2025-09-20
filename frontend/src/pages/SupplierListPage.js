@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Table, Button, Form, InputGroup, Row, Col, Spinner, Alert } from 'react-bootstrap';
 import { Plus } from 'react-bootstrap-icons';
+import '../styles/datatable.css';
 
 function SupplierListPage() {
     const [suppliers, setSuppliers] = useState([]);
@@ -46,7 +47,7 @@ function SupplierListPage() {
         <>
             {error && <Alert variant="danger">{error}</Alert>}
 
-            <Row className="mb-3 align-items-center">
+            <Row className="data-table-toolbar align-items-center">
                 <Col md={6}>
                     <Button variant="success" className="me-2" onClick={() => navigate('/suppliers/new')}>
                         <Plus size={20} className="me-1" /> Add New Supplier
@@ -64,31 +65,35 @@ function SupplierListPage() {
             </Row>
 
             <h2 className="mb-3">Suppliers</h2>
-            <div className="table-container border rounded">
-                <Table striped hover responsive className="m-0">
-                    <thead className="table-dark">
+            <div className="data-table-container">
+                <Table responsive className="data-table">
+                    <thead>
                         <tr>
-                            <th style={{ padding: '1rem' }}>Name / Title</th>
-                            <th style={{ padding: '1rem' }}>Open Balance</th>
+                            <th>Name / Title</th>
+                            <th>Open Balance</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan="2" className="text-center p-5">
+                                <td colSpan="2" className="data-table-status">
                                     <Spinner animation="border" />
                                 </td>
                             </tr>
                         ) : suppliers.length > 0 ? (
                             suppliers.map((supplier) => (
-                                <tr key={supplier.id} onClick={() => navigate(`/suppliers/${supplier.id}`)} style={{ cursor: 'pointer' }}>
+                                <tr
+                                    key={supplier.id}
+                                    onClick={() => navigate(`/suppliers/${supplier.id}`)}
+                                    className="data-table-row--link"
+                                >
                                     <td>{supplier.name}</td>
                                     <td>{formatCurrency(supplier.open_balance, supplier.currency)}</td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="2" className="text-center p-5">
+                                <td colSpan="2" className="data-table-empty">
                                     {searchTerm ? `No suppliers found for "${searchTerm}".` : 'No suppliers found. Click "Add New Supplier" to get started.'}
                                 </td>
                             </tr>
