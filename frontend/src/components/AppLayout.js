@@ -48,13 +48,15 @@ function AppLayout({ children }) {
     };
 
     const isReportsRoute = location.pathname.startsWith('/reports');
-    const linkClass = `text-white w-100 d-flex ${collapsed ? 'justify-content-center' : 'align-items-center'} mb-2`;
+    const linkClass = `app-nav-link w-100 d-flex gap-2 ${
+        collapsed ? 'justify-content-center' : 'align-items-center'
+    } mb-2`;
     const iconClass = collapsed ? '' : 'me-2';
     const sidebarWidth = collapsed ? '80px' : '250px';
     const reportsToggleActive = isReportsRoute || reportsOpen;
-    const reportsToggleClass = `text-white w-100 d-flex ${
+    const reportsToggleClass = `app-nav-link w-100 d-flex ${
         collapsed ? 'justify-content-center' : 'align-items-center justify-content-between'
-    } mb-2 text-decoration-none px-2 py-2 rounded ${reportsToggleActive ? 'bg-secondary bg-opacity-50' : ''}`;
+    } gap-2 mb-2 ${reportsToggleActive ? 'active' : ''}`;
 
     const SidebarContent = (
         <>
@@ -87,10 +89,11 @@ function AppLayout({ children }) {
                 <div className="position-relative">
                     <button
                         type="button"
-                        className={`${reportsToggleClass} border-0 bg-transparent`}
+                        className={`${reportsToggleClass} border-0`}
                         onClick={() => setReportsOpen((prev) => !prev)}
+                        aria-expanded={reportsOpen}
                     >
-                        <span className="d-flex align-items-center">
+                        <span className="d-flex align-items-center gap-2">
                             <BarChart className={iconClass} /> {!collapsed && 'Reports'}
                         </span>
                         {!collapsed && (reportsOpen ? <DashLg size={18} /> : <PlusLg size={18} />)}
@@ -141,7 +144,7 @@ function AppLayout({ children }) {
     return (
         <div>
             {isMobile ? (
-                <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} className="bg-dark text-white">
+                <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} className="app-sidebar">
                     <Offcanvas.Header closeButton closeVariant="white">
                         <Offcanvas.Title>MyAccountingApp</Offcanvas.Title>
                     </Offcanvas.Header>
@@ -149,7 +152,7 @@ function AppLayout({ children }) {
                 </Offcanvas>
             ) : (
                 <div
-                    className="bg-dark text-white d-flex flex-column p-3"
+                    className="app-sidebar d-flex flex-column p-3"
                     style={{
                         width: sidebarWidth,
                         minHeight: '100vh',
@@ -167,9 +170,9 @@ function AppLayout({ children }) {
                 className="d-flex flex-column"
                 style={{ marginLeft: isMobile ? 0 : sidebarWidth, transition: 'margin-left 0.3s', minHeight: '100vh' }}
             >
-                <div className="d-flex justify-content-between align-items-center border-bottom p-3">
+                <div className="app-header d-flex justify-content-between align-items-center">
                     <Button
-                        variant="light"
+                        variant="ghost"
                         size="sm"
                         className="border-0 shadow-none"
                         onClick={() => (isMobile ? setShowSidebar(true) : setCollapsed(!collapsed))}
@@ -178,11 +181,11 @@ function AppLayout({ children }) {
                     </Button>
                     <Dropdown align="end">
                         <Dropdown.Toggle
-                            variant="light"
+                            variant="ghost"
                             id="user-dropdown"
-                            className="border-0 bg-transparent d-flex align-items-center"
+                            className="d-flex align-items-center gap-2"
                         >
-                            <PersonCircle size={32} className="me-2" />
+                            <PersonCircle size={32} className="flex-shrink-0" />
                             {username}
                         </Dropdown.Toggle>
                         <Dropdown.Menu>

@@ -66,7 +66,7 @@ function SaleListPage() {
                                     <td>{new Date(sale.sale_date).toLocaleDateString()}</td>
                                     <td>{formatCurrency(sale.total_amount, sale.original_currency || 'USD')}</td>
                                     <td>
-                                        <Button as={Link} to={`/sales/${sale.id}`} variant="info" size="sm">
+                                        <Button as={Link} to={`/sales/${sale.id}`} variant="outline" size="sm">
                                         View
                                     </Button>
                                     </td>
