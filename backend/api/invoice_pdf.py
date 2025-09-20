@@ -210,7 +210,6 @@ def generate_invoice_pdf(sale):
     totals_data = [
         [Paragraph('Subtotal:', styles['TotalLabel']), Paragraph(f'{currency_symbol}{sale.total_amount:,.2f}', styles['TotalValue'])],
         [Paragraph('Total Paid:', styles['TotalLabel']), Paragraph(f'{currency_symbol}{total_paid:,.2f}', styles['TotalValue'])],
-        [], # Spacer
         [Paragraph('Balance Due:', styles['GrandTotalLabel']), Paragraph(f'{currency_symbol}{balance_due:,.2f}', styles['GrandTotalLabel'])],
     ]
 
@@ -219,8 +218,8 @@ def generate_invoice_pdf(sale):
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('LEFTPADDING', (0,0), (-1,-1), 0),
         ('BOTTOMPADDING', (0,0), (-1,-1), 1),
-        ('LINEABOVE', (0,3), (1,3), 1, colors.black),
-        ('TOPPADDING', (0,3), (1,3), 3),
+        ('LINEABOVE', (0,2), (1,2), 1, colors.black),
+        ('TOPPADDING', (0,2), (1,2), 3),
     ]))
 
     wrapper_table = Table([[totals_table]], colWidths=[170*mm], style=[('ALIGN', (0,0), (-1,-1), 'RIGHT')])
