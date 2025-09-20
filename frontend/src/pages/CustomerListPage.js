@@ -67,13 +67,13 @@ function CustomerListPage() {
             <Row className="mb-3 align-items-center">
                 <Col md={6}>
                     <div className="d-flex">
-                        <Button variant="success" className="me-2" onClick={() => navigate('/customers/new')}>
+                        <Button variant="primary" className="me-2" onClick={() => navigate('/customers/new')}>
                             <Plus size={20} className="me-1" /> Add New Customer
                         </Button>
-                        <Button variant="warning" className="me-2">
+                        <Button variant="outline" className="me-2">
                             <Upload size={20} className="me-1" /> Upload from Excel
                         </Button>
-                        <Button variant="info">
+                        <Button variant="accent">
                             <Wrench size={20} className="me-1" /> Bulk Update Customers
                         </Button>
                     </div>
