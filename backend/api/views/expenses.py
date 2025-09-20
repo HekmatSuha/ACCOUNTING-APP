@@ -108,7 +108,10 @@ def profit_and_loss_report(request):
         'expenses_breakdown': list(expenses_by_category),
     }
 
-    export_format = request.query_params.get('format', '').lower()
+    export_format = request.query_params.get('export_format')
+    if not export_format:
+        export_format = request.query_params.get('format')
+    export_format = (export_format or '').lower()
     filename_stub = f"profit-loss-report-{start_date_str}-to-{end_date_str}".replace(' ', '_')
 
     if export_format in {'xlsx', 'excel'}:
