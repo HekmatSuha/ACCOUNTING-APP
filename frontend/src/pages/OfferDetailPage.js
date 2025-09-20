@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
+import '../styles/datatable.css';
 
 function OfferDetailPage() {
     const { id } = useParams();
@@ -74,24 +75,30 @@ function OfferDetailPage() {
                         </Row>
 
                         <h5>Items</h5>
-                        <Table striped bordered hover responsive>
-                            <thead>
-                                <tr>
-                                    <th>#</th><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Line Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {offer.items.map((item, index) => (
-                                    <tr key={item.id}>
-                                        <td>{index + 1}</td>
-                                        <td>{item.product_name}</td>
-                                        <td>{item.quantity}</td>
-                                        <td>{formatCurrency(item.unit_price)}</td>
-                                        <td>{formatCurrency(item.quantity * item.unit_price)}</td>
+                        <div className="data-table-container">
+                            <Table responsive className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Line Total</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </Table>
+                                </thead>
+                                <tbody>
+                                    {offer.items.map((item, index) => (
+                                        <tr key={item.id}>
+                                            <td>{index + 1}</td>
+                                            <td>{item.product_name}</td>
+                                            <td>{item.quantity}</td>
+                                            <td>{formatCurrency(item.unit_price)}</td>
+                                            <td>{formatCurrency(item.quantity * item.unit_price)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
 
                         <hr />
 

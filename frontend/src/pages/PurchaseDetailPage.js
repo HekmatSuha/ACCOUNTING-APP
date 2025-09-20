@@ -5,6 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
+import '../styles/datatable.css';
 
 function PurchaseDetailPage() {
     const { id } = useParams();
@@ -57,19 +58,21 @@ function PurchaseDetailPage() {
                             <Col><strong>Account:</strong> {purchase.account_name || 'N/A'}</Col>
                         </Row>
                           <h5>Items Purchased</h5>
-                          <Table striped bordered responsive>
-                            <thead><tr><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Line Total</th></tr></thead>
-                            <tbody>
-                                {purchase.items.map(item => (
-                                    <tr key={item.id}>
-                                        <td>{item.product_name}</td>
-                                        <td>{item.quantity}</td>
-                                        <td>{formatCurrency(item.unit_price, purchase.original_currency || 'USD')}</td>
-                                        <td>{formatCurrency(item.line_total, purchase.original_currency || 'USD')}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
+                          <div className="data-table-container">
+                            <Table responsive className="data-table data-table--compact">
+                                <thead><tr><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Line Total</th></tr></thead>
+                                <tbody>
+                                    {purchase.items.map(item => (
+                                        <tr key={item.id}>
+                                            <td>{item.product_name}</td>
+                                            <td>{item.quantity}</td>
+                                            <td>{formatCurrency(item.unit_price, purchase.original_currency || 'USD')}</td>
+                                            <td>{formatCurrency(item.line_total, purchase.original_currency || 'USD')}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                          </div>
                         <h4 className="text-end mt-3">Total: {formatCurrency(purchase.total_amount, purchase.original_currency || 'USD')}</h4>
                     </Card.Body>
                     <Card.Footer className="text-end">

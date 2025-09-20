@@ -8,6 +8,7 @@ import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash } from '
 import './CustomerDetailPage.css';
 import CustomerPaymentModal from '../components/CustomerPaymentModal';
 import ActionMenu from '../components/ActionMenu';
+import '../styles/datatable.css';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -228,7 +229,7 @@ function CustomerDetailPage() {
                                                         ]}
                                                     />
                                                 </div>
-                                                <Table striped bordered hover size="sm">
+                                                <Table size="sm" className="data-table data-table--compact data-table--subtle">
                                                     <thead>
                                                         <tr>
                                                             <th>Product</th>
@@ -300,7 +301,7 @@ function CustomerDetailPage() {
                                                         ]}
                                                     />
                                                 </div>
-                                                <Table borderless size="sm" className="mb-0">
+                                                <Table size="sm" className="data-table data-table--compact data-table--subtle mb-0">
                                                     <tbody>
                                                         <tr>
                                                             <td className="fw-bold">Account</td>
@@ -338,7 +339,7 @@ function CustomerDetailPage() {
                                                 </div>
                                             </Accordion.Header>
                                             <Accordion.Body>
-                                                <Table striped bordered hover size="sm">
+                                                <Table size="sm" className="data-table data-table--compact data-table--subtle">
                                                     <thead>
                                                         <tr>
                                                             <th>Product</th>

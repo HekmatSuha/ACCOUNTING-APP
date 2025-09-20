@@ -3,6 +3,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Form, Row, Col, Spinner, Alert, Table, Collapse } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import { downloadBlobResponse } from '../utils/download';
+import '../styles/datatable.css';
 
 // Helper to get the first day of the current month
 const getFirstDayOfMonth = () => {
@@ -158,8 +159,8 @@ function SalesReportPage() {
                                 )}
                             </Button>
                         </div>
-                        <div className="mt-4">
-                            <Table striped bordered hover responsive>
+                        <div className="mt-4 data-table-container">
+                            <Table responsive className="data-table">
                                 <thead>
                                     <tr>
                                         <th>#</th>
@@ -172,7 +173,7 @@ function SalesReportPage() {
                                 <tbody>
                                     {reportData.map((sale) => (
                                         <React.Fragment key={sale.id}>
-                                            <tr onClick={() => openRow(sale.id)} style={{ cursor: 'pointer' }}>
+                                            <tr onClick={() => openRow(sale.id)} className="data-table-row--link">
                                                 <td>
                                                     <Button
                                                         variant="link"
@@ -193,7 +194,10 @@ function SalesReportPage() {
                                                         <Card className="m-2">
                                                             <Card.Body>
                                                                 <h5>Sale Items</h5>
-                                                                <Table size="sm">
+                                                                <Table
+                                                                    size="sm"
+                                                                    className="data-table data-table--compact data-table--subtle"
+                                                                >
                                                                     <thead>
                                                                         <tr>
                                                                             <th>Product</th>

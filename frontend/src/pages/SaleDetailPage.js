@@ -6,6 +6,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import AddPaymentModal from '../components/AddPaymentModal';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
+import '../styles/datatable.css';
 
 function SaleDetailPage() {
     const { id } = useParams();
@@ -135,62 +136,72 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
 
                         {/* ... Items Sold Table (no changes here) ... */}
                         <h5>Items Sold</h5>
-                        <Table striped bordered hover responsive>
-                            <thead>
-                                <tr>
-                                    <th>#</th><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Line Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sale.items.map((item, index) => (
-                                    <tr key={item.id}>
-                                        <td>{index + 1}</td>
-                                        <td>{item.product_name}</td>
-                                        <td>{item.quantity}</td>
-                                        <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
-                                        <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
+                        <div className="data-table-container">
+                            <Table responsive className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Line Total</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </Table>
+                                </thead>
+                                <tbody>
+                                    {sale.items.map((item, index) => (
+                                        <tr key={item.id}>
+                                            <td>{index + 1}</td>
+                                            <td>{item.product_name}</td>
+                                            <td>{item.quantity}</td>
+                                            <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
+                                            <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
 
                         <hr />
 
                         {/* --- NEW PAYMENT HISTORY SECTION --- */}
                         <Row className="mt-4">
                             <Col md={8}>
-                                  <h5>Payment History</h5>
-                                  <Table bordered size="sm" responsive>
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Amount</th>
-                                            <th>Method</th>
-                                            <th>Notes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {payments.length > 0 ? payments.map(p => (
-                                            <tr key={p.id}>
-                                                <td>{new Date(p.payment_date).toLocaleDateString()}</td>
-                                                <td>
-                                                    {formatCurrency(p.original_amount, p.original_currency)}
-                                                    {p.original_currency !== baseCurrency && (
-                                                        <div className="text-muted">
-                                                            {formatCurrency((p.converted_amount ?? p.amount) * parseFloat(sale.exchange_rate || 1), baseCurrency)}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td>{p.method}</td>
-                                                <td>{p.notes || 'N/A'}</td>
-                                            </tr>
-                                        )) : (
+                                <h5>Payment History</h5>
+                                <div className="data-table-container">
+                                    <Table size="sm" responsive className="data-table data-table--compact">
+                                        <thead>
                                             <tr>
-                                                <td colSpan="4" className="text-center">No payments recorded.</td>
+                                                <th>Date</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Notes</th>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                </Table>
+                                        </thead>
+                                        <tbody>
+                                            {payments.length > 0 ? (
+                                                payments.map((p) => (
+                                                    <tr key={p.id}>
+                                                        <td>{new Date(p.payment_date).toLocaleDateString()}</td>
+                                                        <td>
+                                                            {formatCurrency(p.original_amount, p.original_currency)}
+                                                            {p.original_currency !== baseCurrency && (
+                                                                <div className="text-muted">
+                                                                    {formatCurrency((p.converted_amount ?? p.amount) * parseFloat(sale.exchange_rate || 1), baseCurrency)}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td>{p.method}</td>
+                                                        <td>{p.notes || 'N/A'}</td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="4" className="data-table-empty">No payments recorded.</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </Table>
+                                </div>
                                 <Button
                                     variant="success"
                                     size="sm"

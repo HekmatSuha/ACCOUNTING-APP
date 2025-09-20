@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Form, Button, Card, Row, Col, Table, Alert, Spinner } from 'react-bootstrap';
 import { FaTrash } from 'react-icons/fa';
 import { formatCurrency } from '../utils/format';
+import '../styles/datatable.css';
 
 function EditSalePage() {
     const { id } = useParams();
@@ -116,7 +117,8 @@ function EditSalePage() {
                         </Form.Group>
                     </Row>
                       <h5>Sale Items</h5>
-                      <Table bordered hover responsive>
+                      <div className="data-table-container">
+                        <Table responsive className="data-table data-table--compact">
                         <thead>
                             <tr>
                                 <th>Product</th>
@@ -150,7 +152,8 @@ function EditSalePage() {
                                 </tr>
                             ))}
                         </tbody>
-                    </Table>
+                        </Table>
+                      </div>
                     <Button variant="secondary" onClick={handleAddItem} className="mb-3">+ Add Item</Button>
                     <div className="text-end">
                         <h3>Total: {formatCurrency(calculateTotal())}</h3>
