@@ -171,9 +171,27 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class SaleItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
+    product_image = serializers.SerializerMethodField()
+
     class Meta:
         model = SaleItem
-        fields = ['id', 'product', 'product_name', 'quantity', 'unit_price', 'line_total']
+        fields = ['id', 'product', 'product_name', 'product_image', 'quantity', 'unit_price', 'line_total']
+
+    def get_product_image(self, obj):
+        """Return an absolute URL to the product image when it is available."""
+        image_field = getattr(obj.product, 'image', None)
+        if not image_field:
+            return None
+
+        try:
+            image_url = image_field.url
+        except Exception:
+            return None
+
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if request is not None:
+            return request.build_absolute_uri(image_url)
+        return image_url
 
 # This serializer is for CREATING sale items (only needs product ID)
 class SaleItemWriteSerializer(serializers.ModelSerializer):
