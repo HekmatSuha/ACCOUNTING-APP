@@ -249,7 +249,10 @@ def sales_report(request):
     start_date_str = request.query_params.get('start_date', '2000-01-01')
     end_date_str = request.query_params.get('end_date', date.today().strftime('%Y-%m-%d'))
 
-    export_format = request.query_params.get('format', '').lower()
+    export_format = request.query_params.get('export_format')
+    if not export_format:
+        export_format = request.query_params.get('format')
+    export_format = (export_format or '').lower()
 
     sales_in_range = list(
         Sale.objects.filter(

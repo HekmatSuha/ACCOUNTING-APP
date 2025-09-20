@@ -42,7 +42,7 @@ function CustomerBalanceReportPage() {
         setExportingFormat(format);
         try {
             const response = await axiosInstance.get('/reports/customer-balances/', {
-                params: { format },
+                params: { export_format: format },
                 responseType: 'blob',
             });
             const extension = format === 'pdf' ? 'pdf' : 'xlsx';
