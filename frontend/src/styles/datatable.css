@@ -56,15 +56,13 @@
 
 .data-table tbody tr {
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: var(--color-neutral-50, #f8fafc);
 }
 
 .data-table tbody td {
   padding: 0.9rem 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
-
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  color: var(--text-primary);
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
   vertical-align: middle;
 }
 
