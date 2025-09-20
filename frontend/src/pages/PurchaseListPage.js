@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { Form, Button, Card, Row, Col, Table, Alert, Modal, Spinner } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import { FaTrash } from 'react-icons/fa';
+import '../styles/datatable.css';
 
 const getTodayDate = () => {
     const today = new Date();
@@ -154,32 +155,44 @@ function PurchaseListPage() {
                 </Card.Header>
                 <Card.Body>
                     {error && !showModal && <Alert variant="danger">{error}</Alert>}
-                    <Table striped bordered hover responsive>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Supplier</th>
-                                <th>Bill #</th>
-                                <th>Account</th>
-                                <th>Total Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {purchases.map(purchase => (
-                                <tr key={purchase.id}>
-                                    <td>{purchase.purchase_date}</td>
-                                    <td>{purchase.supplier_name}</td>
-                                    <td>{purchase.bill_number || 'N/A'}</td>
-                                    <td>{purchase.account_name || 'N/A'}</td>
-                                    <td>{formatCurrency(purchase.total_amount, purchase.original_currency || 'USD')}</td>
-                                    <td>
-                                        <Button as={Link} to={`/purchases/${purchase.id}`} variant="info" size="sm">View</Button>
-                                    </td>
+                    <div className="data-table-container">
+                        <Table responsive className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Supplier</th>
+                                    <th>Bill #</th>
+                                    <th>Account</th>
+                                    <th>Total Amount</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                                {purchases.length > 0 ? (
+                                    purchases.map((purchase) => (
+                                        <tr key={purchase.id}>
+                                            <td>{purchase.purchase_date}</td>
+                                            <td>{purchase.supplier_name}</td>
+                                            <td>{purchase.bill_number || 'N/A'}</td>
+                                            <td>{purchase.account_name || 'N/A'}</td>
+                                            <td>
+                                                {formatCurrency(purchase.total_amount, purchase.original_currency || 'USD')}
+                                            </td>
+                                            <td>
+                                                <Button as={Link} to={`/purchases/${purchase.id}`} variant="info" size="sm">
+                                                    View
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" className="data-table-empty">No purchases recorded yet.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </Table>
+                    </div>
                 </Card.Body>
             </Card>
 
