@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { ACCOUNT_CATEGORY_MAP, getCategoryConfig } from '../utils/bankAccountCategories';
+import '../styles/datatable.css';
 
 const TRANSACTION_TYPE_META = {
     deposit: { label: 'Deposit', variant: 'success' },
@@ -278,7 +279,8 @@ function BankAccountDetailPage() {
                     <h5 className="mb-0">Manual Transactions</h5>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    <Table responsive hover className="mb-0">
+                    <div className="data-table-container">
+                        <Table responsive className="data-table">
                         <thead>
                             <tr>
                                 <th>Date</th>
@@ -292,7 +294,7 @@ function BankAccountDetailPage() {
                         <tbody>
                             {transactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center text-muted py-4">
+                                    <td colSpan={6} className="data-table-empty">
                                         No manual transactions recorded yet.
                                     </td>
                                 </tr>
@@ -319,7 +321,8 @@ function BankAccountDetailPage() {
                                 })
                             )}
                         </tbody>
-                    </Table>
+                        </Table>
+                    </div>
                 </Card.Body>
             </Card>
 

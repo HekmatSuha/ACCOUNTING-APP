@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Table, Alert, Spinner } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
+import '../styles/datatable.css';
 
 function SaleListPage() {
     const [sales, setSales] = useState([]);
@@ -44,41 +45,43 @@ function SaleListPage() {
             </Card.Header>
             <Card.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Invoice No.</th>
-                            <th>Customer</th>
-                            <th>Date</th>
-                            <th>Total Amount</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sales.length > 0 ? (
-                            sales.map((sale, index) => (
-                                <tr key={sale.id}>
-                                    <td>{index + 1}</td>
-                                    <td>{sale.invoice_number || `SALE-${sale.id}`}</td>
-                                    {/* 'customer_name' comes from our SaleReadSerializer */}
-                                    <td>{sale.customer_name}</td>
-                                    <td>{new Date(sale.sale_date).toLocaleDateString()}</td>
-                                    <td>{formatCurrency(sale.total_amount, sale.original_currency || 'USD')}</td>
-                                    <td>
-                                        <Button as={Link} to={`/sales/${sale.id}`} variant="outline" size="sm">
-                                        View
-                                    </Button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="data-table-container">
+                    <Table responsive className="data-table">
+                        <thead>
                             <tr>
-                                <td colSpan="6" className="text-center">No sales found.</td>
+                                <th>#</th>
+                                <th>Invoice No.</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Total Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sales.length > 0 ? (
+                                sales.map((sale, index) => (
+                                    <tr key={sale.id}>
+                                        <td>{index + 1}</td>
+                                        <td>{sale.invoice_number || `SALE-${sale.id}`}</td>
+                                        {/* 'customer_name' comes from our SaleReadSerializer */}
+                                        <td>{sale.customer_name}</td>
+                                        <td>{new Date(sale.sale_date).toLocaleDateString()}</td>
+                                        <td>{formatCurrency(sale.total_amount, sale.original_currency || 'USD')}</td>
+                                        <td>
+                                            <Button as={Link} to={`/sales/${sale.id}`} variant="outline" size="sm">
+                                                View
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                            <tr>
+                                <td colSpan="6" className="data-table-empty">No sales found.</td>
                             </tr>
                         )}
-                    </tbody>
-                </Table>
+                        </tbody>
+                    </Table>
+                </div>
             </Card.Body>
         </Card>
     );

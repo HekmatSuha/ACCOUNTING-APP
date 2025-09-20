@@ -1,0 +1,151 @@
+.data-table-container {
+  background: var(--color-neutral-50, #f8fafc);
+  border: 1px solid var(--color-neutral-200, #e2e8f0);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.data-table-container .table-responsive {
+  margin-bottom: 0;
+  background: transparent;
+}
+
+.table-responsive .data-table {
+  margin-bottom: 0;
+}
+
+.table-responsive .data-table thead th:first-child {
+  border-top-left-radius: 0.9rem;
+}
+
+.table-responsive .data-table thead th:last-child {
+  border-top-right-radius: 0.9rem;
+}
+
+.data-table {
+  width: 100%;
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+  background-color: transparent;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table thead th {
+  background: linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 0.25),
+    rgba(37, 99, 235, 0.08)
+  );
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.data-table tbody tr {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.data-table tbody td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover,
+.data-table tbody tr:focus-within {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.data-table tbody tr:focus-within {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.data-table-row--link {
+  cursor: pointer;
+}
+
+.data-table-row--link:focus-within td:first-child,
+.data-table-row--link:hover td:first-child {
+  border-top-left-radius: 0.4rem;
+}
+
+.data-table-row--link:focus-within td:last-child,
+.data-table-row--link:hover td:last-child {
+  border-top-right-radius: 0.4rem;
+}
+
+.data-table-empty,
+.data-table-status {
+  padding: 2.75rem 1rem;
+  text-align: center;
+  color: var(--text-color-muted, var(--color-neutral-500, #64748b));
+}
+
+.data-table-empty strong {
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+}
+
+.data-table-toolbar {
+  row-gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.data-table-toolbar .btn,
+.data-table-toolbar .form-control {
+  border-radius: 0.65rem;
+}
+
+.data-table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+.data-table--compact thead th,
+.data-table--compact tbody td {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.data-table--subtle tbody td {
+  color: var(--text-color-muted, var(--color-neutral-500, #64748b));
+}
+
+.data-table tr.table-success td {
+  background: rgba(34, 197, 94, 0.18);
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+}
+
+.data-table tr.table-danger td {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+}
+
+.data-table tr.table-info td {
+  background: rgba(59, 130, 246, 0.18);
+  color: var(--text-color-primary, var(--color-neutral-900, #0f172a));
+}
+
+.data-table thead th.text-end,
+.data-table tbody td.text-end {
+  text-align: right;
+}
+
+.data-table thead th.text-center,
+.data-table tbody td.text-center {
+  text-align: center;
+}
