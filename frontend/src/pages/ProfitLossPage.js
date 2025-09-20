@@ -60,7 +60,7 @@ function ProfitLossPage() {
             const params = {
                 start_date: startDate,
                 end_date: endDate,
-                format,
+                export_format: format,
             };
             const response = await axiosInstance.get('/reports/profit-loss/', {
                 params,
