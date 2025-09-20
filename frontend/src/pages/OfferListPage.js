@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Table, Alert, Spinner } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
+import '../styles/datatable.css';
 
 function OfferListPage() {
     const [offers, setOffers] = useState([]);
@@ -41,42 +42,44 @@ function OfferListPage() {
             </Card.Header>
             <Card.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
-                <Table striped bordered hover responsive>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Offer No.</th>
-                            <th>Customer</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Total Amount</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {offers.length > 0 ? (
-                            offers.map((offer, index) => (
-                                <tr key={offer.id}>
-                                    <td>{index + 1}</td>
-                                    <td>{`OFFER-${offer.id}`}</td>
-                                    <td>{offer.customer_name}</td>
-                                    <td>{new Date(offer.offer_date).toLocaleDateString()}</td>
-                                    <td>{offer.status}</td>
-                                    <td>{formatCurrency(offer.total_amount)}</td>
-                                    <td>
-                                        <Button as={Link} to={`/offers/${offer.id}`} variant="info" size="sm">
-                                        View
-                                    </Button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
+                <div className="data-table-container">
+                    <Table responsive className="data-table">
+                        <thead>
                             <tr>
-                                <td colSpan="7" className="text-center">No offers found.</td>
+                                <th>#</th>
+                                <th>Offer No.</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Total Amount</th>
+                                <th>Actions</th>
                             </tr>
-                        )}
-                    </tbody>
-                </Table>
+                        </thead>
+                        <tbody>
+                            {offers.length > 0 ? (
+                                offers.map((offer, index) => (
+                                    <tr key={offer.id}>
+                                        <td>{index + 1}</td>
+                                        <td>{`OFFER-${offer.id}`}</td>
+                                        <td>{offer.customer_name}</td>
+                                        <td>{new Date(offer.offer_date).toLocaleDateString()}</td>
+                                        <td>{offer.status}</td>
+                                        <td>{formatCurrency(offer.total_amount)}</td>
+                                        <td>
+                                            <Button as={Link} to={`/offers/${offer.id}`} variant="info" size="sm">
+                                                View
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="7" className="data-table-empty">No offers found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </Table>
+                </div>
             </Card.Body>
         </Card>
     );

@@ -5,6 +5,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Form, Button, Row, Col, Table, InputGroup } from 'react-bootstrap';
 import { Trash } from 'react-bootstrap-icons';
+import '../styles/datatable.css';
 
 function SaleFormPage() {
     const { customerId, supplierId } = useParams();
@@ -108,34 +109,68 @@ function SaleFormPage() {
                             </Col>
                         </Row>
 
-                          <h5>Items</h5>
-                          <Table striped bordered hover responsive>
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Line Total</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {lineItems.map((item, index) => (
-                                    <tr key={index}>
-                                        <td>
-                                            <Form.Select name="product_id" value={item.product_id} onChange={e => handleLineItemChange(index, e)}>
-                                                <option>Select Product</option>
-                                                {allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                            </Form.Select>
-                                        </td>
-                                        <td><Form.Control type="number" name="quantity" value={item.quantity} onChange={e => handleLineItemChange(index, e)} /></td>
-                                        <td><Form.Control type="number" step="0.01" name="unit_price" value={item.unit_price} onChange={e => handleLineItemChange(index, e)} /></td>
-                                        <td>{new Intl.NumberFormat('en-US', { style: 'currency', currency: customer.currency }).format(item.quantity * item.unit_price)}</td>
-                                        <td><Button variant="danger" onClick={() => handleRemoveItem(index)}><Trash /></Button></td>
+                        <h5>Items</h5>
+                        <div className="data-table-container">
+                            <Table responsive className="data-table data-table--compact">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Line Total</th>
+                                        <th>Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </Table>
+                                </thead>
+                                <tbody>
+                                    {lineItems.map((item, index) => (
+                                        <tr key={index}>
+                                            <td>
+                                                <Form.Select
+                                                    name="product_id"
+                                                    value={item.product_id}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                >
+                                                    <option>Select Product</option>
+                                                    {allProducts.map((product) => (
+                                                        <option key={product.id} value={product.id}>
+                                                            {product.name}
+                                                        </option>
+                                                    ))}
+                                                </Form.Select>
+                                            </td>
+                                            <td>
+                                                <Form.Control
+                                                    type="number"
+                                                    name="quantity"
+                                                    value={item.quantity}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                />
+                                            </td>
+                                            <td>
+                                                <Form.Control
+                                                    type="number"
+                                                    step="0.01"
+                                                    name="unit_price"
+                                                    value={item.unit_price}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                />
+                                            </td>
+                                            <td>
+                                                {new Intl.NumberFormat('en-US', {
+                                                    style: 'currency',
+                                                    currency: customer.currency,
+                                                }).format(item.quantity * item.unit_price)}
+                                            </td>
+                                            <td>
+                                                <Button variant="danger" onClick={() => handleRemoveItem(index)}>
+                                                    <Trash />
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
                         <Button variant="secondary" onClick={handleAddItem}>+ Add Item</Button>
 
                         <div className="d-flex justify-content-end mt-3">
