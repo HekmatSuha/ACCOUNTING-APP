@@ -1,6 +1,6 @@
 """Tests covering PDF and Excel exports for accounting reports."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
 
@@ -28,6 +28,7 @@ class ReportExportTests(TestCase):
         )
         self.sale.refresh_from_db()
         self.sale_date = self.sale.sale_date
+        self.report_end_date = (self.sale_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
         Customer.objects.create(
             name="Globex", created_by=self.user, currency="EUR", open_balance=Decimal("-25.00")
@@ -54,8 +55,8 @@ class ReportExportTests(TestCase):
             "/api/reports/sales/",
             {
                 "start_date": "2023-01-01",
-                "end_date": "2025-01-01",
-                "format": "xlsx",
+                "end_date": self.report_end_date,
+                "export_format": "xlsx",
             },
         )
 
@@ -80,8 +81,8 @@ class ReportExportTests(TestCase):
             "/api/reports/sales/",
             {
                 "start_date": "2023-01-01",
-                "end_date": "2025-01-01",
-                "format": "pdf",
+                "end_date": self.report_end_date,
+                "export_format": "pdf",
             },
         )
 
@@ -92,8 +93,8 @@ class ReportExportTests(TestCase):
             "/api/reports/profit-loss/",
             {
                 "start_date": "2023-01-01",
-                "end_date": "2025-01-01",
-                "format": "xlsx",
+                "end_date": self.report_end_date,
+                "export_format": "xlsx",
             },
         )
 
@@ -117,8 +118,8 @@ class ReportExportTests(TestCase):
             "/api/reports/profit-loss/",
             {
                 "start_date": "2023-01-01",
-                "end_date": "2025-01-01",
-                "format": "pdf",
+                "end_date": self.report_end_date,
+                "export_format": "pdf",
             },
         )
 
@@ -128,7 +129,7 @@ class ReportExportTests(TestCase):
         response = self.client.get(
             "/api/reports/customer-balances/",
             {
-                "format": "xlsx",
+                "export_format": "xlsx",
             },
         )
 
@@ -170,7 +171,7 @@ class ReportExportTests(TestCase):
         response = self.client.get(
             "/api/reports/customer-balances/",
             {
-                "format": "pdf",
+                "export_format": "pdf",
             },
         )
 

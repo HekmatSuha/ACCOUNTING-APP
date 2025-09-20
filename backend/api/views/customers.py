@@ -122,7 +122,10 @@ def customer_balance_report(request):
     serializer = CustomerBalanceReportSerializer(queryset, many=True)
     data = serializer.data
 
-    export_format = request.query_params.get('format', '').lower()
+    export_format = request.query_params.get('export_format')
+    if not export_format:
+        export_format = request.query_params.get('format')
+    export_format = (export_format or '').lower()
     filename_stub = 'customer-balance-report'
 
     if export_format in {'xlsx', 'excel'}:
