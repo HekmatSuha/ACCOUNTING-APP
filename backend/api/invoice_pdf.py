@@ -1,16 +1,70 @@
 from io import BytesIO
+from pathlib import Path
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 
 from .models import CompanyInfo, Sale
+
+FONT_DIR = Path(__file__).resolve().parent / 'fonts'
+FONT_REGULAR = 'DejaVuSans'
+FONT_BOLD = 'DejaVuSans-Bold'
+
+
+def _register_font(font_name: str, file_name: str) -> None:
+    """Register a TrueType font with ReportLab if it hasn't been registered."""
+    try:
+        pdfmetrics.getFont(font_name)
+    except KeyError:
+        font_path = FONT_DIR / file_name
+        pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+
+
+def _ensure_custom_fonts() -> None:
+    """Ensure the fonts used in the invoice are available to ReportLab."""
+    _register_font(FONT_REGULAR, 'DejaVuSans.ttf')
+    _register_font(FONT_BOLD, 'DejaVuSans-Bold.ttf')
+
+
+def _build_image_flowable(image_field, width, height, **image_kwargs):
+    """Return a ReportLab Image flowable for the provided Django ImageField."""
+    if not image_field:
+        return ''
+
+    # Prefer using the filesystem path when it is available.
+    image_path = getattr(image_field, 'path', None)
+    if image_path:
+        try:
+            return Image(image_path, width=width, height=height, **image_kwargs)
+        except Exception:
+            pass
+
+    # Fallback to loading the bytes through Django's storage backend.
+    try:
+        image_field.open()
+        try:
+            image_bytes = image_field.read()
+        finally:
+            image_field.close()
+        if image_bytes:
+            return Image(ImageReader(BytesIO(image_bytes)), width=width, height=height, **image_kwargs)
+    except Exception:
+        return ''
+
+    return ''
 
 def generate_invoice_pdf(sale):
     """Generate a professional PDF invoice for the given Sale instance."""
     buffer = BytesIO()
+
+    _ensure_custom_fonts()
 
     # --- Document Setup ---
     doc = SimpleDocTemplate(
@@ -43,29 +97,28 @@ def generate_invoice_pdf(sale):
 
     # --- Styles ---
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='CompanyName', fontSize=18, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='CompanyInfo', fontSize=10, fontName='Helvetica'))
-    styles.add(ParagraphStyle(name='InvoiceTitle', fontSize=14, fontName='Helvetica-Bold', alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='InvoiceInfo', fontSize=10, fontName='Helvetica', alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillTo', fontSize=10, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='TableHead', fontSize=10, fontName='Helvetica-Bold', alignment=TA_CENTER, textColor=colors.whitesmoke))
-    styles.add(ParagraphStyle(name='TableCell', fontSize=10, fontName='Helvetica'))
-    styles.add(ParagraphStyle(name='TableCellRight', fontSize=10, fontName='Helvetica', alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='TotalLabel', fontSize=10, fontName='Helvetica-Bold', alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='TotalValue', fontSize=10, fontName='Helvetica', alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='GrandTotalLabel', fontSize=12, fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles['Normal'].fontName = FONT_REGULAR
+    styles.add(ParagraphStyle(name='CompanyName', fontSize=18, fontName=FONT_BOLD))
+    styles.add(ParagraphStyle(name='CompanyInfo', fontSize=10, fontName=FONT_REGULAR))
+    styles.add(ParagraphStyle(name='InvoiceTitle', fontSize=14, fontName=FONT_BOLD, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='InvoiceInfo', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='BillTo', fontSize=10, fontName=FONT_BOLD))
+    styles.add(ParagraphStyle(name='TableHead', fontSize=10, fontName=FONT_BOLD, alignment=TA_CENTER, textColor=colors.whitesmoke))
+    styles.add(ParagraphStyle(name='TableCell', fontSize=10, fontName=FONT_REGULAR))
+    styles.add(ParagraphStyle(name='TableCellRight', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='TotalLabel', fontSize=10, fontName=FONT_BOLD, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='TotalValue', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='GrandTotalLabel', fontSize=12, fontName=FONT_BOLD, alignment=TA_RIGHT))
 
     elements = []
 
     # --- 1. Header Section (Logo and Company Info) ---
-    company_logo = None
-    if company.logo:
-        try:
-            company_logo = Image(company.logo.path, width=40 * mm, height=20 * mm, hAlign='LEFT')
-        except Exception:
-            company_logo = Paragraph("No Logo", styles['CompanyInfo'])
+    company_logo = _build_image_flowable(getattr(company, 'logo', None), width=40 * mm, height=20 * mm, hAlign='LEFT')
+    if not company_logo:
+        company_logo = Paragraph("No Logo", styles['CompanyInfo'])
 
     company_details_data = [
+        [company_logo],
         [Paragraph(company.name, styles['CompanyName'])],
         [Paragraph(company.address or '', styles['CompanyInfo'])],
         [Paragraph(f"{company.phone or ''}", styles['CompanyInfo'])],
@@ -126,12 +179,7 @@ def generate_invoice_pdf(sale):
     data = [table_header]
 
     for item in sale.items.all():
-        img_obj = ''
-        if item.product.image and hasattr(item.product.image, 'path'):
-            try:
-                img_obj = Image(item.product.image.path, width=15*mm, height=15*mm)
-            except Exception:
-                img_obj = '' # Fails gracefully
+        img_obj = _build_image_flowable(getattr(item.product, 'image', None), width=15 * mm, height=15 * mm)
 
         data.append([
             img_obj,
@@ -145,6 +193,7 @@ def generate_invoice_pdf(sale):
     items_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F4F4F')),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
         ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
         ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#CCCCCC')),
         ('TOPPADDING', (0, 0), (-1, 0), 3 * mm),
