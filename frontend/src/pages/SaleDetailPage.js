@@ -67,6 +67,9 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
     };
 
     const handlePrint = async () => {
+        if (!sale) {
+            return;
+        }
         setIsPrinting(true);
         setError('');
         try {
@@ -74,14 +77,34 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
                 responseType: 'blob', // Important for handling binary data
             });
 
-            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-            const link = document.createElement('a');
-            link.href = url;
             const filename = `invoice_${sale.invoice_number || sale.id}.pdf`;
-            link.setAttribute('download', filename);
+            const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
 
-            // For a better user experience, open in a new tab
-            window.open(url, '_blank');
+            // Try to render the PDF in a new tab for printing.
+            const pdfWindow = window.open('', '_blank');
+            if (pdfWindow && !pdfWindow.closed) {
+                pdfWindow.document.title = filename;
+                pdfWindow.document.write(`
+                    <html>
+                        <head><title>${filename}</title></head>
+                        <body style="margin:0">
+                            <embed src="${blobUrl}" type="application/pdf" width="100%" height="100%" />
+                        </body>
+                    </html>
+                `);
+                pdfWindow.document.close();
+            } else {
+                // Popup blocked? Fallback to downloading the file instead.
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Revoke the object URL once the browser has had a chance to use it.
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60 * 1000);
 
         } catch (err) {
             console.error('Failed to generate or open PDF:', err);
@@ -142,6 +165,7 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
+                                        <th>Image</th>
                                         <th>Quantity</th>
                                         <th>Unit Price</th>
                                         <th>Line Total</th>
@@ -152,6 +176,17 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
                                         <tr key={item.id}>
                                             <td>{index + 1}</td>
                                             <td>{item.product_name}</td>
+                                            <td>
+                                                {item.product_image ? (
+                                                    <img
+                                                        src={item.product_image}
+                                                        alt={item.product_name}
+                                                        style={{ width: '60px', height: '60px', objectFit: 'contain' }}
+                                                    />
+                                                ) : (
+                                                    <span className="text-muted">No image</span>
+                                                )}
+                                            </td>
                                             <td>{item.quantity}</td>
                                             <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
                                             <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
