@@ -176,7 +176,7 @@ function SupplierDetailPage() {
                 <Button
                     variant="success"
                     className="me-2"
-                    onClick={() => setShowPaymentModal(true)}
+                    onClick={() => navigate(`/suppliers/${supplier.id}/payment`)}
                 >
                     Make Payment
                 </Button>
