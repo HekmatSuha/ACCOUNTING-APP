@@ -40,6 +40,26 @@ class GetExchangeRateTests(SimpleTestCase):
             timeout=10,
         )
 
+    @patch("api.exchange_rates.requests.get")
+    def test_fetches_rate_from_rates_mapping(self, mock_get: Mock) -> None:
+        response = Mock()
+        response.raise_for_status.return_value = None
+        response.json.return_value = {
+            "success": True,
+            "rates": {"EUR": 0.92},
+        }
+        mock_get.return_value = response
+
+        rate = get_exchange_rate("USD", "EUR")
+
+        self.assertEqual(rate, Decimal("0.92"))
+        mock_get.assert_called_once()
+        _, kwargs = mock_get.call_args
+        self.assertEqual(
+            kwargs["params"],
+            {"base": "USD", "symbols": "EUR"},
+        )
+
     @override_settings(EXCHANGE_RATE_API_URL="https://example.com/rates")
     @patch("api.exchange_rates.requests.get")
     def test_raises_error_if_api_key_is_missing(self, mock_get: Mock) -> None:
@@ -89,10 +109,7 @@ class GetExchangeRateTests(SimpleTestCase):
         self.assertEqual(cache.get("exchange_rate_USD_EUR"), Decimal("1.5"))
         mock_get.assert_called_once()
 
-    @patch("api.exchange_rates.requests.get", side_effect=Exception("boom"))
-
     @patch("api.exchange_rates.requests.get", side_effect=requests.exceptions.RequestException("boom"))
-
     def test_raises_runtime_error_when_no_fallback_available(self, mock_get: Mock) -> None:
         with self.assertLogs("api.exchange_rates", level="ERROR"):
             with self.assertRaises(RuntimeError):
