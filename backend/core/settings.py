@@ -160,6 +160,8 @@ EXCHANGE_RATE_API_URL = os.environ.get(
     "https://api.exchangerate.host/latest",
 )
 
+EXCHANGE_RATE_API_KEY = "55ece2e02c8a143ec0cc66f2f4388311"
+
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
