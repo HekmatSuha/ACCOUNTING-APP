@@ -31,12 +31,20 @@ def get_exchange_rate(
     if manual_rate is not None:
         manual_rate_decimal = Decimal(str(manual_rate))
 
-    api_url = getattr(settings, "EXCHANGE_RATE_API_URL", "https://api.exchangerate.host/latest")
+    api_url = getattr(settings, "EXCHANGE_RATE_API_URL", "https://api.exchangerate.host/live")
+    access_key = getattr(settings, "EXCHANGE_RATE_API_KEY", None)
+
+    params = {
+        "base": from_currency,
+        "symbols": to_currency,
+    }
+    if access_key:
+        params["access_key"] = access_key
 
     try:
         response = requests.get(
             api_url,
-            params={"base": from_currency, "symbols": to_currency},
+            params=params,
             timeout=10,
         )
         response.raise_for_status()
@@ -48,13 +56,16 @@ def get_exchange_rate(
         success = data.get("success")
         if success is False:
             error_detail = data.get("error") or data.get("message")
+            if isinstance(error_detail, dict):
+                error_detail = error_detail.get("info", str(error_detail))
             raise ValueError(f"Exchange rate API returned error: {error_detail}")
 
-        rates = data.get("rates")
-        if not isinstance(rates, dict) or to_currency not in rates:
+        rates = data.get("quotes")
+        rate_key = f"{from_currency}{to_currency}"
+        if not isinstance(rates, dict) or rate_key not in rates:
             raise ValueError("Exchange rate data missing requested currency")
 
-        rate_value = rates[to_currency]
+        rate_value = rates[rate_key]
         try:
             rate = Decimal(str(rate_value))
         except (InvalidOperation, TypeError) as conversion_error:
@@ -64,7 +75,7 @@ def get_exchange_rate(
 
         cache.set(cache_key, rate, timeout=3600)
         return rate
-    except Exception as exc:
+    except requests.exceptions.RequestException as exc:
         logger.exception(
             "Failed to fetch exchange rate from %s for %s -> %s", api_url, from_currency, to_currency
         )
