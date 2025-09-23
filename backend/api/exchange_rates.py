@@ -29,20 +29,27 @@ def _as_decimal(value: Any) -> Decimal:
         ) from conversion_error
 
 
-def _extract_rate(data: Mapping[str, Any], to_currency: str) -> Decimal:
-    """Extract the exchange rate for ``to_currency`` from *data*.
+def _extract_rate(data: Mapping[str, Any], from_currency: str, to_currency: str) -> Decimal:
+    """Extract the exchange rate between ``from_currency`` and ``to_currency``.
 
-    The exchangerate.host API returns a ``rates`` mapping for the ``latest``
-    endpoint, but historically it has also provided the rate inside nested
-    objects (e.g. ``{"info": {"rate": 1.234}}``) or under a ``result`` key when
-    using the ``convert`` endpoint.  To make our integration resilient to these
-    changes we look for the rate in a few well-known locations before treating
-    the payload as invalid.
+    The exchangerate.host API (``/latest``) returns a ``rates`` mapping while
+    currencylayer-compatible endpoints (``/live``) expose rates under a
+    ``quotes`` object keyed by the concatenated currency pair (e.g. ``{"USDEUR":
+    1.07}``).  Some responses also surface the rate inside nested objects (e.g.
+    ``{"info": {"rate": 1.234}}``) or under a ``result`` key when using the
+    ``convert`` endpoint.  To keep the integration resilient to these
+    variations, we check a few well-known locations before treating the payload
+    as invalid.
     """
 
     rates = data.get("rates")
     if isinstance(rates, Mapping) and to_currency in rates:
         return _as_decimal(rates[to_currency])
+
+    quotes = data.get("quotes")
+    rate_key = f"{from_currency}{to_currency}"
+    if isinstance(quotes, Mapping) and rate_key in quotes:
+        return _as_decimal(quotes[rate_key])
 
     info = data.get("info")
     if isinstance(info, Mapping) and "rate" in info:
@@ -76,7 +83,7 @@ def get_exchange_rate(
     if manual_rate is not None:
         manual_rate_decimal = _as_decimal(manual_rate)
 
-    api_url = getattr(settings, "EXCHANGE_RATE_API_URL", "https://api.exchangerate.host/live")
+    api_url = getattr(settings, "EXCHANGE_RATE_API_URL", "https://api.exchangerate.host/latest")
     access_key = getattr(settings, "EXCHANGE_RATE_API_KEY", None)
 
     params = {
@@ -86,43 +93,7 @@ def get_exchange_rate(
     if access_key:
         params["access_key"] = access_key
 
-    try:
-        response = requests.get(
-            api_url,
-            params=params,
-            timeout=10,
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        if not isinstance(data, Mapping):
-            raise ValueError("Exchange rate response is not a JSON object")
-
-        success = data.get("success")
-        if success is False:
-            error_detail = data.get("error") or data.get("message")
-            if isinstance(error_detail, dict):
-                error_detail = error_detail.get("info", str(error_detail))
-            raise ValueError(f"Exchange rate API returned error: {error_detail}")
-
-
-        rates = data.get("quotes")
-        rate_key = f"{from_currency}{to_currency}"
-        if not isinstance(rates, dict) or rate_key not in rates:
-            raise ValueError("Exchange rate data missing requested currency")
-
-        rate_value = rates[rate_key]
-        try:
-            rate = Decimal(str(rate_value))
-        except (InvalidOperation, TypeError) as conversion_error:
-            raise ValueError(
-                f"Invalid exchange rate value received: {rate_value}"
-            ) from conversion_error
-
-
-        cache.set(cache_key, rate, timeout=3600)
-        return rate
-    except requests.exceptions.RequestException as exc:
+    def _handle_failure(exc: Exception) -> Decimal:
         logger.exception(
             "Failed to fetch exchange rate from %s for %s -> %s", api_url, from_currency, to_currency
         )
@@ -134,3 +105,36 @@ def get_exchange_rate(
         raise RuntimeError(
             f"Unable to fetch exchange rate for {from_currency} to {to_currency}"
         ) from exc
+
+    try:
+        response = requests.get(
+            api_url,
+            params=params,
+            timeout=10,
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        return _handle_failure(exc)
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        return _handle_failure(exc)
+
+    if not isinstance(data, Mapping):
+        return _handle_failure(ValueError("Exchange rate response is not a JSON object"))
+
+    success = data.get("success")
+    if success is False:
+        error_detail = data.get("error") or data.get("message")
+        if isinstance(error_detail, dict):
+            error_detail = error_detail.get("info", str(error_detail))
+        raise ValueError(f"Exchange rate API returned error: {error_detail}")
+
+    try:
+        rate = _extract_rate(data, from_currency, to_currency)
+    except ValueError as exc:
+        return _handle_failure(exc)
+
+    cache.set(cache_key, rate, timeout=3600)
+    return rate
