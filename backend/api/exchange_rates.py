@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 import logging
@@ -41,8 +41,27 @@ def get_exchange_rate(
         )
         response.raise_for_status()
         data = response.json()
-        rate_value = data["rates"][to_currency]
-        rate = Decimal(str(rate_value))
+
+        if not isinstance(data, dict):
+            raise ValueError("Exchange rate response is not a JSON object")
+
+        success = data.get("success")
+        if success is False:
+            error_detail = data.get("error") or data.get("message")
+            raise ValueError(f"Exchange rate API returned error: {error_detail}")
+
+        rates = data.get("rates")
+        if not isinstance(rates, dict) or to_currency not in rates:
+            raise ValueError("Exchange rate data missing requested currency")
+
+        rate_value = rates[to_currency]
+        try:
+            rate = Decimal(str(rate_value))
+        except (InvalidOperation, TypeError) as conversion_error:
+            raise ValueError(
+                f"Invalid exchange rate value received: {rate_value}"
+            ) from conversion_error
+
         cache.set(cache_key, rate, timeout=3600)
         return rate
     except Exception as exc:
