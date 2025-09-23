@@ -76,15 +76,14 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
     useEffect(() => {
         const selectedAccount = accounts.find(a => a.id === parseInt(account));
         if (selectedAccount) {
+            setAccountCurrency(selectedAccount.currency);
             setPaymentCurrency(selectedAccount.currency);
-            // When account changes, recalculate exchange rate if necessary
-            if (selectedAccount.currency !== customerCurrency) {
-                // You might want to fetch a default rate here, or require user input
-            } else {
+            if (selectedAccount.currency === customerCurrency) {
                 setExchangeRate(1);
             }
         } else {
             // Reset to customer's currency when no account is selected
+            setAccountCurrency(customerCurrency);
             setPaymentCurrency(customerCurrency);
             setExchangeRate(1);
         }
@@ -95,6 +94,9 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
         const rate = parseFloat(exchangeRate) || 1;
         setConvertedAmount((amt * rate).toFixed(2));
     }, [amount, exchangeRate]);
+
+    const accountCurrencyForExchange = account ? accountCurrency : paymentCurrency;
+    const showExchangeFields = accountCurrencyForExchange !== customerCurrency;
 
 
     const handleSubmit = async (e) => {
@@ -210,10 +212,10 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                         {account && <Form.Text className="text-muted">Currency is determined by the selected bank account.</Form.Text>}
                     </Form.Group>
 
-                    {paymentCurrency !== customerCurrency && (
+                    {showExchangeFields && (
                         <>
                             <Form.Group className="mb-3" controlId="exchangeRate">
-                                <Form.Label>Exchange Rate ({paymentCurrency} to {customerCurrency})</Form.Label>
+                                <Form.Label>Exchange Rate ({accountCurrencyForExchange} to {customerCurrency})</Form.Label>
                                 <Form.Control
                                     type="number"
                                     step="0.000001"
