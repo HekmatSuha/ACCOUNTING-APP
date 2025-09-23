@@ -73,11 +73,9 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             const acc = accounts.find(a => a.id === parseInt(account));
             if (acc) {
                 setAccountCurrency(acc.currency);
-                setPaymentCurrency(acc.currency);
             }
         } else {
             setAccountCurrency(supplierCurrency || baseCurrency);
-            setPaymentCurrency(supplierCurrency || baseCurrency);
         }
     }, [account, accounts, baseCurrency, supplierCurrency]);
 
