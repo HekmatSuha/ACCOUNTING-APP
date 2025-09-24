@@ -2,12 +2,18 @@
 
 from decimal import Decimal
 
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from ..activity_logger import log_activity
 from ..models import Warehouse
-from ..serializers import WarehouseDetailSerializer, WarehouseSerializer
+from ..serializers import (
+    WarehouseDetailSerializer,
+    WarehouseSerializer,
+    WarehouseTransferSerializer,
+)
 
 
 class WarehouseViewSet(viewsets.ModelViewSet):
@@ -42,3 +48,39 @@ class WarehouseViewSet(viewsets.ModelViewSet):
             )
         log_activity(self.request.user, 'deleted', instance)
         instance.delete()
+
+    @action(detail=False, methods=['post'])
+    def transfer(self, request):
+        """Move product quantities between two warehouses."""
+
+        serializer = WarehouseTransferSerializer(
+            data=request.data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+
+        product = serializer.validated_data['product']
+        source = serializer.validated_data['source']
+        destination = serializer.validated_data['destination']
+        quantity = serializer.validated_data['quantity']
+
+        log_activity(
+            request.user,
+            'updated',
+            source,
+            description=(
+                f"Transferred {quantity} of '{product.name}' to warehouse "
+                f"'{destination.name}'."
+            ),
+        )
+        log_activity(
+            request.user,
+            'updated',
+            destination,
+            description=(
+                f"Received {quantity} of '{product.name}' from warehouse "
+                f"'{source.name}'."
+            ),
+        )
+
+        return Response(result, status=status.HTTP_200_OK)
