@@ -25,6 +25,11 @@ jest.mock('axios', () => ({
   }),
 }));
 
+jest.mock('./config/currency', () => ({
+  ...jest.requireActual('./config/currency'),
+  loadBaseCurrency: jest.fn().mockResolvedValue('USD'),
+}));
+
 test('renders without crashing', () => {
   render(<App />);
 });

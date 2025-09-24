@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import CustomerPaymentModal from './CustomerPaymentModal';
+import SupplierPaymentModal from './SupplierPaymentModal';
 import axiosInstance from '../utils/axiosInstance';
+import { loadBaseCurrency, loadCurrencyOptions } from '../config/currency';
 
 jest.mock('../utils/axiosInstance', () => ({
   get: jest.fn(),
@@ -9,19 +10,19 @@ jest.mock('../utils/axiosInstance', () => ({
   put: jest.fn(),
 }));
 
-describe('CustomerPaymentModal', () => {
+describe('SupplierPaymentModal', () => {
   const defaultProps = {
     show: true,
     handleClose: jest.fn(),
-    customerId: 1,
+    supplierId: 1,
     onPaymentAdded: jest.fn(),
-    customerCurrency: 'USD',
+    supplierCurrency: 'USD',
     payment: null,
   };
 
   beforeEach(() => {
     axiosInstance.get.mockImplementation((url) => {
-      if (url === '/accounts/') {
+      if (url === 'accounts/') {
         return Promise.resolve({
           data: [
             { id: 1, name: 'USD Account', currency: 'USD' },
@@ -31,10 +32,10 @@ describe('CustomerPaymentModal', () => {
       }
       if (url === '/currencies/') {
         return Promise.resolve({
-            data: [['USD', 'US Dollar'], ['EUR', 'Euro']],
+            data: ['USD', 'EUR'],
         });
       }
-      return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: [] });
     });
   });
 
@@ -43,17 +44,16 @@ describe('CustomerPaymentModal', () => {
   });
 
   test('renders correctly for a new payment', async () => {
-    render(<CustomerPaymentModal {...defaultProps} />);
-    await screen.findByText('Add New Payment');
+    render(<SupplierPaymentModal {...defaultProps} />);
+    await screen.findByText('Add Payment');
     expect(screen.getByLabelText(/^Amount$/)).toHaveValue(null);
   });
 
   test('shows exchange rate fields when payment currency and account currency differ', async () => {
-    render(<CustomerPaymentModal {...defaultProps} />);
+    render(<SupplierPaymentModal {...defaultProps} />);
+    await screen.findByText('Add Payment');
 
-    await screen.findByText('Add New Payment');
-
-    fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } }); // EUR Account
 
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
 
@@ -70,10 +70,10 @@ describe('CustomerPaymentModal', () => {
   });
 
   test('hides exchange rate fields when payment and account currencies are the same', async () => {
-    render(<CustomerPaymentModal {...defaultProps} />);
-    await screen.findByText('Add New Payment');
+    render(<SupplierPaymentModal {...defaultProps} />);
+    await screen.findByText('Add Payment');
 
-    fireEvent.change(screen.getByLabelText('Account'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: '1' } }); // USD Account
 
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
 
@@ -81,10 +81,11 @@ describe('CustomerPaymentModal', () => {
   });
 
   test('submits correct data when creating a new payment with currency conversion', async () => {
-    render(<CustomerPaymentModal {...defaultProps} />);
-    await screen.findByText('Add New Payment');
+    axiosInstance.post.mockResolvedValue({ data: {} });
+    render(<SupplierPaymentModal {...defaultProps} />);
+    await screen.findByText('Add Payment');
 
-    fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } }); // EUR Account
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
     fireEvent.change(screen.getByLabelText(/^Amount$/), { target: { value: '120' } });
 
@@ -95,12 +96,12 @@ describe('CustomerPaymentModal', () => {
 
     await waitFor(() => {
       expect(axiosInstance.post).toHaveBeenCalledWith(
-        '/customers/1/payments/',
+        'suppliers/1/payments/',
         expect.objectContaining({
-          original_amount: 120,
-          original_currency: 'USD',
+          amount: '120',
+          currency: 'USD',
           account: '2',
-          account_exchange_rate: '0.95',
+          account_exchange_rate: 0.95,
           account_converted_amount: 114.00,
         })
       );
