@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
-import { getCurrencyOptions, loadCurrencyOptions } from '../config/currency';
+import { getCurrencyOptions, loadCurrencyOptions, loadCurrencyRates } from '../config/currency';
 import '../styles/payment-page.css';
 
 const getTodayDate = () => {
@@ -62,7 +62,9 @@ function CustomerPaymentPage() {
     const [account, setAccount] = useState('');
     const [amount, setAmount] = useState('');
     const [paymentCurrency, setPaymentCurrency] = useState('');
-    const [exchangeRate, setExchangeRate] = useState(1);
+    const [exchangeRate, setExchangeRate] = useState('1');
+    const [exchangeRateEdited, setExchangeRateEdited] = useState(false);
+    const [currencyRates, setCurrencyRates] = useState({});
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -104,7 +106,15 @@ function CustomerPaymentPage() {
             setNotes('');
             setAccount('');
             setMethod('Cash');
-            setExchangeRate(1);
+            setExchangeRate('1');
+            setExchangeRateEdited(false);
+
+            try {
+                const rates = await loadCurrencyRates();
+                setCurrencyRates(rates || {});
+            } catch (currencyErr) {
+                console.warn('Failed to load currency rates for customer payments.', currencyErr);
+            }
         } catch (err) {
             console.error('Failed to load customer payment data:', err);
             setError('Failed to load customer information for payment.');
@@ -132,10 +142,11 @@ function CustomerPaymentPage() {
         const selectedAccount = accounts.find((acc) => acc.id === Number(selectedValue));
         if (selectedAccount) {
             setPaymentCurrency(selectedAccount.currency);
-            setExchangeRate(1);
         } else {
             setPaymentCurrency(customerCurrency);
         }
+        setExchangeRate('1');
+        setExchangeRateEdited(false);
     };
 
     const requiresExchangeRate = useMemo(
@@ -152,10 +163,44 @@ function CustomerPaymentPage() {
 
     const handleCurrencyChange = (newCurrency) => {
         setPaymentCurrency(newCurrency);
+        setExchangeRateEdited(false);
         if (newCurrency === customerCurrency) {
-            setExchangeRate(1);
+            setExchangeRate('1');
         }
     };
+
+    useEffect(() => {
+        if (!requiresExchangeRate) {
+            if (exchangeRate !== '1') {
+                setExchangeRate('1');
+            }
+            if (exchangeRateEdited) {
+                setExchangeRateEdited(false);
+            }
+            return;
+        }
+
+        if (exchangeRateEdited) {
+            return;
+        }
+
+        const fromRate = currencyRates[paymentCurrency];
+        const toRate = currencyRates[customerCurrency];
+
+        if (!fromRate || !toRate) {
+            return;
+        }
+
+        const computedRate = fromRate / toRate;
+        if (!Number.isFinite(computedRate) || computedRate <= 0) {
+            return;
+        }
+
+        const rateString = computedRate.toFixed(6);
+        if (rateString !== exchangeRate) {
+            setExchangeRate(rateString);
+        }
+    }, [requiresExchangeRate, paymentCurrency, customerCurrency, currencyRates, exchangeRate, exchangeRateEdited]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -207,7 +252,7 @@ function CustomerPaymentPage() {
             setMethod('Cash');
             setTransactionType('collection');
             setPaymentCurrency(customerCurrency);
-            setExchangeRate(1);
+            setExchangeRate('1');
             await refreshCustomerSummary();
         } catch (err) {
             console.error('Failed to save payment:', err);
@@ -354,7 +399,10 @@ function CustomerPaymentPage() {
                                                             step="0.0001"
                                                             min="0"
                                                             value={exchangeRate}
-                                                            onChange={(event) => setExchangeRate(event.target.value)}
+                                                            onChange={(event) => {
+                                                                setExchangeRate(event.target.value);
+                                                                setExchangeRateEdited(true);
+                                                            }}
                                                             disabled={saving}
                                                             required
                                                         />
