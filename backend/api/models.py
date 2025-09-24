@@ -5,7 +5,7 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from .exchange_rates import get_exchange_rate
 
 
@@ -471,6 +471,12 @@ class ExpenseCategory(models.Model):
 class Expense(models.Model):
     category = models.ForeignKey(ExpenseCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses')
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    original_currency = models.CharField(max_length=3, default='USD')
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    account_exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    account_converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     expense_date = models.DateField()
     description = models.TextField(blank=True, null=True)
     account = models.ForeignKey('BankAccount', on_delete=models.CASCADE, related_name='expenses', null=True, blank=True)
@@ -483,45 +489,126 @@ class Expense(models.Model):
 
     def save(self, *args, **kwargs):
         with transaction.atomic():
+            def _to_decimal(value, default='0'):
+                try:
+                    return Decimal(value)
+                except (InvalidOperation, TypeError):
+                    return Decimal(default)
+
+            def _normalise_currency(value, fallback='USD'):
+                value = (value or '').strip()
+                return (value or fallback).upper()
+
+            original_amount = self.original_amount if self.original_amount not in (None, '') else self.amount
+            original_amount = _to_decimal(original_amount)
+            self.original_amount = original_amount
+
+            supplier_currency = None
+            if self.supplier_id:
+                supplier_currency = (
+                    Supplier.objects.filter(pk=self.supplier_id)
+                    .values_list('currency', flat=True)
+                    .first()
+                )
+
+            account_currency = None
+            if self.account_id:
+                account_currency = (
+                    BankAccount.objects.filter(pk=self.account_id)
+                    .values_list('currency', flat=True)
+                    .first()
+                )
+
+            original_currency = _normalise_currency(
+                self.original_currency,
+                supplier_currency or account_currency or 'USD',
+            )
+            self.original_currency = original_currency
+
+            if self.supplier_id:
+                target_currency = _normalise_currency(supplier_currency, original_currency)
+                rate = _to_decimal(self.exchange_rate or '0')
+                if rate <= 0:
+                    try:
+                        rate = get_exchange_rate(original_currency, target_currency)
+                    except Exception:
+                        rate = Decimal('1')
+                self.exchange_rate = rate
+                converted_amount = (original_amount * rate).quantize(Decimal('0.01'))
+            else:
+                self.exchange_rate = Decimal('1')
+                converted_amount = original_amount.quantize(Decimal('0.01')) if original_amount else Decimal('0')
+            self.converted_amount = converted_amount
+
+            if self.account_id:
+                target_currency = _normalise_currency(account_currency, original_currency)
+                rate = _to_decimal(self.account_exchange_rate or '0')
+                if original_currency == target_currency:
+                    rate = Decimal('1')
+                elif rate <= 0:
+                    try:
+                        rate = get_exchange_rate(original_currency, target_currency)
+                    except Exception:
+                        rate = Decimal('1')
+                self.account_exchange_rate = rate
+                account_amount = (original_amount * rate).quantize(Decimal('0.01'))
+            else:
+                self.account_exchange_rate = Decimal('1')
+                account_amount = converted_amount
+            self.account_converted_amount = account_amount
+            self.amount = account_amount
+
             if self.pk:
-                old = Expense.objects.get(pk=self.pk)
-                # If account has changed
+                old = Expense.objects.select_for_update().get(pk=self.pk)
+
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') + old.amount)
+                        BankAccount.objects.filter(pk=old.account_id).update(
+                            balance=F('balance') + old.account_converted_amount
+                        )
                     if self.account_id:
-                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
-                # If account is the same, just update with the delta
+                        BankAccount.objects.filter(pk=self.account_id).update(
+                            balance=F('balance') - self.account_converted_amount
+                        )
                 elif self.account_id:
-                    delta = self.amount - old.amount
+                    delta = self.account_converted_amount - old.account_converted_amount
                     BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - delta)
 
-                # Handle supplier balance update on change
                 if old.supplier_id != self.supplier_id:
                     if old.supplier_id:
-                        Supplier.objects.filter(pk=old.supplier_id).update(open_balance=F('open_balance') + old.amount)
+                        Supplier.objects.filter(pk=old.supplier_id).update(
+                            open_balance=F('open_balance') + old.converted_amount
+                        )
                     if self.supplier_id:
-                        Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - self.amount)
-                # if supplier is same, update with delta
+                        Supplier.objects.filter(pk=self.supplier_id).update(
+                            open_balance=F('open_balance') - self.converted_amount
+                        )
                 elif self.supplier_id:
-                    delta = self.amount - old.amount
+                    delta = self.converted_amount - old.converted_amount
                     Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - delta)
 
-            # New expense
             else:
                 if self.account_id:
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.amount)
+                    BankAccount.objects.filter(pk=self.account_id).update(
+                        balance=F('balance') - self.account_converted_amount
+                    )
                 if self.supplier_id:
-                    Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - self.amount)
+                    Supplier.objects.filter(pk=self.supplier_id).update(
+                        open_balance=F('open_balance') - self.converted_amount
+                    )
 
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.amount)
+                BankAccount.objects.filter(pk=self.account_id).update(
+                    balance=F('balance') + self.account_converted_amount
+                )
             if self.supplier_id:
-                Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') + self.amount)
+                Supplier.objects.filter(pk=self.supplier_id).update(
+                    open_balance=F('open_balance') + self.converted_amount
+                )
             super().delete(*args, **kwargs)
     
 
