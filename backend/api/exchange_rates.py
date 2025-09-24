@@ -83,7 +83,7 @@ def get_exchange_rate(
     if manual_rate is not None:
         manual_rate_decimal = _as_decimal(manual_rate)
 
-    api_url = getattr(settings, "EXCHANGE_RATE_API_URL", "https://api.exchangerate.host/latest")
+    api_url = getattr(settings, "EXCHANGE_RATE_API_URL", "https://api.exchangeratesapi.io/v1/latest")
     access_key = getattr(settings, "EXCHANGE_RATE_API_KEY", None)
 
     params = {
