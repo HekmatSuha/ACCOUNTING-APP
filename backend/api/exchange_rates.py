@@ -1,11 +1,12 @@
 from collections.abc import Mapping
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Optional
 
 import logging
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from django.apps import apps
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,11 @@ def get_exchange_rate(
     if cached_rate is not None:
         return Decimal(str(cached_rate))
 
+    manual_table_rate = _manual_exchange_rate(from_currency, to_currency)
+    if manual_table_rate is not None:
+        cache.set(cache_key, manual_table_rate, timeout=3600)
+        return manual_table_rate
+
     manual_rate_decimal: Optional[Decimal] = None
     if manual_rate is not None:
         manual_rate_decimal = _as_decimal(manual_rate)
@@ -138,3 +144,20 @@ def get_exchange_rate(
 
     cache.set(cache_key, rate, timeout=3600)
     return rate
+def _manual_exchange_rate(from_currency: str, to_currency: str) -> Optional[Decimal]:
+    """Return a manual exchange rate using the stored currency table."""
+
+    Currency = apps.get_model('api', 'Currency')
+    try:
+        from_currency_obj = Currency.objects.get(code=from_currency.upper())
+        to_currency_obj = Currency.objects.get(code=to_currency.upper())
+    except Currency.DoesNotExist:
+        return None
+
+    from_rate = Decimal(from_currency_obj.exchange_rate)
+    to_rate = Decimal(to_currency_obj.exchange_rate)
+    if from_rate <= 0 or to_rate <= 0:
+        return None
+
+    quantizer = Decimal('1.000000')
+    return (from_rate / to_rate).quantize(quantizer, rounding=ROUND_HALF_UP)

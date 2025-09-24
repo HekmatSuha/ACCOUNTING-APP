@@ -11,6 +11,7 @@ from .models import (
     BankAccountTransaction,
     CompanyInfo,
     CompanySettings,
+    Currency,
     Customer,
     Expense,
     ExpenseCategory,
@@ -41,6 +42,63 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanySettings
         fields = ['base_currency']
+
+    def validate_base_currency(self, value):
+        value = (value or '').upper()
+        if not Currency.objects.filter(code=value).exists():
+            raise serializers.ValidationError(
+                "Currency must be added before it can be set as the base currency."
+            )
+        return value
+
+    def update(self, instance, validated_data):
+        new_code = validated_data.get('base_currency')
+        if new_code and new_code != instance.base_currency:
+            try:
+                Currency.rebase(new_code)
+            except Currency.DoesNotExist as exc:
+                raise serializers.ValidationError({'base_currency': str(exc)}) from exc
+            except ValueError as exc:
+                raise serializers.ValidationError({'base_currency': str(exc)}) from exc
+        return super().update(instance, validated_data)
+
+
+class CurrencySerializer(serializers.ModelSerializer):
+    is_base_currency = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Currency
+        fields = ['id', 'code', 'name', 'exchange_rate', 'is_base_currency']
+        read_only_fields = ['id', 'is_base_currency']
+
+    def get_is_base_currency(self, obj):
+        return obj.code == CompanySettings.load().base_currency
+
+    def validate_code(self, value):
+        value = (value or '').upper()
+        if len(value) != 3 or not value.isalpha():
+            raise serializers.ValidationError('Currency code must be a 3-letter ISO code.')
+        return value
+
+    def validate_exchange_rate(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('Exchange rate must be greater than zero.')
+        return value
+
+    def create(self, validated_data):
+        validated_data['code'] = validated_data['code'].upper()
+        if validated_data['code'] == CompanySettings.load().base_currency:
+            validated_data['exchange_rate'] = Decimal('1')
+        currency = super().create(validated_data)
+        return currency
+
+    def update(self, instance, validated_data):
+        validated_data.pop('code', None)
+        base_currency = CompanySettings.load().base_currency
+        if instance.code == base_currency:
+            # Ensure base currency always has an exchange rate of 1
+            validated_data['exchange_rate'] = Decimal('1')
+        return super().update(instance, validated_data)
 
 
 class ActivitySerializer(serializers.ModelSerializer):

@@ -335,9 +335,9 @@ function CustomerPaymentPage() {
                                                     onChange={(event) => handleCurrencyChange(event.target.value)}
                                                     disabled={saving || Boolean(account)}
                                                 >
-                                                    {(currencyOptions.length ? currencyOptions : [customerCurrency]).map((currency) => (
-                                                        <option key={currency} value={currency}>
-                                                            {currency}
+                                                    {(currencyOptions.length ? currencyOptions : [[customerCurrency, customerCurrency]]).map(([code, label]) => (
+                                                        <option key={code} value={code}>
+                                                            {label}
                                                         </option>
                                                     ))}
                                                 </Form.Select>

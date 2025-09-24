@@ -8,8 +8,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views.activities import ActivityViewSet
 from .views.auth import CreateUserView
 from .views.banking import BankAccountViewSet
-from .views.common import dashboard_summary, get_currency_options
+from .views.common import dashboard_summary
 from .views.company import CompanyInfoViewSet, CompanySettingsViewSet
+from .views.currencies import CurrencyViewSet
 from .views.customers import (
     CustomerPaymentViewSet,
     CustomerViewSet,
@@ -30,6 +31,7 @@ router.register(r'products', ProductViewSet, basename='product')
 router.register(r'sales', SaleViewSet, basename='sale')
 router.register(r'offers', OfferViewSet, basename='offer')
 router.register(r'suppliers', SupplierViewSet, basename='supplier')
+router.register(r'currencies', CurrencyViewSet, basename='currency')
 router.register(r'accounts', BankAccountViewSet, basename='account')
 router.register(r'expense-categories', ExpenseCategoryViewSet, basename='expense-category')
 router.register(r'expenses', ExpenseViewSet, basename='expense')
@@ -50,7 +52,6 @@ suppliers_router.register(r'payments', SupplierPaymentViewSet, basename='supplie
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
-    path('currencies/', get_currency_options, name='currencies'),
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/register/', CreateUserView.as_view(), name='register'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),

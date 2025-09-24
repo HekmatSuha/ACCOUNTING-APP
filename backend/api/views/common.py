@@ -10,14 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import CompanySettings, Customer, Expense, Payment, Purchase, Sale
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_currency_options(request):
-    """Provide the available currency options."""
-    return Response(Customer.CURRENCY_CHOICES)
+from ..models import CompanySettings, Expense, Payment, Purchase, Sale
 
 
 @api_view(['GET'])
