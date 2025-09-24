@@ -186,7 +186,7 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                         <Form.Label>Currency</Form.Label>
                         <Form.Select value={paymentCurrency} onChange={(e) => setPaymentCurrency(e.target.value)}>
                             {currencyOptions.map((c) => (
-                                <option key={c} value={c}>{c}</option>
+                                <option key={c[0]} value={c[0]}>{c[1]}</option>
                             ))}
                         </Form.Select>
                     </Form.Group>
