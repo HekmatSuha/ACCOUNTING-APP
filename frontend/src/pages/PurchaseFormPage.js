@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Table } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Table, Alert } from 'react-bootstrap';
 import { Trash } from 'react-bootstrap-icons';
 import '../styles/datatable.css';
 
@@ -13,24 +13,35 @@ function PurchaseFormPage() {
 
     const [partner, setPartner] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
-    const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0 }]);
+    const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, warehouse_id: '' }]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [partnerRes, prodRes] = await Promise.all([
+                const [partnerRes, prodRes, warehouseRes] = await Promise.all([
                     supplierId
                         ? axiosInstance.get(`suppliers/${supplierId}/`)
                         : axiosInstance.get(`/customers/${customerId}/`),
-                    axiosInstance.get('/products/')
+                    axiosInstance.get('/products/'),
+                    axiosInstance.get('/warehouses/'),
                 ]);
                 setPartner(partnerRes.data);
                 setAllProducts(prodRes.data);
+                setWarehouses(warehouseRes.data);
             } catch (error) { console.error("Failed to fetch initial data", error); }
         };
         fetchData();
     }, [supplierId, customerId]);
+
+    useEffect(() => {
+        if (warehouses.length === 0) return;
+        setLineItems(prev => prev.map(item => ({
+            ...item,
+            warehouse_id: item.warehouse_id || warehouses[0]?.id || '',
+        })));
+    }, [warehouses]);
 
     const handleLineItemChange = (index, event) => {
         const values = [...lineItems];
@@ -44,7 +55,15 @@ function PurchaseFormPage() {
     };
 
     const handleAddItem = () => {
-        setLineItems([...lineItems, { product_id: '', quantity: 1, unit_price: 0 }]);
+        setLineItems([
+            ...lineItems,
+            {
+                product_id: '',
+                quantity: 1,
+                unit_price: 0,
+                warehouse_id: warehouses[0]?.id || '',
+            },
+        ]);
     };
 
     const handleRemoveItem = (index) => {
@@ -61,7 +80,14 @@ function PurchaseFormPage() {
         e.preventDefault();
         const payload = {
             purchase_date: purchaseDate,
-            items: lineItems.filter(item => item.product_id)
+            items: lineItems
+                .filter(item => item.product_id)
+                .map(item => ({
+                    product_id: parseInt(item.product_id, 10),
+                    quantity: parseFloat(item.quantity),
+                    unit_price: parseFloat(item.unit_price),
+                    warehouse_id: parseInt(item.warehouse_id, 10),
+                })),
         };
         if (supplierId) {
             payload.supplier_id = supplierId;
@@ -79,6 +105,8 @@ function PurchaseFormPage() {
 
     if (!partner) return <div>Loading...</div>;
 
+    const hasWarehouses = warehouses.length > 0;
+
     return (
         <Container>
             <Card>
@@ -95,12 +123,18 @@ function PurchaseFormPage() {
                         </Row>
 
                         <h5>Items</h5>
+                        {!hasWarehouses && (
+                            <Alert variant="warning">
+                                No warehouses available. Please create a warehouse before recording purchases.
+                            </Alert>
+                        )}
                         <div className="data-table-container">
                             <Table responsive className="data-table data-table--compact">
                                 <thead>
                                     <tr>
                                         <th>Product</th>
                                         <th>Quantity</th>
+                                        <th>Warehouse</th>
                                         <th>Unit Price</th>
                                         <th>Line Total</th>
                                         <th>Actions</th>
@@ -132,6 +166,21 @@ function PurchaseFormPage() {
                                                 />
                                             </td>
                                             <td>
+                                                <Form.Select
+                                                    name="warehouse_id"
+                                                    value={item.warehouse_id}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                    disabled={!hasWarehouses}
+                                                >
+                                                    <option value="">Select Warehouse</option>
+                                                    {warehouses.map((warehouse) => (
+                                                        <option key={warehouse.id} value={warehouse.id}>
+                                                            {warehouse.name}
+                                                        </option>
+                                                    ))}
+                                                </Form.Select>
+                                            </td>
+                                            <td>
                                                 <Form.Control
                                                     type="number"
                                                     step="0.01"
@@ -156,14 +205,14 @@ function PurchaseFormPage() {
                                 </tbody>
                             </Table>
                         </div>
-                        <Button variant="secondary" onClick={handleAddItem}>+ Add Item</Button>
+                        <Button variant="secondary" onClick={handleAddItem} disabled={!hasWarehouses}>+ Add Item</Button>
 
                         <div className="d-flex justify-content-end mt-3">
                             <h3>Total: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(calculateTotal())}</h3>
                         </div>
 
                         <div className="mt-4">
-                            <Button variant="success" type="submit">Save Purchase</Button>
+                            <Button variant="success" type="submit" disabled={!hasWarehouses}>Save Purchase</Button>
                             <Button variant="light" className="ms-2" onClick={() => navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`)}>Cancel</Button>
                         </div>
                     </Form>

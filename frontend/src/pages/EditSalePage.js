@@ -14,21 +14,26 @@ function EditSalePage() {
 
     const [customers, setCustomers] = useState([]);
     const [products, setProducts] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [customerId, setCustomerId] = useState('');
     const [saleItems, setSaleItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const hasWarehouses = warehouses.length > 0;
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [customerRes, productRes, saleRes] = await Promise.all([
+                const [customerRes, productRes, warehouseRes, saleRes] = await Promise.all([
                     axiosInstance.get('/customers/'),
                     axiosInstance.get('/products/'),
+                    axiosInstance.get('/warehouses/'),
                     axiosInstance.get(`/sales/${id}/`)
                 ]);
                 setCustomers(customerRes.data);
                 setProducts(productRes.data);
+                setWarehouses(warehouseRes.data);
                 const saleData = saleRes.data;
                 setCustomerId(saleData.customer);
                 // The backend sends the full product object in the detail view, so we map it correctly
@@ -36,6 +41,7 @@ function EditSalePage() {
                     product_id: item.product.id,
                     quantity: item.quantity,
                     unit_price: item.unit_price,
+                    warehouse_id: item.warehouse_id,
                 })));
             } catch (err) {
                 setError('Failed to load initial sale data.');
@@ -46,6 +52,14 @@ function EditSalePage() {
         };
         fetchInitialData();
     }, [id]);
+
+    useEffect(() => {
+        if (!warehouses.length) return;
+        setSaleItems(prev => prev.map(item => ({
+            ...item,
+            warehouse_id: item.warehouse_id || warehouses[0]?.id || '',
+        })));
+    }, [warehouses]);
 
     // --- PASTE THE 4 HELPER FUNCTIONS HERE ---
     const handleItemChange = (index, event) => {
@@ -59,7 +73,15 @@ function EditSalePage() {
         setSaleItems(values);
     };
     const handleAddItem = () => {
-        setSaleItems([...saleItems, { product_id: '', quantity: 1, unit_price: '' }]);
+        setSaleItems([
+            ...saleItems,
+            {
+                product_id: '',
+                quantity: 1,
+                unit_price: '',
+                warehouse_id: warehouses[0]?.id || '',
+            },
+        ]);
     };
     const handleRemoveItem = (index) => {
         const values = [...saleItems];
@@ -83,7 +105,8 @@ function EditSalePage() {
             items: saleItems.map(item => ({
                 product_id: parseInt(item.product_id),
                 quantity: parseInt(item.quantity),
-                unit_price: parseFloat(item.unit_price)
+                unit_price: parseFloat(item.unit_price),
+                warehouse_id: parseInt(item.warehouse_id),
             }))
         };
         try {
@@ -116,6 +139,11 @@ function EditSalePage() {
                             </Form.Select>
                         </Form.Group>
                     </Row>
+                    {!hasWarehouses && (
+                        <Alert variant="warning">
+                            No warehouses available. Please create a warehouse before updating sales.
+                        </Alert>
+                    )}
                       <h5>Sale Items</h5>
                       <div className="data-table-container">
                         <Table responsive className="data-table data-table--compact">
@@ -123,6 +151,7 @@ function EditSalePage() {
                             <tr>
                                 <th>Product</th>
                                 <th>Quantity</th>
+                                <th>Warehouse</th>
                                 <th>Unit Price</th>
                                 <th>Line Total</th>
                                 <th>Action</th>
@@ -143,6 +172,20 @@ function EditSalePage() {
                                         <Form.Control type="number" name="quantity" value={item.quantity} onChange={e => handleItemChange(index, e)} min="1" required />
                                     </td>
                                     <td>
+                                        <Form.Select
+                                            name="warehouse_id"
+                                            value={item.warehouse_id}
+                                            onChange={e => handleItemChange(index, e)}
+                                            required
+                                            disabled={!hasWarehouses}
+                                        >
+                                            <option value="">Select a Warehouse</option>
+                                            {warehouses.map(warehouse => (
+                                                <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                                            ))}
+                                        </Form.Select>
+                                    </td>
+                                    <td>
                                         <Form.Control type="number" name="unit_price" value={item.unit_price} onChange={e => handleItemChange(index, e)} step="0.01" required />
                                     </td>
                                     <td>{formatCurrency((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}</td>
@@ -154,12 +197,12 @@ function EditSalePage() {
                         </tbody>
                         </Table>
                       </div>
-                    <Button variant="secondary" onClick={handleAddItem} className="mb-3">+ Add Item</Button>
+                    <Button variant="secondary" onClick={handleAddItem} className="mb-3" disabled={!hasWarehouses}>+ Add Item</Button>
                     <div className="text-end">
                         <h3>Total: {formatCurrency(calculateTotal())}</h3>
                     </div>
                     <div className="mt-3">
-                        <Button variant="primary" type="submit">Update Sale</Button>
+                        <Button variant="primary" type="submit" disabled={!hasWarehouses}>Update Sale</Button>
                         <Button variant="light" className="ms-2" onClick={() => navigate(`/sales/${id}`)}>Cancel</Button>
                     </div>
                 </Form>

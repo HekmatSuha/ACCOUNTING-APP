@@ -42,7 +42,7 @@ function ProductFormPage() {
         e.preventDefault();
         const submissionData = new FormData();
         Object.keys(formData).forEach(key => {
-            if (key !== 'image' && key !== 'id') {
+            if (key !== 'image' && key !== 'id' && key !== 'stock_quantity') {
                 submissionData.append(key, formData[key]);
             }
         });
@@ -106,8 +106,18 @@ function ProductFormPage() {
                             </Col>
                             <Col md={4}>
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Stock Quantity</Form.Label>
-                                    <Form.Control type="number" step="0.01" name="stock_quantity" value={formData.stock_quantity} onChange={handleChange} />
+                                    <Form.Label>Total Stock (read-only)</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        step="0.01"
+                                        name="stock_quantity"
+                                        value={formData.stock_quantity}
+                                        readOnly
+                                        disabled
+                                    />
+                                    <Form.Text className="text-muted">
+                                        Manage inventory levels per warehouse from the Warehouses screen.
+                                    </Form.Text>
                                 </Form.Group>
                             </Col>
                         </Row>

@@ -13,7 +13,18 @@ from rest_framework.response import Response
 
 from ..activity_logger import log_activity
 from ..invoice_pdf import generate_invoice_pdf
-from ..models import Customer, Offer, Payment, Product, Sale, SaleItem, SaleReturn, Supplier
+from ..models import (
+    Customer,
+    Offer,
+    Payment,
+    Product,
+    Sale,
+    SaleItem,
+    SaleReturn,
+    Supplier,
+    Warehouse,
+    WarehouseInventory,
+)
 from ..report_exports import generate_sales_report_pdf, generate_sales_report_workbook
 from ..serializers import (
     OfferReadSerializer,
@@ -55,10 +66,12 @@ class SaleViewSet(viewsets.ModelViewSet):
         for payment in instance.payments.all():
             payment.delete()
 
-        for item in instance.items.all():
-            Product.objects.filter(id=item.product.id).update(
-                stock_quantity=F('stock_quantity') + item.quantity
-            )
+        for item in instance.items.select_related('product', 'warehouse'):
+            warehouse = item.warehouse or Warehouse.get_default(self.request.user)
+            if item.warehouse is None:
+                item.warehouse = warehouse
+                item.save(update_fields=['warehouse'])
+            WarehouseInventory.adjust_stock(item.product, warehouse, item.quantity)
 
         if customer:
             Customer.objects.filter(id=customer.id).update(
@@ -150,16 +163,19 @@ class OfferViewSet(viewsets.ModelViewSet):
                 created_by=offer.created_by,
             )
 
-            for offer_item in offer.items.all():
+            default_warehouse = Warehouse.get_default(request.user)
+
+            for offer_item in offer.items.select_related('product'):
                 SaleItem.objects.create(
                     sale=sale,
                     product=offer_item.product,
                     quantity=offer_item.quantity,
                     unit_price=offer_item.unit_price,
+                    warehouse=default_warehouse,
                 )
 
-                Product.objects.filter(id=offer_item.product.id).update(
-                    stock_quantity=F('stock_quantity') - offer_item.quantity
+                WarehouseInventory.adjust_stock(
+                    offer_item.product, default_warehouse, -offer_item.quantity
                 )
 
             Customer.objects.filter(id=offer.customer.id).update(
