@@ -3,8 +3,9 @@
 from .activities import ActivityViewSet
 from .auth import CreateUserView
 from .banking import BankAccountViewSet
-from .common import dashboard_summary, get_currency_options
+from .common import dashboard_summary
 from .company import CompanyInfoViewSet, CompanySettingsViewSet
+from .currencies import CurrencyViewSet
 from .customers import (
     CustomerPaymentViewSet,
     CustomerViewSet,
@@ -27,6 +28,7 @@ __all__ = [
     'BankAccountViewSet',
     'CompanyInfoViewSet',
     'CompanySettingsViewSet',
+    'CurrencyViewSet',
     'CreateUserView',
     'CustomerPaymentViewSet',
     'CustomerViewSet',
@@ -42,7 +44,6 @@ __all__ = [
     'SupplierPaymentViewSet',
     'SupplierViewSet',
     'dashboard_summary',
-    'get_currency_options',
     'profit_and_loss_report',
     'customer_balance_report',
     'sales_report',

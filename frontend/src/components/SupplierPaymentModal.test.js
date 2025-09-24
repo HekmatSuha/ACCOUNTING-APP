@@ -31,7 +31,10 @@ describe('SupplierPaymentModal', () => {
       }
       if (url === '/currencies/') {
         return Promise.resolve({
-            data: [['USD', 'US Dollar'], ['EUR', 'Euro']],
+          data: [
+            { id: 1, code: 'USD', name: 'US Dollar', exchange_rate: '1', is_base_currency: true },
+            { id: 2, code: 'EUR', name: 'Euro', exchange_rate: '0.900000', is_base_currency: false },
+          ],
         });
       }
       return Promise.resolve({ data: [] });

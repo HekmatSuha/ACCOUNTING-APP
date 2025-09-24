@@ -23,11 +23,20 @@ export const loadCurrencyOptions = async () => {
   try {
     const res = await axiosInstance.get('/currencies/');
     if (res.data && Array.isArray(res.data)) {
-      currencyOptions = res.data;
+      currencyOptions = res.data.map((currency) => {
+        const code = currency.code || '';
+        const name = currency.name || code;
+        const label = name.includes(code) ? name : `${name} (${code})`;
+        return [code, label];
+      });
     }
   } catch (err) {
     console.error('Failed to fetch currency options', err);
   }
   return currencyOptions;
+};
+
+export const clearCachedCurrencies = () => {
+  currencyOptions = [];
 };
 
