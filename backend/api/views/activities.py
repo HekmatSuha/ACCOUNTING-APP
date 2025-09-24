@@ -11,7 +11,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..activity_logger import log_activity
-from ..models import Customer, Product, Purchase, Sale, Supplier
+from ..models import (
+    Customer,
+    Product,
+    Purchase,
+    Sale,
+    Supplier,
+    Warehouse,
+    WarehouseInventory,
+)
 from ..serializers import ActivitySerializer
 
 
@@ -55,9 +63,14 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                     Customer.objects.filter(pk=restored_sale.customer.pk).update(
                         open_balance=F('open_balance') + restored_sale.total_amount
                     )
-                    for item in restored_sale.items.all():
-                        Product.objects.filter(pk=item.product.pk).update(
-                            stock_quantity=F('stock_quantity') - item.quantity
+                    default_warehouse = Warehouse.get_default(request.user)
+                    for item in restored_sale.items.select_related('product', 'warehouse'):
+                        warehouse = item.warehouse or default_warehouse
+                        if item.warehouse is None:
+                            item.warehouse = warehouse
+                            item.save(update_fields=['warehouse'])
+                        WarehouseInventory.adjust_stock(
+                            item.product, warehouse, -item.quantity
                         )
 
                     log_activity(request.user, 'restored', restored_sale)
@@ -76,9 +89,14 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                         Supplier.objects.filter(pk=restored_purchase.supplier.pk).update(
                             open_balance=F('open_balance') + restored_purchase.total_amount
                         )
-                    for item in restored_purchase.items.all():
-                        Product.objects.filter(pk=item.product.pk).update(
-                            stock_quantity=F('stock_quantity') + item.quantity
+                    default_warehouse = Warehouse.get_default(request.user)
+                    for item in restored_purchase.items.select_related('product', 'warehouse'):
+                        warehouse = item.warehouse or default_warehouse
+                        if item.warehouse is None:
+                            item.warehouse = warehouse
+                            item.save(update_fields=['warehouse'])
+                        WarehouseInventory.adjust_stock(
+                            item.product, warehouse, item.quantity
                         )
 
                     log_activity(request.user, 'restored', restored_purchase)

@@ -20,7 +20,9 @@ from ..models import (
     Offer,
     OfferItem,
     Sale,
-    SaleItem
+    SaleItem,
+    Warehouse,
+    WarehouseInventory,
 )
 from ..serializers import (
     ProductSerializer,
@@ -129,6 +131,7 @@ class PurchaseAccountTransactionTest(TestCase):
         self.account = BankAccount.objects.create(name='Main', created_by=self.user)
         self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(name='P', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
 
     def test_purchase_updates_account_balance(self):
         purchase = Purchase.objects.create(
@@ -143,6 +146,7 @@ class PurchaseAccountTransactionTest(TestCase):
             product=self.product,
             quantity=Decimal('2'),
             unit_price=Decimal('5.00'),
+            warehouse=self.warehouse,
         )
         purchase.original_amount = Decimal('10.00')
         purchase.exchange_rate = Decimal('1')
@@ -162,12 +166,20 @@ class PurchaseReturnTest(TestCase):
         self.client.force_authenticate(user=self.user)
         self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
 
         serializer = PurchaseWriteSerializer(
             data={
                 'supplier_id': self.supplier.id,
                 'purchase_date': str(date.today()),
-                'items': [{'product_id': self.product.id, 'quantity': '2', 'unit_price': '5.00'}],
+                'items': [
+                    {
+                        'product_id': self.product.id,
+                        'quantity': '2',
+                        'unit_price': '5.00',
+                        'warehouse_id': self.warehouse.id,
+                    }
+                ],
             },
             context={'request': self._get_request()},
         )
@@ -185,7 +197,14 @@ class PurchaseReturnTest(TestCase):
         payload = {
             'purchase_id': self.purchase.id,
             'return_date': str(date.today()),
-            'items': [{'product_id': self.product.id, 'quantity': '1', 'unit_price': '5.00'}],
+            'items': [
+                {
+                    'product_id': self.product.id,
+                    'quantity': '1',
+                    'unit_price': '5.00',
+                    'warehouse_id': self.warehouse.id,
+                }
+            ],
         }
         response = self.client.post('/api/purchase-returns/', payload, format='json')
         self.assertEqual(response.status_code, 201)
@@ -208,12 +227,20 @@ class SaleReturnTest(TestCase):
         self.client.force_authenticate(user=self.user)
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), stock_quantity=Decimal('2'), created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
 
         serializer = SaleWriteSerializer(
             data={
                 'customer_id': self.customer.id,
                 'sale_date': str(date.today()),
-                'items': [{'product_id': self.product.id, 'quantity': 2, 'unit_price': '10.00'}],
+                'items': [
+                    {
+                        'product_id': self.product.id,
+                        'quantity': 2,
+                        'unit_price': '10.00',
+                        'warehouse_id': self.warehouse.id,
+                    }
+                ],
             },
             context={'request': self._get_request()},
         )
@@ -231,7 +258,15 @@ class SaleReturnTest(TestCase):
         payload = {
             'sale_id': self.sale.id,
             'return_date': str(date.today()),
-            'items': [{'product_id': self.product.id, 'quantity': '1', 'unit_price': '10.00', 'reason': 'Damaged'}],
+            'items': [
+                {
+                    'product_id': self.product.id,
+                    'quantity': '1',
+                    'unit_price': '10.00',
+                    'warehouse_id': self.warehouse.id,
+                    'reason': 'Damaged',
+                }
+            ],
         }
         response = self.client.post('/api/sale-returns/', payload, format='json')
         self.assertEqual(response.status_code, 201)
@@ -498,6 +533,7 @@ class SaleDeletionTest(TestCase):
             stock_quantity=Decimal('10'),
             created_by=self.user,
         )
+        self.warehouse = Warehouse.get_default(self.user)
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -515,11 +551,11 @@ class SaleDeletionTest(TestCase):
             product=self.product,
             quantity=1,
             unit_price=Decimal('100.00'),
+            warehouse=self.warehouse,
         )
 
         # Mimic serializer side effects of sale creation
-        self.product.stock_quantity -= 1
-        self.product.save()
+        WarehouseInventory.adjust_stock(self.product, self.warehouse, Decimal('-1'))
         self.customer.open_balance += sale.total_amount
         self.customer.save()
 
@@ -555,6 +591,7 @@ class CrossDealTest(TestCase):
             stock_quantity=Decimal('10'),
             created_by=self.user,
         )
+        self.warehouse = Warehouse.get_default(self.user)
 
     def _get_request(self):
         class DummyRequest:
@@ -568,7 +605,14 @@ class CrossDealTest(TestCase):
             data={
                 'supplier_id': self.supplier.id,
                 'sale_date': str(date.today()),
-                'items': [{'product_id': self.product.id, 'quantity': 1, 'unit_price': '10.00'}],
+                'items': [
+                    {
+                        'product_id': self.product.id,
+                        'quantity': 1,
+                        'unit_price': '10.00',
+                        'warehouse_id': self.warehouse.id,
+                    }
+                ],
             },
             context={'request': self._get_request()},
         )
@@ -582,7 +626,14 @@ class CrossDealTest(TestCase):
             data={
                 'customer_id': self.customer.id,
                 'purchase_date': str(date.today()),
-                'items': [{'product_id': self.product.id, 'quantity': '1', 'unit_price': '5.00'}],
+                'items': [
+                    {
+                        'product_id': self.product.id,
+                        'quantity': '1',
+                        'unit_price': '5.00',
+                        'warehouse_id': self.warehouse.id,
+                    }
+                ],
             },
             context={'request': self._get_request()},
         )
@@ -604,12 +655,20 @@ class SupplierDetailsIncludeSalesTest(TestCase):
             stock_quantity=Decimal('10'),
             created_by=self.user,
         )
+        self.warehouse = Warehouse.get_default(self.user)
 
         serializer = SaleWriteSerializer(
             data={
                 'supplier_id': self.supplier.id,
                 'sale_date': str(date.today()),
-                'items': [{'product_id': self.product.id, 'quantity': 1, 'unit_price': '10.00'}],
+                'items': [
+                    {
+                        'product_id': self.product.id,
+                        'quantity': 1,
+                        'unit_price': '10.00',
+                        'warehouse_id': self.warehouse.id,
+                    }
+                ],
             },
             context={'request': self._get_request()},
         )
