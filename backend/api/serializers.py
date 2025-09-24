@@ -297,6 +297,126 @@ class WarehouseDetailSerializer(WarehouseSerializer):
         fields = WarehouseSerializer.Meta.fields + ['stocks']
         read_only_fields = WarehouseSerializer.Meta.read_only_fields + ['stocks']
 
+
+class WarehouseTransferSerializer(serializers.Serializer):
+    """Validate and perform inventory transfers between warehouses."""
+
+    product_id = serializers.IntegerField()
+    source_warehouse_id = serializers.IntegerField()
+    destination_warehouse_id = serializers.IntegerField()
+    quantity = serializers.DecimalField(max_digits=10, decimal_places=2)
+    product_name = serializers.CharField(read_only=True)
+    source_name = serializers.CharField(read_only=True)
+    destination_name = serializers.CharField(read_only=True)
+    source_quantity = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+    destination_quantity = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('Quantity must be greater than zero.')
+        return value
+
+    def validate(self, attrs):
+        request = self.context['request']
+        user = request.user
+
+        try:
+            product = Product.objects.get(
+                id=attrs['product_id'], created_by=user
+            )
+        except Product.DoesNotExist as exc:
+            raise serializers.ValidationError(
+                {'product_id': 'Invalid product selection.'}
+            ) from exc
+
+        try:
+            source = Warehouse.objects.get(
+                id=attrs['source_warehouse_id'], created_by=user
+            )
+        except Warehouse.DoesNotExist as exc:
+            raise serializers.ValidationError(
+                {'source_warehouse_id': 'Invalid source warehouse selection.'}
+            ) from exc
+
+        try:
+            destination = Warehouse.objects.get(
+                id=attrs['destination_warehouse_id'], created_by=user
+            )
+        except Warehouse.DoesNotExist as exc:
+            raise serializers.ValidationError(
+                {'destination_warehouse_id': 'Invalid destination warehouse selection.'}
+            ) from exc
+
+        if source.id == destination.id:
+            raise serializers.ValidationError(
+                'Source and destination warehouses must be different.'
+            )
+
+        available = (
+            WarehouseInventory.objects.filter(
+                product=product, warehouse=source
+            )
+            .values_list('quantity', flat=True)
+            .first()
+            or Decimal('0')
+        )
+
+        if available < attrs['quantity']:
+            raise serializers.ValidationError(
+                {
+                    'quantity': (
+                        f"Insufficient stock for product '{product.name}' in "
+                        f"warehouse '{source.name}'."
+                    )
+                }
+            )
+
+        attrs['product'] = product
+        attrs['source'] = source
+        attrs['destination'] = destination
+        return attrs
+
+    def create(self, validated_data):
+        product = validated_data['product']
+        source = validated_data['source']
+        destination = validated_data['destination']
+        quantity = validated_data['quantity']
+
+        with transaction.atomic():
+            WarehouseInventory.adjust_stock(product, source, -quantity)
+            WarehouseInventory.adjust_stock(product, destination, quantity)
+
+        source_quantity = (
+            WarehouseInventory.objects.filter(product=product, warehouse=source)
+            .values_list('quantity', flat=True)
+            .first()
+            or Decimal('0')
+        )
+        destination_quantity = (
+            WarehouseInventory.objects.filter(
+                product=product, warehouse=destination
+            )
+            .values_list('quantity', flat=True)
+            .first()
+            or Decimal('0')
+        )
+
+        return {
+            'product_id': product.id,
+            'source_warehouse_id': source.id,
+            'destination_warehouse_id': destination.id,
+            'quantity': quantity,
+            'product_name': product.name,
+            'source_name': source.name,
+            'destination_name': destination.name,
+            'source_quantity': source_quantity,
+            'destination_quantity': destination_quantity,
+        }
+
 class SaleItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_image = serializers.SerializerMethodField()
