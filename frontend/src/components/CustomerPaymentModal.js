@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
-import { getCurrencyOptions, loadCurrencyOptions } from '../config/currency';
+import { getCurrencyOptions, loadCurrencyOptions, loadCurrencyRates } from '../config/currency';
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
@@ -21,10 +21,12 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
     const [account, setAccount] = useState('');
     const [accountCurrency, setAccountCurrency] = useState(customerCurrency);
     const [paymentCurrency, setPaymentCurrency] = useState(customerCurrency);
-    const [exchangeRate, setExchangeRate] = useState(1);
+    const [exchangeRate, setExchangeRate] = useState('1');
+    const [exchangeRateEdited, setExchangeRateEdited] = useState(false);
     const [convertedAmount, setConvertedAmount] = useState('');
     const [error, setError] = useState('');
     const [currencyOptions, setCurrencyOptions] = useState([]);
+    const [currencyRates, setCurrencyRates] = useState({});
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -38,6 +40,13 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                     setCurrencyOptions(loadedOptions);
                 } else {
                     setCurrencyOptions(options);
+                }
+
+                try {
+                    const rates = await loadCurrencyRates();
+                    setCurrencyRates(rates || {});
+                } catch (currencyErr) {
+                    console.warn('Failed to load currency rates for customer payments.', currencyErr);
                 }
             } catch (err) {
                 console.error('Failed to fetch initial data:', err);
@@ -56,7 +65,13 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             setNotes(payment.notes || '');
             setAccount(payment.account || '');
             setPaymentCurrency(payment.original_currency || customerCurrency);
-            setExchangeRate(payment.account_exchange_rate ? Number(payment.account_exchange_rate) : 1);
+            const existingRate = payment.account_exchange_rate
+                ? String(payment.account_exchange_rate)
+                : payment.exchange_rate
+                    ? String(payment.exchange_rate)
+                    : '1';
+            setExchangeRate(existingRate);
+            setExchangeRateEdited(Boolean(payment.account_exchange_rate));
             setConvertedAmount(payment.account_converted_amount ? String(payment.account_converted_amount) : '');
         } else if (show && !payment) {
             // Reset form when adding a new payment
@@ -67,7 +82,8 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             setAccount('');
             setPaymentCurrency(customerCurrency);
             setAccountCurrency(customerCurrency);
-            setExchangeRate(1);
+            setExchangeRate('1');
+            setExchangeRateEdited(false);
             setConvertedAmount('');
         }
     }, [payment, show, customerCurrency]);
@@ -80,6 +96,7 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
         } else {
             setAccountCurrency(customerCurrency);
         }
+        setExchangeRateEdited(false);
     }, [account, accounts, customerCurrency]);
 
     useEffect(() => {
@@ -88,10 +105,43 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             const rate = parseFloat(exchangeRate) || 1;
             setConvertedAmount((amt * rate).toFixed(2));
         } else {
-            setExchangeRate(1);
+            if (exchangeRate !== '1') {
+                setExchangeRate('1');
+            }
             setConvertedAmount(amount);
+            if (exchangeRateEdited) {
+                setExchangeRateEdited(false);
+            }
         }
-    }, [amount, exchangeRate, paymentCurrency, accountCurrency]);
+    }, [amount, exchangeRate, paymentCurrency, accountCurrency, exchangeRateEdited]);
+
+    useEffect(() => {
+        if (!show) {
+            return;
+        }
+        if (paymentCurrency === accountCurrency) {
+            return;
+        }
+        if (exchangeRateEdited) {
+            return;
+        }
+
+        const fromRate = currencyRates[paymentCurrency];
+        const toRate = currencyRates[accountCurrency];
+        if (!fromRate || !toRate) {
+            return;
+        }
+
+        const computedRate = fromRate / toRate;
+        if (!Number.isFinite(computedRate) || computedRate <= 0) {
+            return;
+        }
+
+        const rateString = computedRate.toFixed(6);
+        if (rateString !== exchangeRate) {
+            setExchangeRate(rateString);
+        }
+    }, [show, paymentCurrency, accountCurrency, currencyRates, exchangeRate, exchangeRateEdited]);
 
     const showExchangeFields = paymentCurrency !== accountCurrency;
 
@@ -104,7 +154,9 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
             return;
         }
 
-        if (paymentCurrency !== accountCurrency && (!exchangeRate || exchangeRate <= 0)) {
+        const numericRate = parseFloat(exchangeRate);
+
+        if (paymentCurrency !== accountCurrency && (!numericRate || numericRate <= 0)) {
             setError('Please provide a valid exchange rate.');
             return;
         }
@@ -119,12 +171,12 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
         };
 
         if (account && paymentCurrency !== accountCurrency) {
-            paymentData.account_exchange_rate = exchangeRate;
+            paymentData.account_exchange_rate = numericRate;
             paymentData.account_converted_amount = parseFloat(convertedAmount);
         }
 
         if (paymentCurrency !== customerCurrency) {
-            paymentData.exchange_rate = exchangeRate;
+            paymentData.exchange_rate = numericRate;
         }
 
 
@@ -185,7 +237,10 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                         <Form.Label>Account</Form.Label>
                         <Form.Select
                             value={account}
-                            onChange={(e) => setAccount(e.target.value)}
+                            onChange={(e) => {
+                                setAccount(e.target.value);
+                                setExchangeRateEdited(false);
+                            }}
                         >
                             <option value="">No Account</option>
                             {accounts.map((acc) => (
@@ -197,7 +252,10 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                         <Form.Label>Currency</Form.Label>
                         <Form.Select
                             value={paymentCurrency}
-                            onChange={(e) => setPaymentCurrency(e.target.value)}
+                            onChange={(e) => {
+                                setPaymentCurrency(e.target.value);
+                                setExchangeRateEdited(false);
+                            }}
                         >
                             {currencyOptions.map(c => (
                                 <option key={c[0]} value={c[0]}>{c[1]}</option>
@@ -213,7 +271,10 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                                     type="number"
                                     step="0.0001"
                                     value={exchangeRate}
-                                    onChange={(e) => setExchangeRate(e.target.value)}
+                                    onChange={(e) => {
+                                        setExchangeRate(e.target.value);
+                                        setExchangeRateEdited(true);
+                                    }}
                                     required
                                 />
                             </Form.Group>
