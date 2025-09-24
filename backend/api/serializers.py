@@ -531,6 +531,12 @@ class ExpenseSerializer(serializers.ModelSerializer):
             'category',
             'category_name',
             'amount',
+            'original_amount',
+            'original_currency',
+            'exchange_rate',
+            'converted_amount',
+            'account_exchange_rate',
+            'account_converted_amount',
             'expense_date',
             'description',
             'account',
@@ -540,6 +546,27 @@ class ExpenseSerializer(serializers.ModelSerializer):
             'supplier_name',
         ]
         read_only_fields = ['created_by', 'account_name', 'supplier_name']
+        extra_kwargs = {
+            'amount': {'required': False},
+            'original_amount': {'required': False},
+            'original_currency': {'required': False},
+            'exchange_rate': {'required': False},
+            'account_exchange_rate': {'required': False},
+            'account_converted_amount': {'required': False},
+            'converted_amount': {'required': False},
+        }
+
+    def validate_original_currency(self, value):
+        value = (value or '').strip()
+        return value.upper() if value else value
+
+    def validate(self, attrs):
+        if self.instance is None:
+            amount = attrs.get('amount')
+            original_amount = attrs.get('original_amount')
+            if amount in (None, '') and original_amount in (None, ''):
+                raise serializers.ValidationError('Either amount or original_amount must be provided.')
+        return super().validate(attrs)
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)

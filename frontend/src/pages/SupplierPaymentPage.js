@@ -61,6 +61,9 @@ function SupplierPaymentPage() {
     const [notes, setNotes] = useState('');
     const [account, setAccount] = useState('');
     const [amount, setAmount] = useState('');
+    const [accountExchangeRate, setAccountExchangeRate] = useState('1');
+    const [accountRateEdited, setAccountRateEdited] = useState(false);
+    const [currencyRates, setCurrencyRates] = useState({});
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -71,6 +74,13 @@ function SupplierPaymentPage() {
     const supplierName = supplierData?.supplier?.name || '';
     const summary = supplierData?.summary || null;
 
+    const selectedAccount = useMemo(
+        () => accounts.find((acc) => acc.id === Number(account)) || null,
+        [accounts, account],
+    );
+    const accountCurrency = selectedAccount?.currency || supplierCurrency;
+    const requiresAccountConversion = Boolean(selectedAccount && accountCurrency !== supplierCurrency);
+
     const fetchInitialData = async () => {
         setLoading(true);
         setError('');
@@ -79,9 +89,26 @@ function SupplierPaymentPage() {
                 axiosInstance.get(`suppliers/${id}/details/`),
                 axiosInstance.get('/accounts/'),
             ]);
+
+            let currencyMap = {};
+            try {
+                const currenciesRes = await axiosInstance.get('/currencies/');
+                if (Array.isArray(currenciesRes.data)) {
+                    currencyMap = currenciesRes.data.reduce((accumulator, currency) => {
+                        if (currency?.code) {
+                            accumulator[currency.code] = Number(currency.exchange_rate) || 0;
+                        }
+                        return accumulator;
+                    }, {});
+                }
+            } catch (currencyErr) {
+                console.warn('Failed to load currency rates for supplier payments.', currencyErr);
+            }
+
             const loadedBaseCurrency = await loadBaseCurrency().catch(() => getBaseCurrency());
             setSupplierData(detailsRes.data);
             setAccounts(accountsRes.data || []);
+            setCurrencyRates(currencyMap);
             setBaseCurrency(loadedBaseCurrency || getBaseCurrency());
             setTransactionType('payment');
             setPaymentDate(getTodayDate());
@@ -89,6 +116,8 @@ function SupplierPaymentPage() {
             setNotes('');
             setAccount('');
             setMethod('Cash');
+            setAccountExchangeRate('1');
+            setAccountRateEdited(false);
         } catch (err) {
             console.error('Failed to load supplier payment data:', err);
             setError('Failed to load supplier information for payment.');
@@ -100,6 +129,37 @@ function SupplierPaymentPage() {
     useEffect(() => {
         fetchInitialData();
     }, [id]);
+
+    useEffect(() => {
+        if (!selectedAccount) {
+            setAccountExchangeRate('1');
+            setAccountRateEdited(false);
+            return;
+        }
+
+        if (!selectedAccount.currency || selectedAccount.currency === supplierCurrency) {
+            setAccountExchangeRate('1');
+            setAccountRateEdited(false);
+            return;
+        }
+
+        if (accountRateEdited) {
+            return;
+        }
+
+        const fromRate = currencyRates[supplierCurrency];
+        const toRate = currencyRates[selectedAccount.currency];
+
+        if (fromRate && toRate) {
+            const computedRate = fromRate / toRate;
+            if (Number.isFinite(computedRate) && computedRate > 0) {
+                setAccountExchangeRate(computedRate.toFixed(6));
+                return;
+            }
+        }
+
+        setAccountExchangeRate('1');
+    }, [selectedAccount, supplierCurrency, currencyRates, accountRateEdited]);
 
     const refreshSupplierSummary = async () => {
         try {
@@ -113,13 +173,27 @@ function SupplierPaymentPage() {
     const handleAccountChange = (event) => {
         const selectedValue = event.target.value;
         setAccount(selectedValue);
+        setAccountExchangeRate('1');
+        setAccountRateEdited(false);
     };
 
-    const convertedAmountValue = useMemo(() => {
+    const supplierImpactValue = useMemo(() => {
         const numeric = parseFloat(amount) || 0;
-        const sign = transactionType === 'payment' ? -1 : 1;
-        return numeric * sign;
+        return transactionType === 'payment' ? -numeric : numeric;
     }, [amount, transactionType]);
+
+    const accountImpactValue = useMemo(() => {
+        const numeric = parseFloat(amount) || 0;
+        const baseFinal = transactionType === 'payment' ? numeric : -numeric;
+        if (!selectedAccount) {
+            return baseFinal;
+        }
+        const rate = parseFloat(accountExchangeRate);
+        if (!rate || rate <= 0) {
+            return baseFinal;
+        }
+        return baseFinal * rate;
+    }, [amount, transactionType, selectedAccount, accountExchangeRate]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -136,6 +210,14 @@ function SupplierPaymentPage() {
 
         const finalAmount = transactionType === 'payment' ? numericAmount : -numericAmount;
 
+        if (requiresAccountConversion) {
+            const rateValue = parseFloat(accountExchangeRate);
+            if (!rateValue || rateValue <= 0) {
+                setError('Please provide a valid exchange rate.');
+                return;
+            }
+        }
+
         const descriptionParts = [
             transactionType === 'payment' ? 'Tedarikçiye ödeme' : 'Tedarikçiden tahsilat',
         ];
@@ -147,11 +229,29 @@ function SupplierPaymentPage() {
         }
 
         const payload = {
-            amount: finalAmount,
             expense_date: paymentDate,
             description: descriptionParts.join(' - '),
-            account: account ? Number(account) : null,
+            original_amount: Number(finalAmount.toFixed(2)),
+            original_currency: (supplierCurrency || baseCurrency || 'USD').toUpperCase(),
         };
+
+        let accountAmount = finalAmount;
+
+        if (selectedAccount) {
+            payload.account = selectedAccount.id;
+            const rateValue = parseFloat(accountExchangeRate);
+            if (selectedAccount.currency && selectedAccount.currency !== supplierCurrency) {
+                payload.account_exchange_rate = rateValue;
+                accountAmount = finalAmount * rateValue;
+            } else {
+                payload.account_exchange_rate = 1;
+            }
+        } else if (account) {
+            payload.account = Number(account);
+        }
+
+        payload.amount = Number(accountAmount.toFixed(2));
+        payload.exchange_rate = 1;
 
         try {
             setSaving(true);
@@ -162,6 +262,8 @@ function SupplierPaymentPage() {
             setAccount('');
             setMethod('Cash');
             setTransactionType('payment');
+            setAccountExchangeRate('1');
+            setAccountRateEdited(false);
             await refreshSupplierSummary();
         } catch (err) {
             console.error('Failed to save supplier payment:', err);
@@ -284,9 +386,50 @@ function SupplierPaymentPage() {
                                         <Col md={6}>
                                             <div className="payment-form-card__converted">
                                                 <div className="small text-uppercase text-muted">Tedarikçi bakiyesine yansıyan</div>
-                                                <div>{formatCurrency(convertedAmountValue, supplierCurrency)}</div>
+                                                <div>{formatCurrency(supplierImpactValue, supplierCurrency)}</div>
                                             </div>
                                         </Col>
+                                        {selectedAccount && requiresAccountConversion && (
+                                            <>
+                                                <Col md={6}>
+                                                    <Form.Group controlId="accountExchangeRate">
+                                                        <Form.Label>
+                                                            Kur ({supplierCurrency} ➜ {accountCurrency})
+                                                        </Form.Label>
+                                                        <Form.Control
+                                                            type="number"
+                                                            step="0.0001"
+                                                            min="0"
+                                                            value={accountExchangeRate}
+                                                            onChange={(event) => {
+                                                                setAccountRateEdited(true);
+                                                                setAccountExchangeRate(event.target.value);
+                                                            }}
+                                                            disabled={saving}
+                                                            required
+                                                        />
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col md={6}>
+                                                    <div className="payment-form-card__converted">
+                                                        <div className="small text-uppercase text-muted">
+                                                            {(selectedAccount?.name || 'Hesap') + ' hareketi'} ({accountCurrency})
+                                                        </div>
+                                                        <div>{formatCurrency(accountImpactValue, accountCurrency)}</div>
+                                                    </div>
+                                                </Col>
+                                            </>
+                                        )}
+                                        {selectedAccount && !requiresAccountConversion && (
+                                            <Col md={6}>
+                                                <div className="payment-form-card__converted">
+                                                    <div className="small text-uppercase text-muted">
+                                                        {(selectedAccount?.name || 'Hesap') + ' hareketi'} ({accountCurrency})
+                                                    </div>
+                                                    <div>{formatCurrency(accountImpactValue, accountCurrency)}</div>
+                                                </div>
+                                            </Col>
+                                        )}
                                         <Col xs={12}>
                                             <Form.Group controlId="notes">
                                                 <Form.Label>Açıklama</Form.Label>
