@@ -150,8 +150,8 @@ function CustomerPaymentPage() {
     };
 
     const requiresExchangeRate = useMemo(
-        () => !account && paymentCurrency && paymentCurrency !== customerCurrency,
-        [account, paymentCurrency, customerCurrency],
+        () => Boolean(paymentCurrency && paymentCurrency !== customerCurrency),
+        [paymentCurrency, customerCurrency],
     );
 
     const convertedAmountValue = useMemo(() => {
