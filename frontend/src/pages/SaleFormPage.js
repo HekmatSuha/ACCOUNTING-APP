@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Table, InputGroup } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Table, Alert } from 'react-bootstrap';
 import { Trash } from 'react-bootstrap-icons';
 import '../styles/datatable.css';
 
@@ -17,26 +17,37 @@ function SaleFormPage() {
 
     const [customer, setCustomer] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
-    const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0 }]);
+    const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, warehouse_id: '' }]);
     
     useEffect(() => {
         // Fetch customer/supplier and all products
         const fetchData = async () => {
             try {
-                const [custRes, prodRes] = await Promise.all([
+                const [custRes, prodRes, warehouseRes] = await Promise.all([
                     axiosInstance.get(isSupplierSale ? `suppliers/${entityId}/` : `customers/${entityId}/`),
-                    axiosInstance.get('/products/')
+                    axiosInstance.get('/products/'),
+                    axiosInstance.get('/warehouses/'),
                 ]);
                 const entityData = { currency: 'USD', ...custRes.data };
                 setCustomer(entityData);
                 setAllProducts(prodRes.data);
+                setWarehouses(warehouseRes.data);
             } catch (error) {
                 console.error('Failed to fetch initial data', error);
             }
         };
         fetchData();
     }, [entityId, isSupplierSale]);
+
+    useEffect(() => {
+        if (warehouses.length === 0) return;
+        setLineItems(prev => prev.map(item => ({
+            ...item,
+            warehouse_id: item.warehouse_id || warehouses[0]?.id || '',
+        })));
+    }, [warehouses]);
 
     const handleLineItemChange = (index, event) => {
         const values = [...lineItems];
@@ -51,7 +62,15 @@ function SaleFormPage() {
     };
 
     const handleAddItem = () => {
-        setLineItems([...lineItems, { product_id: '', quantity: 1, unit_price: 0 }]);
+        setLineItems([
+            ...lineItems,
+            {
+                product_id: '',
+                quantity: 1,
+                unit_price: 0,
+                warehouse_id: warehouses[0]?.id || '',
+            },
+        ]);
     };
 
     const handleRemoveItem = (index) => {
@@ -67,9 +86,21 @@ function SaleFormPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         // Base payload used for both sales and offers
-        const payload = {
-            items: lineItems.filter(item => item.product_id)
-        };
+        const payloadItems = lineItems
+            .filter(item => item.product_id)
+            .map(item => {
+                const base = {
+                    product_id: parseInt(item.product_id, 10),
+                    quantity: Number(item.quantity),
+                    unit_price: parseFloat(item.unit_price),
+                };
+                if (!isOffer) {
+                    base.warehouse_id = parseInt(item.warehouse_id, 10);
+                }
+                return base;
+            });
+
+        const payload = { items: payloadItems };
 
         // Choose the correct endpoint and augment payload as needed
         let url;
@@ -94,6 +125,8 @@ function SaleFormPage() {
     
     if (!customer) return <div>Loading...</div>;
 
+    const hasWarehouses = warehouses.length > 0;
+
     return (
         <Container>
             <Card>
@@ -110,12 +143,18 @@ function SaleFormPage() {
                         </Row>
 
                         <h5>Items</h5>
+                        {!hasWarehouses && (
+                            <Alert variant="warning">
+                                No warehouses available. Please create a warehouse before recording sales.
+                            </Alert>
+                        )}
                         <div className="data-table-container">
                             <Table responsive className="data-table data-table--compact">
                                 <thead>
                                     <tr>
                                         <th>Product</th>
                                         <th>Quantity</th>
+                                        <th>Warehouse</th>
                                         <th>Unit Price</th>
                                         <th>Line Total</th>
                                         <th>Actions</th>
@@ -147,6 +186,21 @@ function SaleFormPage() {
                                                 />
                                             </td>
                                             <td>
+                                                <Form.Select
+                                                    name="warehouse_id"
+                                                    value={item.warehouse_id}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                    disabled={!hasWarehouses}
+                                                >
+                                                    <option value="">Select Warehouse</option>
+                                                    {warehouses.map((warehouse) => (
+                                                        <option key={warehouse.id} value={warehouse.id}>
+                                                            {warehouse.name}
+                                                        </option>
+                                                    ))}
+                                                </Form.Select>
+                                            </td>
+                                            <td>
                                                 <Form.Control
                                                     type="number"
                                                     step="0.01"
@@ -171,14 +225,14 @@ function SaleFormPage() {
                                 </tbody>
                             </Table>
                         </div>
-                        <Button variant="secondary" onClick={handleAddItem}>+ Add Item</Button>
+                        <Button variant="secondary" onClick={handleAddItem} disabled={!hasWarehouses}>+ Add Item</Button>
 
                         <div className="d-flex justify-content-end mt-3">
                             <h3>Total: {new Intl.NumberFormat('en-US', { style: 'currency', currency: customer.currency }).format(calculateTotal())}</h3>
                         </div>
                         
                         <div className="mt-4">
-                            <Button variant="success" type="submit">{isOffer ? 'Save Offer' : 'Save Sale'}</Button>
+                            <Button variant="success" type="submit" disabled={!hasWarehouses}>{isOffer ? 'Save Offer' : 'Save Sale'}</Button>
                             <Button
                                 variant="light"
                                 className="ms-2"

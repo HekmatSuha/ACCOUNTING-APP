@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework import serializers
 
-from ..models import Customer, Product, Sale
+from ..models import Customer, Product, Sale, Warehouse
 from ..serializers import SaleWriteSerializer
 
 
@@ -13,6 +13,7 @@ class SaleStockValidationTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="stockuser", password="pw")
         self.customer = Customer.objects.create(name="C", created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
         self.product = Product.objects.create(
             name="P",
             sale_price=Decimal("10.00"),
@@ -38,6 +39,7 @@ class SaleStockValidationTest(TestCase):
                         "product_id": self.product.id,
                         "quantity": 3,
                         "unit_price": "10.00",
+                        "warehouse_id": self.warehouse.id,
                     }
                 ],
             },
@@ -60,6 +62,7 @@ class SaleStockValidationTest(TestCase):
                         "product_id": self.product.id,
                         "quantity": 6,
                         "unit_price": "10.00",
+                        "warehouse_id": self.warehouse.id,
                     }
                 ],
             },

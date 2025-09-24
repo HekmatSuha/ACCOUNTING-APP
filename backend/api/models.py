@@ -342,6 +342,36 @@ class Payment(models.Model):
             super().delete(*args, **kwargs)
 
 
+class Warehouse(models.Model):
+    """Physical storage location for product inventory."""
+
+    DEFAULT_NAME = "Main Warehouse"
+
+    name = models.CharField(max_length=255)
+    location = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="warehouses"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("name", "created_by")
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_default(cls, user: User) -> "Warehouse":
+        """Return the default warehouse for ``user`` creating it if needed."""
+
+        return cls.objects.get_or_create(
+            created_by=user,
+            name=cls.DEFAULT_NAME,
+            defaults={"location": ""},
+        )[0]
+
+
 class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
@@ -361,12 +391,98 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        creating = self.pk is None
+        super().save(*args, **kwargs)
+
+        if not self.created_by_id:
+            return
+
+        # Ensure every product has at least one warehouse stock record.  This
+        # keeps legacy data (which previously tracked a single ``stock_quantity``)
+        # in sync with the new per-warehouse inventory model.
+        if creating or not self.warehouse_stocks.exists():
+            default_warehouse = Warehouse.get_default(self.created_by)
+            WarehouseInventory.objects.update_or_create(
+                product=self,
+                warehouse=default_warehouse,
+                defaults={"quantity": Decimal(self.stock_quantity or 0)},
+            )
+
+
+class WarehouseInventory(models.Model):
+    """Quantity of a product stored in a specific warehouse."""
+
+    warehouse = models.ForeignKey(
+        Warehouse, on_delete=models.CASCADE, related_name="stocks"
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="warehouse_stocks"
+    )
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        unique_together = ("warehouse", "product")
+        verbose_name = "Warehouse Inventory"
+        verbose_name_plural = "Warehouse Inventory"
+
+    def __str__(self):
+        return f"{self.product.name} @ {self.warehouse.name}"
+
+    @classmethod
+    def adjust_stock(cls, product: Product, warehouse: Warehouse, delta) -> None:
+        """Adjust the quantity of ``product`` stored in ``warehouse``.
+
+        ``delta`` may be positive (stock increases) or negative (stock
+        decreases).  A ``ValueError`` is raised if the adjustment would result
+        in negative stock either for the warehouse or for the product overall.
+        """
+
+        if delta in (None, 0, Decimal("0")):
+            return
+
+        delta = Decimal(delta)
+
+        with transaction.atomic():
+            locked_product = Product.objects.select_for_update().get(pk=product.pk)
+            inventory, _ = cls.objects.select_for_update().get_or_create(
+                product=locked_product,
+                warehouse=warehouse,
+                defaults={"quantity": Decimal("0")},
+            )
+
+            new_quantity = Decimal(inventory.quantity) + delta
+            if new_quantity < 0:
+                raise ValueError(
+                    f"Insufficient stock for '{locked_product.name}' in "
+                    f"warehouse '{warehouse.name}'."
+                )
+
+            inventory.quantity = new_quantity
+            inventory.save(update_fields=["quantity"])
+
+            new_total = Decimal(locked_product.stock_quantity or 0) + delta
+            if new_total < 0:
+                raise ValueError(
+                    f"Total stock for '{locked_product.name}' cannot be negative."
+                )
+
+            locked_product.stock_quantity = new_total
+            locked_product.save(update_fields=["stock_quantity"])
+
 
 class SaleItem(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sale_items')
     quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name="sale_items",
+        null=True,
+        blank=True,
+    )
 
     @property
     def line_total(self):
@@ -389,8 +505,13 @@ class SaleReturn(models.Model):
             super().save(*args, **kwargs)
             if commit:
                 total = Decimal('0')
-                for item in self.items.all():
-                    Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') + item.quantity)
+                for item in self.items.select_related('product', 'warehouse'):
+                    if not item.warehouse:
+                        item.warehouse = Warehouse.get_default(self.created_by)
+                        item.save(update_fields=['warehouse'])
+                    WarehouseInventory.adjust_stock(
+                        item.product, item.warehouse, Decimal(item.quantity)
+                    )
                     total += item.line_total
                 self.total_amount = total
                 if self.sale.customer_id:
@@ -401,8 +522,13 @@ class SaleReturn(models.Model):
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
-            for item in self.items.all():
-                Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') - item.quantity)
+            for item in self.items.select_related('product', 'warehouse'):
+                if not item.warehouse:
+                    item.warehouse = Warehouse.get_default(self.created_by)
+                    item.save(update_fields=['warehouse'])
+                WarehouseInventory.adjust_stock(
+                    item.product, item.warehouse, Decimal(item.quantity) * Decimal('-1')
+                )
             if self.sale.customer_id:
                 Customer.objects.filter(pk=self.sale.customer_id).update(open_balance=F('open_balance') + self.total_amount)
             elif self.sale.supplier_id:
@@ -416,6 +542,13 @@ class SaleReturnItem(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     reason = models.CharField(max_length=255, blank=True, null=True)
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name='sale_return_items',
+        null=True,
+        blank=True,
+    )
 
     @property
     def line_total(self):
@@ -665,6 +798,13 @@ class PurchaseItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='purchase_items')
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2) # This is the purchase price
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name='purchase_items',
+        null=True,
+        blank=True,
+    )
 
     @property
     def line_total(self):
@@ -687,8 +827,13 @@ class PurchaseReturn(models.Model):
             super().save(*args, **kwargs)
             if commit:
                 total = Decimal('0')
-                for item in self.items.all():
-                    Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') - item.quantity)
+                for item in self.items.select_related('product', 'warehouse'):
+                    if not item.warehouse:
+                        item.warehouse = Warehouse.get_default(self.created_by)
+                        item.save(update_fields=['warehouse'])
+                    WarehouseInventory.adjust_stock(
+                        item.product, item.warehouse, Decimal(item.quantity) * Decimal('-1')
+                    )
                     total += item.line_total
                 self.total_amount = total
                 if not self.purchase.account_id:
@@ -700,8 +845,13 @@ class PurchaseReturn(models.Model):
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
-            for item in self.items.all():
-                Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') + item.quantity)
+            for item in self.items.select_related('product', 'warehouse'):
+                if not item.warehouse:
+                    item.warehouse = Warehouse.get_default(self.created_by)
+                    item.save(update_fields=['warehouse'])
+                WarehouseInventory.adjust_stock(
+                    item.product, item.warehouse, Decimal(item.quantity)
+                )
             if not self.purchase.account_id:
                 if self.purchase.supplier_id:
                     Supplier.objects.filter(pk=self.purchase.supplier_id).update(open_balance=F('open_balance') + self.total_amount)
@@ -715,6 +865,13 @@ class PurchaseReturnItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='purchase_return_items')
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name='purchase_return_items',
+        null=True,
+        blank=True,
+    )
 
     @property
     def line_total(self):

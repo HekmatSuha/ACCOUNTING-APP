@@ -14,6 +14,7 @@ function EditPurchasePage() {
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
     const [accounts, setAccounts] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -28,19 +29,23 @@ function EditPurchasePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const hasWarehouses = warehouses.length > 0;
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [suppliersRes, productsRes, accountsRes, purchaseRes] = await Promise.all([
+                const [suppliersRes, productsRes, accountsRes, warehouseRes, purchaseRes] = await Promise.all([
                     axiosInstance.get('suppliers/'),
                     axiosInstance.get('/products/'),
                     axiosInstance.get('/accounts/'),
+                    axiosInstance.get('/warehouses/'),
                     axiosInstance.get(`/purchases/${id}/`)
                 ]);
 
                 setSuppliers(suppliersRes.data);
                 setProducts(productsRes.data);
                 setAccounts(accountsRes.data);
+                setWarehouses(warehouseRes.data);
 
                 const purchaseData = purchaseRes.data;
                 setFormData({
@@ -51,7 +56,8 @@ function EditPurchasePage() {
                     items: purchaseData.items.map(item => ({
                         product_id: item.product.id,
                         quantity: item.quantity,
-                        unit_price: item.unit_price
+                        unit_price: item.unit_price,
+                        warehouse_id: item.warehouse_id,
                     }))
                 });
 
@@ -64,6 +70,17 @@ function EditPurchasePage() {
         };
         fetchInitialData();
     }, [id]);
+
+    useEffect(() => {
+        if (!warehouses.length) return;
+        setFormData(prev => ({
+            ...prev,
+            items: prev.items.map(item => ({
+                ...item,
+                warehouse_id: item.warehouse_id || warehouses[0]?.id || '',
+            })),
+        }));
+    }, [warehouses]);
 
     // --- Helper Functions ---
     const handleInputChange = (e) => {
@@ -85,7 +102,15 @@ function EditPurchasePage() {
     const handleAddItem = () => {
         setFormData(prev => ({
             ...prev,
-            items: [...prev.items, { product_id: '', quantity: 1, unit_price: '' }]
+            items: [
+                ...prev.items,
+                {
+                    product_id: '',
+                    quantity: 1,
+                    unit_price: '',
+                    warehouse_id: warehouses[0]?.id || '',
+                },
+            ]
         }));
     };
 
@@ -107,7 +132,8 @@ function EditPurchasePage() {
                 ...item,
                 product_id: parseInt(item.product_id),
                 quantity: parseFloat(item.quantity),
-                unit_price: parseFloat(item.unit_price)
+                unit_price: parseFloat(item.unit_price),
+                warehouse_id: parseInt(item.warehouse_id),
             }))
         };
         try {
@@ -164,9 +190,14 @@ function EditPurchasePage() {
                     </Row>
                     <hr />
                     <h6>Items</h6>
+                    {!hasWarehouses && (
+                        <Alert variant="warning">
+                            No warehouses available. Please create a warehouse before updating purchases.
+                        </Alert>
+                    )}
                     {formData.items.map((item, index) => (
                         <Row key={index} className="align-items-end mb-2">
-                            <Col md={5}>
+                            <Col md={4}>
                                 <Form.Label>Product</Form.Label>
                                 <Form.Select name="product_id" value={item.product_id} onChange={e => handleItemChange(index, e)} required>
                                     <option value="">Select a Product</option>
@@ -178,21 +209,34 @@ function EditPurchasePage() {
                                 <Form.Control type="number" name="quantity" value={item.quantity} onChange={e => handleItemChange(index, e)} required />
                             </Col>
                             <Col md={3}>
+                                <Form.Label>Warehouse</Form.Label>
+                                <Form.Select
+                                    name="warehouse_id"
+                                    value={item.warehouse_id}
+                                    onChange={e => handleItemChange(index, e)}
+                                    required
+                                    disabled={!hasWarehouses}
+                                >
+                                    <option value="">Select a Warehouse</option>
+                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </Form.Select>
+                            </Col>
+                            <Col md={2}>
                                 <Form.Label>Unit Price (Cost)</Form.Label>
                                 <Form.Control type="number" step="0.01" name="unit_price" value={item.unit_price} onChange={e => handleItemChange(index, e)} required />
                             </Col>
-                            <Col md={2}>
+                            <Col md={1} className="mt-3">
                                 <Button variant="danger" onClick={() => handleRemoveItem(index)}><FaTrash /></Button>
                             </Col>
                         </Row>
                     ))}
-                    <Button variant="secondary" onClick={handleAddItem} className="mt-2">+ Add Item</Button>
+                    <Button variant="secondary" onClick={handleAddItem} className="mt-2" disabled={!hasWarehouses}>+ Add Item</Button>
 
                     <div className="mt-4 d-flex justify-content-end">
                         <Button variant="light" className="me-2" onClick={() => navigate(`/purchases/${id}`)}>
                             Cancel
                         </Button>
-                        <Button variant="primary" type="submit">
+                        <Button variant="primary" type="submit" disabled={!hasWarehouses}>
                             Update Purchase
                         </Button>
                     </div>

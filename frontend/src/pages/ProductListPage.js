@@ -62,6 +62,7 @@ function ProductListPage() {
                                 <th>SKU</th>
                                 <th>Name</th>
                                 <th>Stock Quantity</th>
+                                <th>Warehouse Stock</th>
                                 <th>Sale Price</th>
                                 <th>Actions</th>
                             </tr>
@@ -69,7 +70,7 @@ function ProductListPage() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="data-table-status">
+                                    <td colSpan="7" className="data-table-status">
                                         <Spinner animation="border" />
                                     </td>
                                 </tr>
@@ -95,6 +96,18 @@ function ProductListPage() {
                                         <td>{product.sku || 'N/A'}</td>
                                         <td>{product.name}</td>
                                         <td>{product.stock_quantity}</td>
+                                        <td>
+                                            {product.warehouse_quantities && product.warehouse_quantities.length > 0 ? (
+                                                product.warehouse_quantities.map((entry) => (
+                                                    <div key={`${product.id}-${entry.warehouse_id}`}>
+                                                        <strong>{entry.warehouse_name || 'Warehouse'}:</strong>{' '}
+                                                        {entry.quantity}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <span className="text-muted">No warehouse data</span>
+                                            )}
+                                        </td>
                                         <td>{formatCurrency(product.sale_price)}</td>
                                         <td>
                                             <Button variant="info" size="sm" onClick={() => navigate(`/inventory/edit/${product.id}`)}>
@@ -105,7 +118,7 @@ function ProductListPage() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="data-table-empty">No products found.</td>
+                                    <td colSpan="7" className="data-table-empty">No products found.</td>
                                 </tr>
                             )}
                         </tbody>

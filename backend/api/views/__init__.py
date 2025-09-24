@@ -21,6 +21,7 @@ from .sales import (
     SaleViewSet,
     sales_report,
 )
+from .warehouses import WarehouseViewSet
 from .suppliers import SupplierPaymentViewSet, SupplierViewSet
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     'PurchaseViewSet',
     'SaleReturnViewSet',
     'SaleViewSet',
+    'WarehouseViewSet',
     'SupplierPaymentViewSet',
     'SupplierViewSet',
     'dashboard_summary',

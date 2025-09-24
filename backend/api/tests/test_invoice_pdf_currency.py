@@ -7,7 +7,7 @@ import base64
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from ..models import Customer, Product, Supplier
+from ..models import Customer, Product, Supplier, Warehouse
 from ..serializers import SaleWriteSerializer
 from ..invoice_pdf import generate_invoice_pdf
 
@@ -57,6 +57,7 @@ class InvoicePDFCurrencyTest(TestCase):
             stock_quantity=Decimal("10"),
             created_by=self.user,
         )
+        self.warehouse = Warehouse.get_default(self.user)
 
     def _get_request(self):
         class DummyRequest:
@@ -69,7 +70,12 @@ class InvoicePDFCurrencyTest(TestCase):
         data = {
             "sale_date": str(date.today()),
             "items": [
-                {"product_id": self.product.id, "quantity": 1, "unit_price": "10.00"}
+                {
+                    "product_id": self.product.id,
+                    "quantity": 1,
+                    "unit_price": "10.00",
+                    "warehouse_id": self.warehouse.id,
+                }
             ],
         }
         if customer:

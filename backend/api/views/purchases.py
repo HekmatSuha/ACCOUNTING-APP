@@ -6,7 +6,15 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from ..activity_logger import log_activity
-from ..models import Customer, Product, Purchase, PurchaseReturn, Supplier
+from ..models import (
+    Customer,
+    Product,
+    Purchase,
+    PurchaseReturn,
+    Supplier,
+    Warehouse,
+    WarehouseInventory,
+)
 from ..serializers import (
     PurchaseReadSerializer,
     PurchaseReturnSerializer,
@@ -38,10 +46,12 @@ class PurchaseViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def perform_destroy(self, instance):
         log_activity(self.request.user, 'deleted', instance)
-        for item in instance.items.all():
-            Product.objects.filter(id=item.product.id).update(
-                stock_quantity=F('stock_quantity') - item.quantity
-            )
+        for item in instance.items.select_related('product', 'warehouse'):
+            warehouse = item.warehouse or Warehouse.get_default(self.request.user)
+            if item.warehouse is None:
+                item.warehouse = warehouse
+                item.save(update_fields=['warehouse'])
+            WarehouseInventory.adjust_stock(item.product, warehouse, -item.quantity)
 
         if not instance.account_id:
             if instance.supplier_id:
