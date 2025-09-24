@@ -145,7 +145,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
             <Modal.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
                 <Form onSubmit={handleSubmit}>
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="paymentAmount">
                         <Form.Label>Amount</Form.Label>
                         <Form.Control
                             type="number"
@@ -155,7 +155,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             required
                         />
                     </Form.Group>
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="paymentDate">
                         <Form.Label>Payment Date</Form.Label>
                         <Form.Control
                             type="date"
@@ -164,7 +164,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             required
                         />
                     </Form.Group>
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="paymentMethod">
                         <Form.Label>Payment Method</Form.Label>
                         <Form.Select value={method} onChange={(e) => setMethod(e.target.value)}>
                             <option value="Cash">Cash</option>
@@ -172,7 +172,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             <option value="Card">Credit/Debit Card</option>
                         </Form.Select>
                     </Form.Group>
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="paymentAccount">
                         <Form.Label>Account</Form.Label>
                         <Form.Select value={account} onChange={(e) => setAccount(e.target.value)}>
                             <option value="">None (Pay from balance)</option>
@@ -181,7 +181,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             ))}
                         </Form.Select>
                     </Form.Group>
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="paymentCurrency">
                         <Form.Label>Currency</Form.Label>
                         <Form.Select value={paymentCurrency} onChange={(e) => setPaymentCurrency(e.target.value)}>
                             {currencyOptions.map(c => (
@@ -193,26 +193,23 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                     {paymentCurrency !== accountCurrency && (
 
                         <>
-                            <Form.Group className="mb-3">
+                            <Form.Group className="mb-3" controlId="exchangeRate">
                                 <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
                                 <Form.Control
                                     type="number"
                                     step="0.0001"
                                     value={exchangeRate}
                                     onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
-
-
                                     required
-
                                 />
                             </Form.Group>
-                            <Form.Group className="mb-3">
+                            <Form.Group className="mb-3" controlId="convertedAmount">
                                 <Form.Label>Converted Amount ({accountCurrency})</Form.Label>
-                                <Form.Control type="number" value={convertedAmount} readOnly />
+                                <Form.Control type="text" value={convertedAmount} readOnly />
                             </Form.Group>
                         </>
                     )}
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="paymentNotes">
                         <Form.Label>Notes</Form.Label>
                         <Form.Control
                             as="textarea"
