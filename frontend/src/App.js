@@ -37,6 +37,8 @@ import OfferListPage from './pages/OfferListPage';
 import OfferDetailPage from './pages/OfferDetailPage';
 import ActivityPage from './pages/ActivityPage';
 import CompanyInfoPage from './pages/CompanyInfoPage';
+import WarehouseListPage from './pages/WarehouseListPage';
+import WarehouseDetailPage from './pages/WarehouseDetailPage';
 
 import { loadBaseCurrency } from './config/currency';
 
@@ -82,6 +84,8 @@ function App() {
                   <Route path="sales/:id" element={<SaleDetailPage />} />
                   <Route path="offers" element={<OfferListPage />} />
                   <Route path="offers/:id" element={<OfferDetailPage />} />
+                  <Route path="warehouses" element={<WarehouseListPage />} />
+                  <Route path="warehouses/:id" element={<WarehouseDetailPage />} />
                   <Route path="expenses" element={<ExpenseListPage />} /> {/* <-- Add Route */}
                   <Route path="reports/profit-loss" element={<ProfitLossPage />} />
                   <Route path="reports/sales" element={<SalesReportPage />} />

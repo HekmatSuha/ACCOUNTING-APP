@@ -28,6 +28,8 @@ from .models import (
     SaleReturn,
     SaleReturnItem,
     Supplier,
+    Warehouse,
+    WarehouseInventory,
 )
 from rest_framework.validators import UniqueValidator
 
@@ -210,11 +212,22 @@ class ProductSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     image = serializers.ImageField(required=False, allow_null=True)
+    warehouse_quantities = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'sku', 'purchase_price', 'sale_price', 'stock_quantity', 'image']
-        read_only_fields = ['created_by']
+        fields = [
+            'id',
+            'name',
+            'description',
+            'sku',
+            'purchase_price',
+            'sale_price',
+            'stock_quantity',
+            'warehouse_quantities',
+            'image',
+        ]
+        read_only_fields = ['created_by', 'stock_quantity', 'warehouse_quantities']
 
     def validate_sku(self, value):
         if not value:
@@ -227,13 +240,84 @@ class ProductSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('A product with this SKU already exists.')
         return value
 
+    def get_warehouse_quantities(self, obj):
+        stocks = getattr(obj, 'warehouse_stocks', None)
+        if hasattr(stocks, 'all'):
+            stock_records = stocks.all()
+        else:
+            stock_records = obj.warehouse_stocks.all()
+        return [
+            {
+                'warehouse_id': stock.warehouse_id,
+                'warehouse_name': stock.warehouse.name,
+                'quantity': stock.quantity,
+            }
+            for stock in stock_records
+        ]
+
+
+class WarehouseStockSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    sku = serializers.CharField(source='product.sku', read_only=True, allow_null=True)
+
+    class Meta:
+        model = WarehouseInventory
+        fields = ['id', 'product', 'product_name', 'sku', 'quantity']
+
+
+class WarehouseSerializer(serializers.ModelSerializer):
+    total_skus = serializers.SerializerMethodField()
+    total_quantity = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Warehouse
+        fields = ['id', 'name', 'location', 'created_at', 'total_skus', 'total_quantity']
+        read_only_fields = ['id', 'created_at', 'total_skus', 'total_quantity']
+
+    def _get_stock_records(self, obj):
+        stocks = getattr(obj, 'stocks', None)
+        if hasattr(stocks, 'all'):
+            return stocks.all()
+        return obj.stocks.all()
+
+    def get_total_skus(self, obj):
+        return self._get_stock_records(obj).count()
+
+    def get_total_quantity(self, obj):
+        return sum(
+            (stock.quantity for stock in self._get_stock_records(obj)),
+            Decimal('0'),
+        )
+
+
+class WarehouseDetailSerializer(WarehouseSerializer):
+    stocks = WarehouseStockSerializer(many=True, read_only=True)
+
+    class Meta(WarehouseSerializer.Meta):
+        fields = WarehouseSerializer.Meta.fields + ['stocks']
+        read_only_fields = WarehouseSerializer.Meta.read_only_fields + ['stocks']
+
 class SaleItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_image = serializers.SerializerMethodField()
+    warehouse_id = serializers.IntegerField(source='warehouse.id', read_only=True)
+    warehouse_name = serializers.CharField(
+        source='warehouse.name', read_only=True, allow_null=True
+    )
 
     class Meta:
         model = SaleItem
-        fields = ['id', 'product', 'product_name', 'product_image', 'quantity', 'unit_price', 'line_total']
+        fields = [
+            'id',
+            'product',
+            'product_name',
+            'product_image',
+            'quantity',
+            'unit_price',
+            'line_total',
+            'warehouse_id',
+            'warehouse_name',
+        ]
 
     def get_product_image(self, obj):
         """Return an absolute URL to the product image when it is available."""
@@ -254,9 +338,11 @@ class SaleItemSerializer(serializers.ModelSerializer):
 # This serializer is for CREATING sale items (only needs product ID)
 class SaleItemWriteSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField()
+    warehouse_id = serializers.IntegerField()
+
     class Meta:
         model = SaleItem
-        fields = ['product_id', 'quantity', 'unit_price']
+        fields = ['product_id', 'quantity', 'unit_price', 'warehouse_id']
 
 # This serializer is for READING a full sale
 class SaleReadSerializer(serializers.ModelSerializer):
@@ -332,23 +418,41 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             total_sale_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
+                warehouse_id = item_data.pop('warehouse_id')
                 product = Product.objects.get(id=product_id, created_by=created_by)
+                try:
+                    warehouse = Warehouse.objects.get(
+                        id=warehouse_id, created_by=created_by
+                    )
+                except Warehouse.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                    ) from exc
                 quantity = Decimal(item_data['quantity'])
 
-                if product.stock_quantity < quantity:
+                available = (
+                    WarehouseInventory.objects.filter(
+                        product=product, warehouse=warehouse
+                    )
+                    .values_list('quantity', flat=True)
+                    .first()
+                    or Decimal('0')
+                )
+                if available < quantity:
                     raise serializers.ValidationError(
                         {
-                            'items': f"Insufficient stock for product '{product.name}'."
+                            'items': f"Insufficient stock for product '{product.name}' in warehouse '{warehouse.name}'."
                         }
                     )
 
                 sale_item = SaleItem.objects.create(
                     sale=sale,
                     product=product,
-                    **item_data
+                    warehouse=warehouse,
+                    **item_data,
                 )
 
-                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') - sale_item.quantity)
+                WarehouseInventory.adjust_stock(product, warehouse, -quantity)
 
                 total_sale_amount += sale_item.line_total
 
@@ -368,8 +472,14 @@ class SaleWriteSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Revert old transaction data
-            for item in instance.items.all():
-                Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') + item.quantity)
+            for item in instance.items.select_related('product', 'warehouse'):
+                warehouse = item.warehouse or Warehouse.get_default(
+                    self.context['request'].user
+                )
+                if item.warehouse is None:
+                    item.warehouse = warehouse
+                    item.save(update_fields=['warehouse'])
+                WarehouseInventory.adjust_stock(item.product, warehouse, item.quantity)
 
             instance.items.all().delete()
 
@@ -392,15 +502,44 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             new_total_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
-                product = Product.objects.get(id=product_id, created_by=self.context['request'].user)
+                warehouse_id = item_data.pop('warehouse_id')
+                product = Product.objects.get(
+                    id=product_id, created_by=self.context['request'].user
+                )
+                try:
+                    warehouse = Warehouse.objects.get(
+                        id=warehouse_id, created_by=self.context['request'].user
+                    )
+                except Warehouse.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                    ) from exc
+
+                quantity = Decimal(item_data['quantity'])
+
+                available = (
+                    WarehouseInventory.objects.filter(
+                        product=product, warehouse=warehouse
+                    )
+                    .values_list('quantity', flat=True)
+                    .first()
+                    or Decimal('0')
+                )
+                if available < quantity:
+                    raise serializers.ValidationError(
+                        {
+                            'items': f"Insufficient stock for product '{product.name}' in warehouse '{warehouse.name}'."
+                        }
+                    )
 
                 sale_item = SaleItem.objects.create(
                     sale=instance,
                     product=product,
-                    **item_data
+                    warehouse=warehouse,
+                    **item_data,
                 )
 
-                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') - sale_item.quantity)
+                WarehouseInventory.adjust_stock(product, warehouse, -quantity)
 
                 new_total_amount += sale_item.line_total
 
@@ -570,25 +709,42 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
+    warehouse_id = serializers.IntegerField(source='warehouse.id', read_only=True)
+    warehouse_name = serializers.CharField(
+        source='warehouse.name', read_only=True, allow_null=True
+    )
+
     class Meta:
         model = PurchaseItem
-        fields = ['id', 'product', 'product_name', 'quantity', 'unit_price', 'line_total']
+        fields = [
+            'id',
+            'product',
+            'product_name',
+            'quantity',
+            'unit_price',
+            'line_total',
+            'warehouse_id',
+            'warehouse_name',
+        ]
 
 # For creating a new purchase
 class PurchaseItemWriteSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField()
+    warehouse_id = serializers.IntegerField()
+
     class Meta:
         model = PurchaseItem
-        fields = ['product_id', 'quantity', 'unit_price']
+        fields = ['product_id', 'quantity', 'unit_price', 'warehouse_id']
 
 
 class SaleReturnItemSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField()
+    warehouse_id = serializers.IntegerField(required=False)
     reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = SaleReturnItem
-        fields = ['product_id', 'quantity', 'unit_price', 'reason']
+        fields = ['product_id', 'quantity', 'unit_price', 'warehouse_id', 'reason']
 
 
 class SaleReturnSerializer(serializers.ModelSerializer):
@@ -606,12 +762,28 @@ class SaleReturnSerializer(serializers.ModelSerializer):
         sale = Sale.objects.get(id=sale_id, created_by=self.context['request'].user)
         sale_return = SaleReturn.objects.create(sale=sale, created_by=self.context['request'].user, **validated_data)
         for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'], created_by=self.context['request'].user)
+            product = Product.objects.get(
+                id=item_data['product_id'], created_by=self.context['request'].user
+            )
+            warehouse_id = item_data.get('warehouse_id')
+            if warehouse_id is not None:
+                try:
+                    warehouse = Warehouse.objects.get(
+                        id=warehouse_id, created_by=self.context['request'].user
+                    )
+                except Warehouse.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                    ) from exc
+            else:
+                warehouse = Warehouse.get_default(self.context['request'].user)
+
             SaleReturnItem.objects.create(
                 sale_return=sale_return,
                 product=product,
                 quantity=item_data['quantity'],
                 unit_price=item_data['unit_price'],
+                warehouse=warehouse,
                 reason=item_data.get('reason', '')
             )
         sale_return.save(commit=True)
@@ -676,15 +848,27 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
             total_purchase_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
+                warehouse_id = item_data.pop('warehouse_id')
                 product = Product.objects.get(id=product_id, created_by=created_by)
+                try:
+                    warehouse = Warehouse.objects.get(
+                        id=warehouse_id, created_by=created_by
+                    )
+                except Warehouse.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                    ) from exc
+
+                quantity = Decimal(item_data['quantity'])
 
                 purchase_item = PurchaseItem.objects.create(
                     purchase=purchase,
                     product=product,
+                    warehouse=warehouse,
                     **item_data
                 )
 
-                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') + purchase_item.quantity)
+                WarehouseInventory.adjust_stock(product, warehouse, quantity)
 
                 total_purchase_amount += purchase_item.line_total
 
@@ -731,8 +915,14 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
                 supplier = instance.supplier
                 customer = instance.customer
 
-            for item in instance.items.all():
-                Product.objects.filter(id=item.product.id).update(stock_quantity=F('stock_quantity') - item.quantity)
+            for item in instance.items.select_related('product', 'warehouse'):
+                warehouse = item.warehouse or Warehouse.get_default(
+                    self.context['request'].user
+                )
+                if item.warehouse is None:
+                    item.warehouse = warehouse
+                    item.save(update_fields=['warehouse'])
+                WarehouseInventory.adjust_stock(item.product, warehouse, -item.quantity)
 
             instance.items.all().delete()
 
@@ -743,10 +933,29 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
             new_total_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
-                product = Product.objects.get(id=product_id, created_by=self.context['request'].user)
-                purchase_item = PurchaseItem.objects.create(purchase=instance, product=product, **item_data)
+                warehouse_id = item_data.pop('warehouse_id')
+                product = Product.objects.get(
+                    id=product_id, created_by=self.context['request'].user
+                )
+                try:
+                    warehouse = Warehouse.objects.get(
+                        id=warehouse_id, created_by=self.context['request'].user
+                    )
+                except Warehouse.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                    ) from exc
 
-                Product.objects.filter(id=product.id).update(stock_quantity=F('stock_quantity') + purchase_item.quantity)
+                quantity = Decimal(item_data['quantity'])
+
+                purchase_item = PurchaseItem.objects.create(
+                    purchase=instance,
+                    product=product,
+                    warehouse=warehouse,
+                    **item_data
+                )
+
+                WarehouseInventory.adjust_stock(product, warehouse, quantity)
 
                 new_total_amount += purchase_item.line_total
 
@@ -767,10 +976,11 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
 
 class PurchaseReturnItemSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField()
+    warehouse_id = serializers.IntegerField(required=False)
 
     class Meta:
         model = PurchaseReturnItem
-        fields = ['product_id', 'quantity', 'unit_price']
+        fields = ['product_id', 'quantity', 'unit_price', 'warehouse_id']
 
 
 class PurchaseReturnSerializer(serializers.ModelSerializer):
@@ -788,12 +998,28 @@ class PurchaseReturnSerializer(serializers.ModelSerializer):
         purchase = Purchase.objects.get(id=purchase_id, created_by=self.context['request'].user)
         purchase_return = PurchaseReturn.objects.create(purchase=purchase, created_by=self.context['request'].user, **validated_data)
         for item_data in items_data:
-            product = Product.objects.get(id=item_data['product_id'], created_by=self.context['request'].user)
+            product = Product.objects.get(
+                id=item_data['product_id'], created_by=self.context['request'].user
+            )
+            warehouse_id = item_data.get('warehouse_id')
+            if warehouse_id is not None:
+                try:
+                    warehouse = Warehouse.objects.get(
+                        id=warehouse_id, created_by=self.context['request'].user
+                    )
+                except Warehouse.DoesNotExist as exc:
+                    raise serializers.ValidationError(
+                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                    ) from exc
+            else:
+                warehouse = Warehouse.get_default(self.context['request'].user)
+
             PurchaseReturnItem.objects.create(
                 purchase_return=purchase_return,
                 product=product,
                 quantity=item_data['quantity'],
                 unit_price=item_data['unit_price'],
+                warehouse=warehouse,
             )
         purchase_return.save(commit=True)
         return purchase_return

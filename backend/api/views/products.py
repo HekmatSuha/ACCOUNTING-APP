@@ -17,7 +17,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
-        return self.request.user.products.all().order_by('name')
+        return (
+            self.request.user.products.all()
+            .prefetch_related('warehouse_stocks__warehouse')
+            .order_by('name')
+        )
 
     def perform_create(self, serializer):
         instance = serializer.save(created_by=self.request.user)

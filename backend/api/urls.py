@@ -20,6 +20,7 @@ from .views.expenses import ExpenseCategoryViewSet, ExpenseViewSet, profit_and_l
 from .views.products import ProductViewSet
 from .views.purchases import PurchaseReturnViewSet, PurchaseViewSet
 from .views.sales import OfferViewSet, PaymentViewSet, SaleReturnViewSet, SaleViewSet, sales_report
+from .views.warehouses import WarehouseViewSet
 from .views.suppliers import SupplierPaymentViewSet, SupplierViewSet
 
 router = DefaultRouter()
@@ -38,6 +39,7 @@ router.register(r'expenses', ExpenseViewSet, basename='expense')
 router.register(r'purchases', PurchaseViewSet, basename='purchase')
 router.register(r'purchase-returns', PurchaseReturnViewSet, basename='purchase-return')
 router.register(r'sale-returns', SaleReturnViewSet, basename='sale-return')
+router.register(r'warehouses', WarehouseViewSet, basename='warehouse')
 
 sales_router = routers.NestedSimpleRouter(router, r'sales', lookup='sale')
 sales_router.register(r'payments', PaymentViewSet, basename='sale-payments')

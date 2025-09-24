@@ -167,6 +167,7 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
                                         <th>Product</th>
                                         <th>Image</th>
                                         <th>Quantity</th>
+                                        <th>Warehouse</th>
                                         <th>Unit Price</th>
                                         <th>Line Total</th>
                                     </tr>
@@ -188,6 +189,7 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
                                                 )}
                                             </td>
                                             <td>{item.quantity}</td>
+                                            <td>{item.warehouse_name || '—'}</td>
                                             <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
                                             <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
                                         </tr>

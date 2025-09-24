@@ -60,12 +60,13 @@ function PurchaseDetailPage() {
                           <h5>Items Purchased</h5>
                           <div className="data-table-container">
                             <Table responsive className="data-table data-table--compact">
-                                <thead><tr><th>Product</th><th>Quantity</th><th>Unit Price</th><th>Line Total</th></tr></thead>
+                                <thead><tr><th>Product</th><th>Quantity</th><th>Warehouse</th><th>Unit Price</th><th>Line Total</th></tr></thead>
                                 <tbody>
                                     {purchase.items.map(item => (
                                         <tr key={item.id}>
                                             <td>{item.product_name}</td>
                                             <td>{item.quantity}</td>
+                                            <td>{item.warehouse_name || '—'}</td>
                                             <td>{formatCurrency(item.unit_price, purchase.original_currency || 'USD')}</td>
                                             <td>{formatCurrency(item.line_total, purchase.original_currency || 'USD')}</td>
                                         </tr>

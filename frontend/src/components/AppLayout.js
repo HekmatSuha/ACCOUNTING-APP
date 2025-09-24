@@ -12,6 +12,7 @@ import {
     CreditCard,
     FileText,
     BoxSeam,
+    HouseDoor,
     BarChart,
     PlusLg,
     DashLg,
@@ -85,6 +86,9 @@ function AppLayout({ children }) {
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
                     <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/warehouses" className={linkClass}>
+                    <HouseDoor className={iconClass} /> {!collapsed && 'Warehouses'}
                 </Nav.Link>
                 <div className="position-relative">
                     <button

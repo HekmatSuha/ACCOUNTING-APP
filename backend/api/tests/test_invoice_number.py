@@ -1,10 +1,11 @@
 from datetime import date
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from ..models import Customer, Product
+from ..models import Customer, Product, Warehouse
 from ..serializers import SaleWriteSerializer
 
 
@@ -12,6 +13,7 @@ class InvoiceNumberGenerationTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="invuser", password="pw")
         self.customer = Customer.objects.create(name="C", created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
         self.product = Product.objects.create(
             name="P",
             sale_price=Decimal("10.00"),
@@ -37,6 +39,7 @@ class InvoiceNumberGenerationTest(TestCase):
                         "product_id": self.product.id,
                         "quantity": 1,
                         "unit_price": "10.00",
+                        "warehouse_id": self.warehouse.id,
                     }
                 ],
             },
