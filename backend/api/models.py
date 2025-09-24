@@ -5,8 +5,64 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from .exchange_rates import get_exchange_rate
+
+
+class Currency(models.Model):
+    """Represents a currency available within the system."""
+
+    code = models.CharField(max_length=3, unique=True)
+    name = models.CharField(max_length=100, blank=True)
+    exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code}"
+
+    def save(self, *args, **kwargs):
+        self.code = (self.code or "").upper()
+        if not self.name:
+            self.name = self.code
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def rebase(cls, new_base_code: str) -> None:
+        """Recalculate exchange rates relative to ``new_base_code``."""
+
+        new_base_code = (new_base_code or "").upper()
+        currencies = list(cls.objects.all())
+        try:
+            new_base_currency = next(c for c in currencies if c.code == new_base_code)
+        except StopIteration as exc:
+            raise cls.DoesNotExist(f"Currency '{new_base_code}' is not defined") from exc
+
+        base_rate = Decimal(new_base_currency.exchange_rate)
+        if base_rate <= 0:
+            raise ValueError("Base currency must have a positive exchange rate")
+
+        quantizer = Decimal("1.000000")
+        updated: list["Currency"] = []
+        for currency in currencies:
+            if currency.code == new_base_code:
+                if currency.exchange_rate != Decimal("1"):
+                    currency.exchange_rate = Decimal("1")
+                    updated.append(currency)
+                continue
+
+            new_rate = (Decimal(currency.exchange_rate) / base_rate).quantize(
+                quantizer, rounding=ROUND_HALF_UP
+            )
+            if currency.exchange_rate != new_rate:
+                currency.exchange_rate = new_rate
+                updated.append(currency)
+
+        if updated:
+            cls.objects.bulk_update(updated, ["exchange_rate"])
 
 class Activity(models.Model):
     ACTION_TYPES = (
@@ -37,18 +93,12 @@ class Activity(models.Model):
         return f'{self.user.username} {self.action_type} - {self.description}'
 
 class Customer(models.Model):
-    CURRENCY_CHOICES = [
-        ('USD', 'United States Dollar'),
-        ('EUR', 'Euro'),
-        ('KZT', 'Kazakhstani Tenge'),
-        ('TRY', 'Turkish Lira'),
-    ]
     name = models.CharField(max_length=255)
     email = models.EmailField(max_length=254, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='customer_images/', blank=True, null=True)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD')
+    currency = models.CharField(max_length=3, default='USD')
     open_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='customers')
@@ -77,7 +127,7 @@ class Sale(models.Model):
     supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     sale_date = models.DateField(auto_now_add=True)
     invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
-    original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    original_currency = models.CharField(max_length=3, default='USD')
     original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
     converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -157,7 +207,7 @@ class BankAccount(models.Model):
 
     name = models.CharField(max_length=255)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    currency = models.CharField(max_length=3, default='USD')
     category = models.CharField(max_length=20, choices=ACCOUNT_CATEGORY_CHOICES, default=OTHER)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_accounts')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -189,7 +239,7 @@ class BankAccountTransaction(models.Model):
     )
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
+    currency = models.CharField(max_length=3)
     description = models.CharField(max_length=255, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bank_account_transactions')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -215,7 +265,7 @@ class Payment(models.Model):
 
     payment_date = models.DateField()
     original_amount = models.DecimalField(max_digits=12, decimal_places=2)
-    original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES)
+    original_currency = models.CharField(max_length=3)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
     converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     account_exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
@@ -395,7 +445,7 @@ class Supplier(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to='supplier_images/', blank=True, null=True)
-    currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    currency = models.CharField(max_length=3, default='USD')
     open_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='suppliers')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -481,7 +531,7 @@ class Purchase(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     purchase_date = models.DateField()
     bill_number = models.CharField(max_length=50, blank=True, null=True)
-    original_currency = models.CharField(max_length=3, choices=Customer.CURRENCY_CHOICES, default='USD')
+    original_currency = models.CharField(max_length=3, default='USD')
     original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
     converted_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
@@ -616,7 +666,6 @@ class CompanySettings(models.Model):
     """Singleton model to store company-wide settings."""
     base_currency = models.CharField(
         max_length=3,
-        choices=Customer.CURRENCY_CHOICES,
         default="USD",
     )
 
@@ -628,6 +677,8 @@ class CompanySettings(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
+        if self.base_currency:
+            self.base_currency = self.base_currency.upper()
         super(CompanySettings, self).save(*args, **kwargs)
 
     @classmethod

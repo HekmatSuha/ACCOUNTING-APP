@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Form, Button, Alert, Row, Col, Image as BootstrapImage, Tabs, Tab } from 'react-bootstrap';
 import { Image as ImageIcon } from 'react-bootstrap-icons';
+import { getCurrencyOptions, loadCurrencyOptions } from '../config/currency';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -21,6 +22,7 @@ function SupplierFormPage() {
         currency: 'USD',
         open_balance: 0.0,
     });
+    const [currencyOptions, setCurrencyOptions] = useState([]);
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [error, setError] = useState('');
@@ -42,6 +44,28 @@ function SupplierFormPage() {
             fetchSupplier();
         }
     }, [id, isEditing]);
+
+    useEffect(() => {
+        const fetchCurrencies = async () => {
+            const cached = getCurrencyOptions();
+            if (cached.length) {
+                setCurrencyOptions(cached);
+                return;
+            }
+            const loaded = await loadCurrencyOptions();
+            setCurrencyOptions(loaded);
+        };
+        fetchCurrencies();
+    }, []);
+
+    useEffect(() => {
+        if (!currencyOptions.length) {
+            return;
+        }
+        if (!currencyOptions.some(([code]) => code === formData.currency)) {
+            setFormData(prev => ({ ...prev, currency: currencyOptions[0][0] }));
+        }
+    }, [currencyOptions]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -106,12 +130,11 @@ function SupplierFormPage() {
                                         </Form.Group>
                                         <Form.Group className="mb-3">
                                             <Form.Label>Currency <span className="text-danger">*</span></Form.Label>
-                                            <Form.Select name="currency" value={formData.currency} onChange={handleChange}>
-                                                <option value="USD">United States Dollar (USD)</option>
-                                                <option value="EUR">Euro (EUR)</option>
-                                                <option value="KZT">Kazakhstani Tenge (KZT)</option>
-                                                <option value="TRY">Turkish Lira (TRY)</option>
-                                            </Form.Select>
+                                                <Form.Select name="currency" value={formData.currency || ''} onChange={handleChange}>
+                                                    {(currencyOptions.length ? currencyOptions : [[formData.currency || 'USD', formData.currency || 'USD']]).map(([code, label]) => (
+                                                        <option key={code} value={code}>{label}</option>
+                                                    ))}
+                                                </Form.Select>
                                         </Form.Group>
                                         <Form.Group className="mb-3">
                                             <Form.Label>Opening Balance</Form.Label>
