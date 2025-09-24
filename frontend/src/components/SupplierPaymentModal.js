@@ -46,12 +46,12 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
         }
 
         if (payment) {
-            setAmount(payment.amount);
+            setAmount(payment.original_amount);
             setPaymentDate(payment.payment_date);
             setMethod(payment.method);
             setNotes(payment.notes);
             setAccount(payment.account);
-            setPaymentCurrency(payment.currency || supplierCurrency || getBaseCurrency());
+            setPaymentCurrency(payment.original_currency || supplierCurrency || getBaseCurrency());
             setExchangeRate(payment.account_exchange_rate ? Number(payment.account_exchange_rate) : 1);
             setConvertedAmount(payment.account_converted_amount ? String(payment.account_converted_amount) : '');
         } else {
@@ -105,19 +105,20 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
         }
 
         const paymentData = {
-            amount,
-            expense_date: paymentDate,
+            payment_date: paymentDate,
+            original_amount: parseFloat(amount),
             method,
             notes,
             account: account || null,
-            currency: paymentCurrency,
+            original_currency: paymentCurrency,
         };
 
         if (account && paymentCurrency !== accountCurrency) {
             paymentData.account_exchange_rate = exchangeRate;
             paymentData.account_converted_amount = parseFloat(convertedAmount);
         }
-        if (paymentCurrency !== accountCurrency) {
+
+        if (paymentCurrency !== supplierCurrency) {
             paymentData.exchange_rate = exchangeRate;
         }
 
@@ -185,7 +186,7 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                         <Form.Label>Currency</Form.Label>
                         <Form.Select value={paymentCurrency} onChange={(e) => setPaymentCurrency(e.target.value)}>
                             {currencyOptions.map(c => (
-                                <option key={c} value={c}>{c}</option>
+                                <option key={c[0]} value={c[0]}>{c[1]}</option>
                             ))}
                         </Form.Select>
                     </Form.Group>

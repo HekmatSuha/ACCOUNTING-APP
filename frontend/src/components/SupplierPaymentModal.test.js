@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SupplierPaymentModal from './SupplierPaymentModal';
 import axiosInstance from '../utils/axiosInstance';
-import { loadBaseCurrency, loadCurrencyOptions } from '../config/currency';
 
 jest.mock('../utils/axiosInstance', () => ({
   get: jest.fn(),
@@ -32,7 +31,7 @@ describe('SupplierPaymentModal', () => {
       }
       if (url === '/currencies/') {
         return Promise.resolve({
-            data: ['USD', 'EUR'],
+            data: [['USD', 'US Dollar'], ['EUR', 'Euro']],
         });
       }
       return Promise.resolve({ data: [] });
@@ -98,8 +97,8 @@ describe('SupplierPaymentModal', () => {
       expect(axiosInstance.post).toHaveBeenCalledWith(
         'suppliers/1/payments/',
         expect.objectContaining({
-          amount: '120',
-          currency: 'USD',
+          original_amount: 120,
+          original_currency: 'USD',
           account: '2',
           account_exchange_rate: 0.95,
           account_converted_amount: 114.00,
