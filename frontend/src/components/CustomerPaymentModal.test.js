@@ -65,6 +65,14 @@ describe('CustomerPaymentModal', () => {
     const exchangeRateInput = await screen.findByLabelText(/Exchange Rate/i);
     expect(exchangeRateInput).toBeInTheDocument();
 
+    await waitFor(() => {
+      expect(exchangeRateInput).toHaveValue(1.111111);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Converted Amount/)).toHaveValue('111.11');
+    });
+
     fireEvent.change(exchangeRateInput, { target: { value: '0.9' } });
 
     await waitFor(() => {
@@ -103,8 +111,8 @@ describe('CustomerPaymentModal', () => {
           original_amount: 120,
           original_currency: 'USD',
           account: '2',
-          account_exchange_rate: '0.95',
-          account_converted_amount: 114.00,
+          account_exchange_rate: 0.95,
+          account_converted_amount: 114,
         })
       );
     });
