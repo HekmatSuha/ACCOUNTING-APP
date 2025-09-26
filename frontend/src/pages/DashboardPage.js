@@ -34,7 +34,12 @@ const ProgressCard = ({ title, items, headerColor = 'primary', currency = 'USD' 
                 {items.map(({ label, value, variant, breakdown }, idx) => {
                     const percentage = total > 0 ? (Number(value) / total) * 100 : 0;
                     const breakdownEntries = breakdown && Object.entries(breakdown);
-                    const displayValue = formatCurrency(value, currency);
+                    const breakdownDisplay = breakdownEntries && breakdownEntries.length > 0
+                        ? breakdownEntries
+                            .map(([code, amount]) => formatCurrency(amount, code))
+                            .join(', ')
+                        : null;
+                    const displayValue = breakdownDisplay || formatCurrency(value, currency);
                     return (
                         <div key={idx} className="mb-3">
                             <div className="d-flex justify-content-between">
