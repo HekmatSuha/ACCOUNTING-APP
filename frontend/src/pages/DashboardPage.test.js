@@ -47,6 +47,7 @@ describe('DashboardPage currency breakdowns', () => {
 
     const receivablesLabel = await screen.findByText('Receivables');
     const receivablesSection = receivablesLabel.closest('div').parentElement;
+    expect(within(receivablesSection).getByText('$60.00, €200.00')).toBeInTheDocument();
     expect(within(receivablesSection).getByText('USD')).toBeInTheDocument();
     expect(within(receivablesSection).getByText('EUR')).toBeInTheDocument();
 
