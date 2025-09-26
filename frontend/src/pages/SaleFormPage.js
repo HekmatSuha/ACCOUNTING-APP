@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Table, Alert, Image, Badge } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Alert, Image, Badge } from 'react-bootstrap';
 import { Trash } from 'react-bootstrap-icons';
 import '../styles/datatable.css';
 import '../styles/saleForm.css';
@@ -209,132 +209,136 @@ function SaleFormPage() {
                                 No warehouses available. Please create a warehouse before recording sales.
                             </Alert>
                         )}
-                        <div className="data-table-container">
-                            <Table responsive className="data-table data-table--compact">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Quantity</th>
-                                        <th>Warehouse</th>
-                                        <th>Stock Remaining</th>
-                                        <th>Discount (%)</th>
-                                        <th>Unit Price</th>
-                                        <th>Line Total</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {lineItems.map((item, index) => {
-                                        const selectedProduct = getProductById(item.product_id);
-                                        const warehouseQuantity = selectedProduct?.warehouse_quantities?.find(
-                                            (stock) => stock.warehouse_id === Number(item.warehouse_id)
-                                        );
-                                        const stockRemaining = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
-                                        const productImage = selectedProduct?.image
-                                            ? (selectedProduct.image.startsWith('http')
-                                                ? selectedProduct.image
-                                                : `${baseApiUrl}${selectedProduct.image}`)
-                                            : null;
+                        <div className="sale-items">
+                            <div className="sale-items__header">
+                                <span>Product</span>
+                                <span>Quantity</span>
+                                <span>Warehouse</span>
+                                <span>Stock</span>
+                                <span>Discount</span>
+                                <span>Unit Price</span>
+                                <span>Total</span>
+                                <span></span>
+                            </div>
+                            {lineItems.map((item, index) => {
+                                const selectedProduct = getProductById(item.product_id);
+                                const warehouseQuantity = selectedProduct?.warehouse_quantities?.find(
+                                    (stock) => stock.warehouse_id === Number(item.warehouse_id)
+                                );
+                                const stockRemaining = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
+                                const productImage = selectedProduct?.image
+                                    ? (selectedProduct.image.startsWith('http')
+                                        ? selectedProduct.image
+                                        : `${baseApiUrl}${selectedProduct.image}`)
+                                    : null;
 
-                                        return (
-                                            <tr key={index}>
-                                                <td>
-                                                    <div className="d-flex align-items-start gap-3">
-                                                        <div className="sale-form__product-thumb">
-                                                            {productImage ? (
-                                                                <Image src={productImage} rounded thumbnail alt={selectedProduct?.name || 'Product preview'} />
-                                                            ) : (
-                                                                <div className="sale-form__product-placeholder">No Image</div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex-grow-1">
-                                                            <ProductSearchSelect
-                                                                products={allProducts}
-                                                                value={selectedProduct}
-                                                                onSelect={(product) => handleProductSelect(index, product)}
-                                                                placeholder="Search name or SKU"
-                                                                imageBaseUrl={baseApiUrl}
-                                                            />
-                                                            {selectedProduct && (
-                                                                <div className="mt-2 small text-muted">
-                                                                    <div>{selectedProduct.sku ? `SKU: ${selectedProduct.sku}` : 'No SKU assigned'}</div>
-                                                                    <div>Base price: {formatCurrency(Number(selectedProduct.sale_price))}</div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <Form.Control
-                                                        type="number"
-                                                        name="quantity"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleLineItemChange(index, e)}
-                                                    />
-                                                </td>
-                                                <td>
-                                                    <Form.Select
-                                                        name="warehouse_id"
-                                                        value={item.warehouse_id}
-                                                        onChange={(e) => handleLineItemChange(index, e)}
-                                                        disabled={!hasWarehouses}
-                                                    >
-                                                        <option value="">Select Warehouse</option>
-                                                        {warehouses.map((warehouse) => (
-                                                            <option key={warehouse.id} value={warehouse.id}>
-                                                                {warehouse.name}
-                                                            </option>
-                                                        ))}
-                                                    </Form.Select>
-                                                </td>
-                                                <td className="align-middle">
-                                                    {selectedProduct ? (
-                                                        <Badge bg={stockRemaining && stockRemaining > 0 ? 'success' : 'danger'}>
-                                                            {stockRemaining !== null ? `${stockRemaining} available` : 'No data'}
-                                                        </Badge>
+                                return (
+                                    <div className="sale-items__row" key={index}>
+                                        <div className="sale-items__cell sale-items__cell--product" data-label="Product">
+                                            <div className="sale-items__product">
+                                                <div className="sale-form__product-thumb">
+                                                    {productImage ? (
+                                                        <Image src={productImage} rounded thumbnail alt={selectedProduct?.name || 'Product preview'} />
                                                     ) : (
-                                                        <span className="text-muted">Select a product</span>
+                                                        <div className="sale-form__product-placeholder">No Image</div>
                                                     )}
-                                                </td>
-                                                <td>
-                                                    <Form.Control
-                                                        type="number"
-                                                        name="discount"
-                                                        min="0"
-                                                        max="100"
-                                                        step="0.1"
-                                                        value={item.discount}
-                                                        onChange={(e) => handleLineItemChange(index, e)}
-                                                        placeholder="0"
-                                                        disabled={!selectedProduct}
+                                                </div>
+                                                <div className="sale-items__product-details">
+                                                    <ProductSearchSelect
+                                                        products={allProducts}
+                                                        value={selectedProduct}
+                                                        onSelect={(product) => handleProductSelect(index, product)}
+                                                        placeholder="Search name or SKU"
+                                                        imageBaseUrl={baseApiUrl}
                                                     />
-                                                </td>
-                                                <td>
-                                                    <Form.Control
-                                                        type="number"
-                                                        step="0.01"
-                                                        name="unit_price"
-                                                        value={item.unit_price}
-                                                        onChange={(e) => handleLineItemChange(index, e)}
-                                                        disabled={!selectedProduct}
-                                                    />
-                                                    <Form.Text muted>Final unit price</Form.Text>
-                                                </td>
-                                                <td className="fw-semibold align-middle">{formatCurrency(Number(item.quantity) * Number(item.unit_price || 0))}</td>
-                                                <td className="text-center">
-                                                    <Button variant="danger" onClick={() => handleRemoveItem(index)}>
-                                                        <Trash />
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </Table>
+                                                    {selectedProduct ? (
+                                                        <div className="sale-items__meta">
+                                                            <span>{selectedProduct.sku ? `SKU: ${selectedProduct.sku}` : 'No SKU assigned'}</span>
+                                                            <span>Base price: {formatCurrency(Number(selectedProduct.sale_price))}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="sale-items__meta">Choose a product to see details</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="sale-items__cell" data-label="Quantity">
+                                            <Form.Control
+                                                type="number"
+                                                name="quantity"
+                                                min="0"
+                                                step="0.01"
+                                                value={item.quantity}
+                                                onChange={(e) => handleLineItemChange(index, e)}
+                                            />
+                                        </div>
+                                        <div className="sale-items__cell" data-label="Warehouse">
+                                            <Form.Select
+                                                name="warehouse_id"
+                                                value={item.warehouse_id}
+                                                onChange={(e) => handleLineItemChange(index, e)}
+                                                disabled={!hasWarehouses}
+                                            >
+                                                <option value="">Select Warehouse</option>
+                                                {warehouses.map((warehouse) => (
+                                                    <option key={warehouse.id} value={warehouse.id}>
+                                                        {warehouse.name}
+                                                    </option>
+                                                ))}
+                                            </Form.Select>
+                                        </div>
+                                        <div className="sale-items__cell" data-label="Stock">
+                                            {selectedProduct ? (
+                                                <Badge bg={stockRemaining && stockRemaining > 0 ? 'success' : 'danger'}>
+                                                    {stockRemaining !== null ? `${stockRemaining} available` : 'No data'}
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-muted">Select a product</span>
+                                            )}
+                                        </div>
+                                        <div className="sale-items__cell" data-label="Discount">
+                                            <div className="sale-items__input-group">
+                                                <Form.Control
+                                                    type="number"
+                                                    name="discount"
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.1"
+                                                    value={item.discount}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                    placeholder="0"
+                                                    disabled={!selectedProduct}
+                                                />
+                                                <span className="sale-items__input-addon">%</span>
+                                            </div>
+                                        </div>
+                                        <div className="sale-items__cell" data-label="Unit Price">
+                                            <div className="sale-items__input-group">
+                                                <Form.Control
+                                                    type="number"
+                                                    step="0.01"
+                                                    name="unit_price"
+                                                    value={item.unit_price}
+                                                    onChange={(e) => handleLineItemChange(index, e)}
+                                                    disabled={!selectedProduct}
+                                                />
+                                                <span className="sale-items__input-addon">{customer.currency}</span>
+                                            </div>
+                                            <Form.Text muted>Final unit price</Form.Text>
+                                        </div>
+                                        <div className="sale-items__cell sale-items__cell--total" data-label="Line Total">
+                                            {formatCurrency(Number(item.quantity) * Number(item.unit_price || 0))}
+                                        </div>
+                                        <div className="sale-items__cell sale-items__cell--actions" data-label="Actions">
+                                            <Button variant="outline-danger" onClick={() => handleRemoveItem(index)}>
+                                                <Trash />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <Button variant="secondary" onClick={handleAddItem} disabled={!hasWarehouses}>+ Add Item</Button>
+                        <Button className="sale-items__add" variant="outline-primary" onClick={handleAddItem} disabled={!hasWarehouses}>+ Add Item</Button>
 
                         <div className="d-flex justify-content-end mt-3">
                             <h3>Total: {formatCurrency(calculateTotal())}</h3>
