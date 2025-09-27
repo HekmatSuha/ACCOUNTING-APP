@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { getCurrencyOptions, loadCurrencyOptions, loadCurrencyRates } from '../config/currency';
+import { formatCurrency } from '../utils/format';
+import '../styles/paymentModal.css';
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
@@ -194,115 +196,151 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
         }
     };
 
-    return (
-        <Modal show={show} onHide={handleClose} centered>
-            <Modal.Header closeButton>
-                <Modal.Title>{payment ? 'Edit Payment' : 'Add New Payment'}</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-                {error && <Alert variant="danger">{error}</Alert>}
-                <Form onSubmit={handleSubmit}>
-                    <Form.Group className="mb-3" controlId="paymentDate">
-                        <Form.Label>Payment Date</Form.Label>
-                        <Form.Control
-                            type="date"
-                            value={paymentDate}
-                            onChange={(e) => setPaymentDate(e.target.value)}
-                            required
-                        />
-                    </Form.Group>
-                    <Form.Group className="mb-3" controlId="paymentAmount">
-                        <Form.Label>Amount</Form.Label>
-                        <Form.Control
-                            type="number"
-                            step="0.01"
-                            placeholder="Enter amount paid"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            required
-                        />
-                    </Form.Group>
-                    <Form.Group className="mb-3" controlId="paymentMethod">
-                        <Form.Label>Payment Method</Form.Label>
-                        <Form.Select
-                            value={method}
-                            onChange={(e) => setMethod(e.target.value)}
-                        >
-                            <option value="Cash">Cash</option>
-                            <option value="Bank">Bank Transfer</option>
-                            <option value="Card">Credit/Debit Card</option>
-                        </Form.Select>
-                    </Form.Group>
-                    <Form.Group className="mb-3" controlId="paymentAccount">
-                        <Form.Label>Account</Form.Label>
-                        <Form.Select
-                            value={account}
-                            onChange={(e) => {
-                                setAccount(e.target.value);
-                                setExchangeRateEdited(false);
-                            }}
-                        >
-                            <option value="">No Account</option>
-                            {accounts.map((acc) => (
-                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
-                            ))}
-                        </Form.Select>
-                    </Form.Group>
-                    <Form.Group className="mb-3" controlId="paymentCurrency">
-                        <Form.Label>Currency</Form.Label>
-                        <Form.Select
-                            value={paymentCurrency}
-                            onChange={(e) => {
-                                setPaymentCurrency(e.target.value);
-                                setExchangeRateEdited(false);
-                            }}
-                        >
-                            {currencyOptions.map(c => (
-                                <option key={c[0]} value={c[0]}>{c[1]}</option>
-                            ))}
-                        </Form.Select>
-                    </Form.Group>
+    const resolvedPaymentCurrency = paymentCurrency || customerCurrency || 'USD';
+    const resolvedAccountCurrency = accountCurrency || customerCurrency || resolvedPaymentCurrency;
+    const amountNumber = Number(amount) || 0;
+    const paymentAmountLabel = formatCurrency(amountNumber, resolvedPaymentCurrency);
+    const convertedAmountLabel = showExchangeFields
+        ? convertedAmount
+            ? formatCurrency(convertedAmount, resolvedAccountCurrency)
+            : '—'
+        : formatCurrency(amountNumber, resolvedAccountCurrency);
 
-                    {showExchangeFields && (
-                        <>
-                            <Form.Group className="mb-3" controlId="exchangeRate">
-                                <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
-                                <Form.Control
-                                    type="number"
-                                    step="0.0001"
-                                    value={exchangeRate}
-                                    onChange={(e) => {
-                                        setExchangeRate(e.target.value);
-                                        setExchangeRateEdited(true);
-                                    }}
-                                    required
-                                />
-                            </Form.Group>
-                            <Form.Group className="mb-3" controlId="convertedAmount">
-                                <Form.Label>Converted Amount ({accountCurrency})</Form.Label>
-                                <Form.Control type="text" value={convertedAmount} readOnly />
-                            </Form.Group>
-                        </>
-                    )}
-                    <Form.Group className="mb-3" controlId="paymentNotes">
-                        <Form.Label>Notes (Optional)</Form.Label>
-                        <Form.Control
-                            as="textarea"
-                            rows={3}
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                        />
-                    </Form.Group>
-                </Form>
-            </Modal.Body>
-            <Modal.Footer>
-                <Button variant="secondary" onClick={handleClose}>
-                    Cancel
-                </Button>
-                <Button variant="primary" onClick={handleSubmit}>
-                    {payment ? 'Update Payment' : 'Save Payment'}
-                </Button>
-            </Modal.Footer>
+    return (
+        <Modal show={show} onHide={handleClose} centered className="payment-modal">
+            <Form onSubmit={handleSubmit}>
+                <Modal.Header closeButton>
+                    <div>
+                        <div className="payment-modal__title">{payment ? 'Update Payment' : 'Record Payment'}</div>
+                        <div className="payment-modal__subtitle">Capture when and how this customer paid you.</div>
+                    </div>
+                </Modal.Header>
+                <Modal.Body>
+                    {error && <Alert variant="danger" className="payment-modal__alert">{error}</Alert>}
+                    <div className="payment-modal__grid">
+                        <Form.Group controlId="paymentDate" className="payment-modal__field">
+                            <Form.Label>Payment Date</Form.Label>
+                            <Form.Control
+                                type="date"
+                                value={paymentDate}
+                                onChange={(event) => setPaymentDate(event.target.value)}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="paymentAmount" className="payment-modal__field">
+                            <Form.Label>Amount</Form.Label>
+                            <Form.Control
+                                type="number"
+                                step="0.01"
+                                placeholder="Enter amount paid"
+                                value={amount}
+                                onChange={(event) => setAmount(event.target.value)}
+                                required
+                            />
+                        </Form.Group>
+                        <Form.Group controlId="paymentMethod" className="payment-modal__field">
+                            <Form.Label>Payment Method</Form.Label>
+                            <Form.Select
+                                value={method}
+                                onChange={(event) => setMethod(event.target.value)}
+                            >
+                                <option value="Cash">Cash</option>
+                                <option value="Bank">Bank Transfer</option>
+                                <option value="Card">Credit/Debit Card</option>
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group controlId="paymentAccount" className="payment-modal__field">
+                            <Form.Label>Account</Form.Label>
+                            <Form.Select
+                                value={account}
+                                onChange={(event) => {
+                                    setAccount(event.target.value);
+                                    setExchangeRateEdited(false);
+                                }}
+                            >
+                                <option value="">No Account</option>
+                                {accounts.map((acc) => (
+                                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+                        <Form.Group controlId="paymentCurrency" className="payment-modal__field">
+                            <Form.Label>Currency</Form.Label>
+                            <Form.Select
+                                value={paymentCurrency}
+                                onChange={(event) => {
+                                    setPaymentCurrency(event.target.value);
+                                    setExchangeRateEdited(false);
+                                }}
+                            >
+                                {currencyOptions.map((c) => (
+                                    <option key={c[0]} value={c[0]}>{c[1]}</option>
+                                ))}
+                            </Form.Select>
+                        </Form.Group>
+
+                        {showExchangeFields && (
+                            <>
+                                <Form.Group controlId="exchangeRate" className="payment-modal__field">
+                                    <Form.Label>Exchange Rate ({paymentCurrency} to {accountCurrency})</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        step="0.0001"
+                                        value={exchangeRate}
+                                        onChange={(event) => {
+                                            setExchangeRate(event.target.value);
+                                            setExchangeRateEdited(true);
+                                        }}
+                                        required
+                                    />
+                                </Form.Group>
+                                <Form.Group controlId="convertedAmount" className="payment-modal__field">
+                                    <Form.Label>Converted Amount ({accountCurrency})</Form.Label>
+                                    <Form.Control type="text" value={convertedAmount} readOnly />
+                                </Form.Group>
+                            </>
+                        )}
+                        <Form.Group controlId="paymentNotes" className="payment-modal__field payment-modal__field--wide">
+                            <Form.Label>Notes (Optional)</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                value={notes}
+                                onChange={(event) => setNotes(event.target.value)}
+                                placeholder="Add any context for this payment"
+                            />
+                        </Form.Group>
+                    </div>
+
+                    <div className="payment-modal__summary">
+                        <div className="payment-modal__summary-row">
+                            <span className="payment-modal__summary-label">Amount</span>
+                            <span className="payment-modal__summary-value">{paymentAmountLabel}</span>
+                        </div>
+                        <div className="payment-modal__summary-row">
+                            <span className="payment-modal__summary-label">Recorded to account</span>
+                            <span className="payment-modal__summary-value">{convertedAmountLabel}</span>
+                        </div>
+                        {showExchangeFields ? (
+                            <div className="payment-modal__summary-note">
+                                Exchange rate will be saved so the account reflects the converted amount.
+                            </div>
+                        ) : (
+                            <div className="payment-modal__summary-note">
+                                Funds will be recorded in {resolvedAccountCurrency}.
+                            </div>
+                        )}
+                    </div>
+                </Modal.Body>
+                <Modal.Footer className="payment-modal__footer">
+                    <Button variant="outline-secondary" type="button" onClick={handleClose}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" type="submit">
+                        {payment ? 'Update Payment' : 'Save Payment'}
+                    </Button>
+                </Modal.Footer>
+            </Form>
         </Modal>
     );
 }
