@@ -2,33 +2,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-
 import { Alert, Badge, Button, Card, Col, Container, Form, Row, Stack, Table } from 'react-bootstrap';
 import { PencilSquare, Plus, Trash } from 'react-bootstrap-icons';
 import axiosInstance from '../utils/axiosInstance';
 import '../styles/saleForm.css';
 import ProductSearchSelect from '../components/ProductSearchSelect';
 import PurchaseItemModal from '../components/PurchaseItemModal';
-
-import {
-    Alert,
-    Badge,
-    Button,
-    Card,
-    Col,
-    Container,
-    Form,
-    Row,
-    Stack,
-    Table,
-} from 'react-bootstrap';
-import { PencilSquare, Plus, Trash } from 'react-bootstrap-icons';
-import axiosInstance from '../utils/axiosInstance';
-import ProductSearchSelect from '../components/ProductSearchSelect';
-import SaleItemModal from '../components/SaleItemModal';
-import '../styles/datatable.css';
-import '../styles/saleForm.css';
-
 
 function PurchaseFormPage() {
     const { supplierId, customerId } = useParams();
@@ -39,14 +18,10 @@ function PurchaseFormPage() {
     const [allProducts, setAllProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
-
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [documentNumber, setDocumentNumber] = useState('');
     const [description, setDescription] = useState('');
-
-    const [billNumber, setBillNumber] = useState('');
-
     const [lineItems, setLineItems] = useState([]);
     const [formError, setFormError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +31,6 @@ function PurchaseFormPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-
                 const [partnerRes, productRes, warehouseRes] = await Promise.all([
                     axiosInstance.get(supplierId ? `suppliers/${supplierId}/` : `customers/${customerId}/`),
                     axiosInstance.get('/products/'),
@@ -65,33 +39,16 @@ function PurchaseFormPage() {
                 const partnerData = { currency: 'USD', ...partnerRes.data };
                 setPartner(partnerData);
                 setAllProducts(productRes.data);
-
-                const [partnerRes, prodRes, warehouseRes] = await Promise.all([
-                    supplierId
-                        ? axiosInstance.get(`/suppliers/${supplierId}/`)
-                        : axiosInstance.get(`/customers/${customerId}/`),
-                    axiosInstance.get('/products/'),
-                    axiosInstance.get('/warehouses/'),
-                ]);
-                const entityData = { currency: 'USD', ...partnerRes.data };
-                setPartner(entityData);
-                setAllProducts(prodRes.data);
-
                 setWarehouses(warehouseRes.data);
             } catch (error) {
                 console.error('Failed to fetch initial data', error);
             }
         };
-
         fetchData();
     }, [supplierId, customerId]);
 
     useEffect(() => {
-
         if (warehouses.length === 0) return;
-
-        if (!warehouses.length) return;
-
         setLineItems((prev) =>
             prev.map((item) => ({
                 ...item,
@@ -114,20 +71,11 @@ function PurchaseFormPage() {
     );
 
     const openCreateItemModal = (product = null) => {
-
         const defaultItem = {
             product_id: product?.id || '',
             quantity: product ? 1 : 1,
             unit_price: product ? Number(product.purchase_price) : 0,
             warehouse_id: warehouses[0]?.id || '',
-
-        const defaultWarehouse = warehouses[0]?.id || '';
-        const defaultItem = {
-            product_id: product?.id || '',
-            quantity: product ? 1 : 1,
-            unit_price: product ? Number(product.purchase_price) || 0 : 0,
-            warehouse_id: defaultWarehouse,
-
             discount: 0,
             note: '',
         };
@@ -148,16 +96,9 @@ function PurchaseFormPage() {
             quantity: Number(item.quantity),
             unit_price: Number(item.unit_price),
             warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : warehouses[0]?.id || '',
-
             discount: Number(item.discount) || 0,
             note: item.note || '',
         };
-
-            discount: 0,
-            note: item.note || '',
-        };
-
-
         setLineItems((prev) => {
             if (index === null || typeof index === 'undefined') {
                 return [...prev, normalized];
@@ -184,7 +125,6 @@ function PurchaseFormPage() {
     const totals = useMemo(() => {
         return lineItems.reduce(
             (acc, item) => {
-
                 if (!item.product_id) {
                     return acc;
                 }
@@ -207,27 +147,6 @@ function PurchaseFormPage() {
 
     const hasLineItems = lineItems.length > 0;
 
-                if (!item.product_id) return acc;
-                const lineTotal = Number(item.quantity || 0) * Number(item.unit_price || 0);
-                return {
-                    net: acc.net + lineTotal,
-                };
-            },
-            { net: 0 }
-        );
-    }, [lineItems]);
-
-    const hasLineItems = lineItems.some((item) => item.product_id);
-    const hasWarehouses = warehouses.length > 0;
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: partner?.currency || 'USD',
-        }).format(amount || 0);
-    };
-
-
     const handleSubmit = async (event) => {
         event.preventDefault();
         setFormError(null);
@@ -242,33 +161,19 @@ function PurchaseFormPage() {
             }));
 
         if (payloadItems.length === 0) {
-
             setFormError('Add at least one product before saving.');
-
-            setFormError('Add at least one product before saving this purchase.');
-
             return;
         }
 
         const payload = {
             items: payloadItems,
             purchase_date: purchaseDate,
-
         };
 
         if (supplierId) {
             payload.supplier_id = supplierId;
         } else if (customerId) {
             payload.customer_id = customerId;
-
-            bill_number: billNumber || undefined,
-        };
-
-        if (supplierId) {
-            payload.supplier_id = Number(supplierId);
-        } else if (customerId) {
-            payload.customer_id = Number(customerId);
-
         }
 
         try {
@@ -283,9 +188,9 @@ function PurchaseFormPage() {
         }
     };
 
-    if (!partner) {
-        return <div>Loading...</div>;
-    }
+    if (!partner) return <div>Loading...</div>;
+
+    const hasWarehouses = warehouses.length > 0;
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
@@ -303,22 +208,15 @@ function PurchaseFormPage() {
                     <Col xl={4} lg={5} className="mb-4">
                         <Card className="sale-form__sidebar-card">
                             <Card.Header>
-
                                 <div className="sale-form__sidebar-title">
                                     <div className="sale-form__sidebar-label">{formTitle}</div>
                                     <div className="sale-form__sidebar-entity">{partner.name}</div>
-                                <div className="sale-form__sidebar-header">
-                                    <div className="sale-form__sidebar-title">
-                                        <div className="sale-form__sidebar-label">Purchase Summary</div>
-                                        <div className="sale-form__sidebar-entity">{partner.name}</div>
-                                    </div>
                                 </div>
                             </Card.Header>
                             <Card.Body>
                                 <div className="sale-form__entity-meta">
                                     {partner.phone && <span>{partner.phone}</span>}
                                     {partner.email && <span>{partner.email}</span>}
-
                                     <span>{partner.currency} account</span>
                                 </div>
                                 <Row className="gy-3 mt-1">
@@ -334,12 +232,6 @@ function PurchaseFormPage() {
                                         </Form.Group>
                                     </Col>
                                     <Col md={6}>
-
-                                    <span>{(partner.currency || 'USD').toUpperCase()} account</span>
-                                </div>
-                                <Row className="gy-3 mt-1">
-                                    <Col xs={12}>
-
                                         <Form.Group controlId="purchaseDate">
                                             <Form.Label>Purchase Date</Form.Label>
                                             <Form.Control
@@ -349,7 +241,6 @@ function PurchaseFormPage() {
                                             />
                                         </Form.Group>
                                     </Col>
-
                                     <Col md={6}>
                                         <Form.Group controlId="purchaseInvoiceDate">
                                             <Form.Label>Invoice Date</Form.Label>
@@ -380,22 +271,11 @@ function PurchaseFormPage() {
                                                 value={description}
                                                 onChange={(event) => setDescription(event.target.value)}
                                                 placeholder="Optional notes about this transaction"
-
-                                    <Col xs={12}>
-                                        <Form.Group controlId="billNumber">
-                                            <Form.Label>Bill No</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                value={billNumber}
-                                                placeholder="Optional"
-                                                onChange={(event) => setBillNumber(event.target.value)}
-
                                             />
                                         </Form.Group>
                                     </Col>
                                 </Row>
                                 <div className="sale-form__summary mt-4">
-
                                     <div className="sale-form__summary-row">
                                         <span>Subtotal</span>
                                         <span>{formatCurrency(totals.base)}</span>
@@ -406,10 +286,6 @@ function PurchaseFormPage() {
                                     </div>
                                     <div className="sale-form__summary-row sale-form__summary-row--strong">
                                         <span>Net Total</span>
-
-                                    <div className="sale-form__summary-row sale-form__summary-row--strong">
-                                        <span>Purchase Total</span>
-
                                         <span>{formatCurrency(totals.net)}</span>
                                     </div>
                                 </div>
@@ -425,13 +301,8 @@ function PurchaseFormPage() {
                                     </Button>
                                     <Button
                                         variant="outline-secondary"
-
                                         onClick={() => navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`)}
                                         type="button"
-
-                                        type="button"
-                                        onClick={() => navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`)}
-
                                     >
                                         Cancel
                                     </Button>
@@ -473,11 +344,7 @@ function PurchaseFormPage() {
                             <Card.Body>
                                 {!hasWarehouses && (
                                     <Alert variant="warning" className="mb-3">
-
                                         No warehouses available. Please create a warehouse before recording purchases.
-
-                                        No warehouses available. Please create a warehouse before recording this purchase.
-
                                     </Alert>
                                 )}
                                 {formError && (
@@ -494,10 +361,7 @@ function PurchaseFormPage() {
                                                 <th className="text-center">Stock</th>
                                                 <th className="text-center">Quantity</th>
                                                 <th className="text-end">Unit Cost</th>
-
                                                 <th className="text-center">Discount</th>
-
-
                                                 <th className="text-end">Line Total</th>
                                                 <th className="text-end">Actions</th>
                                             </tr>
@@ -505,11 +369,7 @@ function PurchaseFormPage() {
                                         <tbody>
                                             {lineItems.length === 0 && (
                                                 <tr>
-
                                                     <td colSpan={8} className="text-center text-muted py-4">
-
-                                                    <td colSpan={7} className="text-center text-muted py-4">
-
                                                         Add products using the search above to build this purchase.
                                                     </td>
                                                 </tr>
@@ -521,10 +381,7 @@ function PurchaseFormPage() {
                                                     (stock) => stock.warehouse_id === Number(item.warehouse_id)
                                                 );
                                                 const availableStock = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
-
                                                 const discountLabel = item.discount ? `${Number(item.discount).toFixed(2)}%` : '—';
-
-
                                                 const lineTotal = Number(item.quantity) * Number(item.unit_price || 0);
 
                                                 return (
@@ -550,10 +407,7 @@ function PurchaseFormPage() {
                                                         </td>
                                                         <td className="text-center">{Number(item.quantity)}</td>
                                                         <td className="text-end">{formatCurrency(item.unit_price)}</td>
-
                                                         <td className="text-center">{discountLabel}</td>
-
-
                                                         <td className="text-end">{formatCurrency(lineTotal)}</td>
                                                         <td className="text-end">
                                                             <div className="sale-items-table__actions">
@@ -584,10 +438,7 @@ function PurchaseFormPage() {
                     </Col>
                 </Row>
             </Form>
-
             <PurchaseItemModal
-
-            <SaleItemModal
                 show={itemModalState.show}
                 onHide={closeItemModal}
                 onSave={(item) => handleSaveItem(item, itemModalState.index)}
@@ -596,9 +447,6 @@ function PurchaseFormPage() {
                 warehouses={warehouses}
                 currency={partner.currency}
                 imageBaseUrl={baseApiUrl}
-                currency={partner.currency || 'USD'}
-                imageBaseUrl={baseApiUrl}
-                priceField="purchase_price"
             />
         </Container>
     );
