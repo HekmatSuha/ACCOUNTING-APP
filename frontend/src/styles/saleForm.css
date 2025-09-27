@@ -417,6 +417,20 @@
     gap: 0.5rem;
 }
 
+.sale-form__selection-card {
+    border: none;
+    border-radius: 1.25rem;
+    box-shadow: 0 24px 60px -42px rgba(15, 23, 42, 0.45);
+    background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+}
+
+.sale-form__empty-card {
+    border: 1px dashed rgba(148, 163, 184, 0.5);
+    border-radius: 1.25rem;
+    background: rgba(248, 250, 255, 0.6);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+}
+
 .sale-form__modal .modal-content {
     border-radius: 1.25rem;
     border: none;

@@ -18,7 +18,6 @@ import SupplierListPage from './pages/SupplierListPage';
 import SupplierDetailPage from './pages/SupplierDetailPage';
 import SupplierFormPage from './pages/SupplierFormPage';
 import SaleListPage from './pages/SaleListPage'; // <-- Import
-import TransactionPage from './pages/TransactionPage';   // <-- Import
 import SaleDetailPage from './pages/SaleDetailPage';
 import CustomerPaymentPage from './pages/CustomerPaymentPage';
 import SupplierPaymentPage from './pages/SupplierPaymentPage';
@@ -80,7 +79,7 @@ function App() {
                   <Route path="suppliers/:supplierId/new-purchase" element={<PurchaseFormPage />} />
                   <Route path="suppliers/:supplierId/new-sale" element={<SaleFormPage />} />
                   <Route path="sales" element={<SaleListPage />} />
-                  <Route path="sales/new" element={<TransactionPage />} />
+                  <Route path="sales/new" element={<SaleFormPage />} />
                   <Route path="sales/:id" element={<SaleDetailPage />} />
                   <Route path="offers" element={<OfferListPage />} />
                   <Route path="offers/:id" element={<OfferDetailPage />} />
