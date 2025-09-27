@@ -31,7 +31,6 @@ function SaleFormPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [itemModalState, setItemModalState] = useState({ show: false, index: null, initialItem: null });
     const [quickSearchKey, setQuickSearchKey] = useState(0);
-    const [supplierTransactionType, setSupplierTransactionType] = useState('sell');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -62,19 +61,13 @@ function SaleFormPage() {
         );
     }, [warehouses]);
 
-    useEffect(() => {
-        if (!isSupplierSale) {
-            setSupplierTransactionType('sell');
-        }
-    }, [isSupplierSale]);
-
     const baseApiUrl = useMemo(() => {
         const apiBase = axiosInstance.defaults.baseURL || '';
         return apiBase.replace(/\/?api\/?$/, '');
     }, []);
 
-    const priceField = isSupplierSale && supplierTransactionType === 'buy' ? 'purchase_price' : 'sale_price';
-    const allowDiscounts = priceField === 'sale_price';
+    const priceField = 'sale_price';
+    const allowDiscounts = true;
 
     const getProductById = useCallback((productId) => {
         if (!productId) return null;
@@ -88,22 +81,13 @@ function SaleFormPage() {
                 if (!item.product_id) return item;
                 const product = allProducts.find((product) => product.id === Number(item.product_id));
                 if (!product) return item;
-                const updated = {
+                return {
                     ...item,
                     unit_price: Number(product[priceField]) || 0,
                 };
-                if (!allowDiscounts) {
-                    updated.discount = 0;
-                }
-                return updated;
             })
         );
-    }, [allProducts, allowDiscounts, isSupplierSale, priceField]);
-
-    const handleSupplierModeChange = (mode) => {
-        if (mode === supplierTransactionType) return;
-        setSupplierTransactionType(mode);
-    };
+    }, [allProducts, isSupplierSale, priceField]);
 
     const openCreateItemModal = (product = null) => {
         const defaultItem = {
@@ -182,19 +166,13 @@ function SaleFormPage() {
 
     const hasLineItems = lineItems.some((item) => item.product_id);
 
-    const transactionKind = isSupplierSale
-        ? supplierTransactionType === 'buy'
-            ? 'purchase'
-            : 'sale'
-        : isOffer
-        ? 'offer'
-        : 'sale';
-    const transactionLabelMap = { sale: 'Sale', offer: 'Offer', purchase: 'Purchase' };
+    const transactionKind = isSupplierSale ? 'sale' : isOffer ? 'offer' : 'sale';
+    const transactionLabelMap = { sale: 'Sale', offer: 'Offer' };
     const transactionLabel = transactionLabelMap[transactionKind];
-    const saleDateLabel = transactionKind === 'offer' ? 'Offer Date' : transactionKind === 'purchase' ? 'Purchase Date' : 'Sale Date';
-    const invoiceDateLabel = transactionKind === 'purchase' ? 'Bill Date' : 'Invoice Date';
-    const invoiceNumberLabel = transactionKind === 'purchase' ? 'Bill No' : 'Invoice No';
-    const submitLabel = transactionKind === 'offer' ? 'Save Offer' : transactionKind === 'purchase' ? 'Save Purchase' : 'Save Sale';
+    const saleDateLabel = transactionKind === 'offer' ? 'Offer Date' : 'Sale Date';
+    const invoiceDateLabel = 'Invoice Date';
+    const invoiceNumberLabel = 'Invoice No';
+    const submitLabel = transactionKind === 'offer' ? 'Save Offer' : 'Save Sale';
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -234,11 +212,6 @@ function SaleFormPage() {
             payload.sale_date = saleDate;
             payload.invoice_number = invoiceNumber || undefined;
             payload.details = description || undefined;
-        } else {
-            url = '/purchases/';
-            payload.supplier_id = Number(entityId);
-            payload.purchase_date = saleDate;
-            payload.bill_number = invoiceNumber || undefined;
         }
 
         try {
@@ -278,19 +251,15 @@ function SaleFormPage() {
                                     </div>
                                     {isSupplierSale && (
                                         <div className="sale-form__mode-toggle">
-                                            <Button
-                                                size="sm"
-                                                variant={supplierTransactionType === 'sell' ? 'light' : 'outline-light'}
-                                                onClick={() => handleSupplierModeChange('sell')}
-                                            >
+                                            <Button size="sm" variant="light" disabled>
                                                 Sell to Supplier
                                             </Button>
                                             <Button
                                                 size="sm"
-                                                variant={supplierTransactionType === 'buy' ? 'light' : 'outline-light'}
-                                                onClick={() => handleSupplierModeChange('buy')}
+                                                variant="outline-light"
+                                                onClick={() => navigate(`/suppliers/${entityId}/new-purchase`)}
                                             >
-                                                Buy from Supplier
+                                                Make a Purchase
                                             </Button>
                                         </div>
                                     )}
