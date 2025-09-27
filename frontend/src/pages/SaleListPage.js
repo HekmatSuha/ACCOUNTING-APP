@@ -1,16 +1,20 @@
 // frontend/src/pages/SaleListPage.js
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Card, Button, Table, Alert, Spinner } from 'react-bootstrap';
+import { Container, Card, Button, Alert, Spinner, Accordion, Table } from 'react-bootstrap';
+import { ReceiptCutoff, PencilSquare, Trash } from 'react-bootstrap-icons';
+import ActionMenu from '../components/ActionMenu';
 import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
+import '../styles/transaction-history.css';
 
 function SaleListPage() {
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchSales = async () => {
@@ -31,59 +35,175 @@ function SaleListPage() {
         fetchSales();
     }, []);
 
+    const handleDeleteSale = async saleId => {
+        if (!window.confirm('Are you sure you want to delete this sale?')) {
+            return;
+        }
+
+        try {
+            await axiosInstance.delete(`/sales/${saleId}/`);
+            setSales(currentSales => currentSales.filter(sale => sale.id !== saleId));
+        } catch (err) {
+            setError('Failed to delete sale.');
+        }
+    };
+
     if (loading) {
-        return <Spinner animation="border" />;
+        return (
+            <div className="text-center">
+                <Spinner animation="border" />
+            </div>
+        );
     }
 
     return (
-        <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
-                <h4>Sales</h4>
-                <Button as={Link} to="/sales/new" variant="primary">
-                    + New Sale
-                </Button>
-            </Card.Header>
-            <Card.Body>
-                {error && <Alert variant="danger">{error}</Alert>}
-                <div className="data-table-container">
-                    <Table responsive className="data-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Invoice No.</th>
-                                <th>Customer</th>
-                                <th>Date</th>
-                                <th>Total Amount</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sales.length > 0 ? (
-                                sales.map((sale, index) => (
-                                    <tr key={sale.id}>
-                                        <td>{index + 1}</td>
-                                        <td>{sale.invoice_number || `SALE-${sale.id}`}</td>
-                                        {/* 'customer_name' comes from our SaleReadSerializer */}
-                                        <td>{sale.customer_name}</td>
-                                        <td>{new Date(sale.sale_date).toLocaleDateString()}</td>
-                                        <td>{formatCurrency(sale.total_amount, sale.original_currency || 'USD')}</td>
-                                        <td>
-                                            <Button as={Link} to={`/sales/${sale.id}`} variant="outline" size="sm">
-                                                View
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                            <tr>
-                                <td colSpan="6" className="data-table-empty">No sales found.</td>
-                            </tr>
-                        )}
-                        </tbody>
-                    </Table>
-                </div>
-            </Card.Body>
-        </Card>
+        <Container fluid>
+            <Card className="mb-3" style={{ background: '#f5f5f5' }}>
+                <Card.Body className="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 className="mb-0">Sales</h2>
+                        <p className="mb-0 text-muted">Review every sale recorded across your business.</p>
+                    </div>
+                    <Button as={Link} to="/sales/new" variant="primary">
+                        + New Sale
+                    </Button>
+                </Card.Body>
+            </Card>
+
+            {error && <Alert variant="danger">{error}</Alert>}
+
+            <Card className="transaction-history-card transaction-history-card--sales">
+                <Card.Header className="transaction-history-card__header">
+                    <div>
+                        <span className="transaction-history-card__eyebrow">History</span>
+                        <h5 className="transaction-history-card__title mb-1">All Sales</h5>
+                        <p className="transaction-history-card__subtitle mb-0">Click a sale to see invoice details and actions.</p>
+                    </div>
+                    <div className="transaction-history-card__icon transaction-history-card__icon--sales">
+                        <ReceiptCutoff size={24} />
+                    </div>
+                </Card.Header>
+                <Card.Body className="p-0">
+                    {sales.length > 0 ? (
+                        <Accordion alwaysOpen className="transaction-accordion">
+                            {sales.map((sale, index) => {
+                                const saleDate = new Date(sale.sale_date).toLocaleDateString();
+                                const saleItems = Array.isArray(sale.items) ? sale.items : [];
+                                const saleTags = [];
+
+                                if (sale.invoice_number) {
+                                    saleTags.push(sale.invoice_number);
+                                }
+
+                                if (sale.customer_name) {
+                                    saleTags.push(sale.customer_name);
+                                }
+
+                                if (saleItems.length > 0) {
+                                    saleTags.push(`${saleItems.length} item${saleItems.length !== 1 ? 's' : ''}`);
+                                }
+
+                                return (
+                                    <Accordion.Item
+                                        eventKey={index.toString()}
+                                        key={sale.id}
+                                        className="transaction-accordion__item"
+                                    >
+                                        <Accordion.Header>
+                                            <div className="transaction-accordion__header">
+                                                <div className="transaction-accordion__meta">
+                                                    <span className="transaction-accordion__date">{saleDate}</span>
+                                                    {saleTags.length > 0 && (
+                                                        <div className="transaction-accordion__tags">
+                                                            {saleTags.map(tag => (
+                                                                <span key={tag} className="transaction-accordion__tag">
+                                                                    {tag}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="transaction-accordion__amount">
+                                                    {formatCurrency(sale.total_amount, sale.original_currency || 'USD')}
+                                                </div>
+                                            </div>
+                                        </Accordion.Header>
+                                        <Accordion.Body>
+                                            <div className="transaction-accordion__actions">
+                                                <ActionMenu
+                                                    toggleAriaLabel={`Sale actions for ${saleDate}`}
+                                                    actions={[
+                                                        {
+                                                            label: 'View Sale',
+                                                            icon: <ReceiptCutoff />,
+                                                            onClick: () => navigate(`/sales/${sale.id}`),
+                                                        },
+                                                        {
+                                                            label: 'Edit Sale',
+                                                            icon: <PencilSquare />,
+                                                            onClick: () => navigate(`/sales/${sale.id}/edit`),
+                                                        },
+                                                        {
+                                                            label: 'Delete Sale',
+                                                            icon: <Trash />,
+                                                            variant: 'text-danger',
+                                                            onClick: () => handleDeleteSale(sale.id),
+                                                        },
+                                                    ]}
+                                                />
+                                            </div>
+
+                                            {saleItems.length > 0 ? (
+                                                <Table responsive borderless size="sm" className="transaction-detail-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col">Product</th>
+                                                            <th scope="col">Quantity</th>
+                                                            <th scope="col">Unit Price</th>
+                                                            <th scope="col" className="text-end">
+                                                                Line Total
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {saleItems.map(item => (
+                                                            <tr key={item.id || `${sale.id}-${item.product_name}`}>
+                                                                <td>{item.product_name}</td>
+                                                                <td>{item.quantity}</td>
+                                                                <td>{formatCurrency(item.unit_price, sale.original_currency || 'USD')}</td>
+                                                                <td className="text-end">
+                                                                    {formatCurrency(item.line_total, sale.original_currency || 'USD')}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </Table>
+                                            ) : (
+                                                <div className="transaction-meta-grid">
+                                                    <div className="transaction-meta-item transaction-meta-item--full">
+                                                        <span className="transaction-meta-label">Customer</span>
+                                                        <span className="transaction-meta-value">{sale.customer_name || 'N/A'}</span>
+                                                    </div>
+                                                    <div className="transaction-meta-item transaction-meta-item--full">
+                                                        <span className="transaction-meta-label">Invoice Number</span>
+                                                        <span className="transaction-meta-value">{sale.invoice_number || `SALE-${sale.id}`}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </Accordion.Body>
+                                    </Accordion.Item>
+                                );
+                            })}
+                        </Accordion>
+                    ) : (
+                        <div className="transaction-empty-state">
+                            <p className="fw-semibold mb-1">No sales recorded yet</p>
+                            <p className="mb-0">Create a sale to populate this history.</p>
+                        </div>
+                    )}
+                </Card.Body>
+            </Card>
+        </Container>
     );
 }
 
