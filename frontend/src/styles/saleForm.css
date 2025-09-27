@@ -213,6 +213,20 @@
     background: linear-gradient(135deg, #3a7bd5 0%, #3a6073 100%);
     color: #fff;
     padding: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sale-form__sidebar-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .sale-form__sidebar-title {
@@ -226,6 +240,29 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     opacity: 0.85;
+}
+
+.sale-form__mode-toggle {
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+.sale-form__mode-toggle .btn {
+    border-radius: 999px;
+    font-weight: 600;
+    padding-inline: 1.1rem;
+    box-shadow: 0 12px 20px -14px rgba(15, 23, 42, 0.6);
+}
+
+.sale-form__mode-toggle .btn-outline-light {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.sale-form__mode-toggle .btn-outline-light:hover,
+.sale-form__mode-toggle .btn-outline-light:focus {
+    color: #1e293b;
+    background: #fff;
 }
 
 .sale-form__sidebar-entity {
