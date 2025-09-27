@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Form, Button, Card, Row, Col, Table, Alert, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Stack, Table } from 'react-bootstrap';
 import { FaTrash } from 'react-icons/fa';
 import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
+import '../styles/saleForm.css';
 
 function EditSalePage() {
     const { id } = useParams();
@@ -121,95 +122,250 @@ function EditSalePage() {
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
     if (error && !saleItems.length) return <Alert variant="danger">{error}</Alert>;
 
-    // --- PASTE THE ENTIRE JSX RETURN BLOCK HERE ---
+    const selectedCustomer = customers.find(customer => customer.id === Number(customerId)) || null;
+    const customerCurrency = selectedCustomer?.currency || 'USD';
+    const totalQuantity = saleItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const totalAmount = calculateTotal();
+
     return (
-        <Card>
-            <Card.Header><h4>Edit Sale</h4></Card.Header>
-            <Card.Body>
-                {error && <Alert variant="danger">{error}</Alert>}
-                <Form onSubmit={handleSubmit}>
-                    <Row className="mb-3">
-                        <Form.Group as={Col} controlId="formCustomer">
-                            <Form.Label>Customer</Form.Label>
-                            <Form.Select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
-                                <option value="">Select a Customer</option>
-                                {customers.map(customer => (
-                                    <option key={customer.id} value={customer.id}>{customer.name}</option>
-                                ))}
-                            </Form.Select>
-                        </Form.Group>
-                    </Row>
-                    {!hasWarehouses && (
-                        <Alert variant="warning">
-                            No warehouses available. Please create a warehouse before updating sales.
-                        </Alert>
-                    )}
-                      <h5>Sale Items</h5>
-                      <div className="data-table-container">
-                        <Table responsive className="data-table data-table--compact">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                                <th>Warehouse</th>
-                                <th>Unit Price</th>
-                                <th>Line Total</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {saleItems.map((item, index) => (
-                                <tr key={index}>
-                                    <td>
-                                        <Form.Select name="product_id" value={item.product_id} onChange={e => handleItemChange(index, e)} required>
-                                            <option value="">Select a Product</option>
-                                            {products.map(product => (
-                                                <option key={product.id} value={product.id}>{product.name}</option>
-                                            ))}
-                                        </Form.Select>
-                                    </td>
-                                    <td>
-                                        <Form.Control type="number" name="quantity" value={item.quantity} onChange={e => handleItemChange(index, e)} min="1" required />
-                                    </td>
-                                    <td>
-                                        <Form.Select
-                                            name="warehouse_id"
-                                            value={item.warehouse_id}
-                                            onChange={e => handleItemChange(index, e)}
-                                            required
-                                            disabled={!hasWarehouses}
-                                        >
-                                            <option value="">Select a Warehouse</option>
-                                            {warehouses.map(warehouse => (
-                                                <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
-                                            ))}
-                                        </Form.Select>
-                                    </td>
-                                    <td>
-                                        <Form.Control type="number" name="unit_price" value={item.unit_price} onChange={e => handleItemChange(index, e)} step="0.01" required />
-                                    </td>
-                                    <td>{formatCurrency((Number(item.quantity) || 0) * (Number(item.unit_price) || 0))}</td>
-                                    <td>
-                                        <Button variant="danger" onClick={() => handleRemoveItem(index)}><FaTrash /></Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        </Table>
-                      </div>
-                    <Button variant="secondary" onClick={handleAddItem} className="mb-3" disabled={!hasWarehouses}>+ Add Item</Button>
-                    <div className="text-end">
-                        <h3>Total: {formatCurrency(calculateTotal())}</h3>
-                    </div>
-                    <div className="mt-3">
-                        <Button variant="primary" type="submit" disabled={!hasWarehouses}>Update Sale</Button>
-                        <Button variant="light" className="ms-2" onClick={() => navigate(`/sales/${id}`)}>Cancel</Button>
-                    </div>
-                </Form>
-            </Card.Body>
-        </Card>
+        <Container className="sale-form__container">
+            <Form onSubmit={handleSubmit}>
+                <Row className="sale-form__layout">
+                    <Col xl={4} lg={5} className="mb-4">
+                        <Card className="sale-form__sidebar-card">
+                            <Card.Header>
+                                <div className="sale-form__sidebar-title">
+                                    <div className="sale-form__sidebar-label">Edit Sale</div>
+                                    <div className="sale-form__sidebar-entity">{selectedCustomer?.name || 'Choose customer'}</div>
+                                </div>
+                                {selectedCustomer && (
+                                    <div className="sale-form__entity-meta mt-3">
+                                        {selectedCustomer.email && <span>{selectedCustomer.email}</span>}
+                                        {selectedCustomer.phone && <span>{selectedCustomer.phone}</span>}
+                                        <span>{customerCurrency} account</span>
+                                    </div>
+                                )}
+                            </Card.Header>
+                            <Card.Body>
+                                <Row className="gy-3">
+                                    <Col xs={12}>
+                                        <Form.Group controlId="editSaleCustomer">
+                                            <Form.Label>Customer</Form.Label>
+                                            <Form.Select
+                                                value={customerId}
+                                                onChange={(event) => setCustomerId(event.target.value)}
+                                                required
+                                            >
+                                                <option value="">Select a Customer</option>
+                                                {customers.map(customer => (
+                                                    <option key={customer.id} value={customer.id}>{customer.name}</option>
+                                                ))}
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+
+                                <div className="sale-form__summary mt-4">
+                                    <div className="sale-form__summary-row">
+                                        <span>Line items</span>
+                                        <span>{saleItems.length}</span>
+                                    </div>
+                                    <div className="sale-form__summary-row">
+                                        <span>Total quantity</span>
+                                        <span>{totalQuantity}</span>
+                                    </div>
+                                    <div className="sale-form__summary-row sale-form__summary-row--strong">
+                                        <span>Grand total</span>
+                                        <span>{formatCurrency(totalAmount, customerCurrency)}</span>
+                                    </div>
+                                </div>
+                            </Card.Body>
+                            <Card.Footer>
+                                <Stack gap={2}>
+                                    <Button type="submit" variant="success" disabled={!hasWarehouses}>
+                                        Update Sale
+                                    </Button>
+                                    <Button
+                                        variant="outline-secondary"
+                                        type="button"
+                                        onClick={() => navigate(`/sales/${id}`)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </Stack>
+                            </Card.Footer>
+                        </Card>
+                    </Col>
+                    <Col xl={8} lg={7}>
+                        <Card className="sale-form__items-card">
+                            <Card.Header>
+                                <div className="sale-form__items-header">
+                                    <div>
+                                        <h5 className="mb-0">Sale Items</h5>
+                                        <small className="text-muted">Update the products and pricing for this sale.</small>
+                                    </div>
+                                    <Button
+                                        variant="outline-primary"
+                                        type="button"
+                                        onClick={handleAddItem}
+                                        disabled={!hasWarehouses}
+                                    >
+                                        + Add Item
+                                    </Button>
+                                </div>
+                            </Card.Header>
+                            <Card.Body>
+                                {!hasWarehouses && (
+                                    <Alert variant="warning" className="mb-3">
+                                        No warehouses available. Please create a warehouse before updating sales.
+                                    </Alert>
+                                )}
+                                {error && (
+                                    <Alert variant="danger" className="mb-3">
+                                        {error}
+                                    </Alert>
+                                )}
+                                <div className="table-responsive">
+                                    <Table hover borderless className="sale-items-table align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Warehouse</th>
+                                                <th className="text-center">Stock</th>
+                                                <th className="text-center">Quantity</th>
+                                                <th className="text-end">Unit Price</th>
+                                                <th className="text-end">Line Total</th>
+                                                <th className="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {saleItems.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={7} className="text-center text-muted py-4">
+                                                        Use the button above to add products to this sale.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {saleItems.map((item, index) => {
+                                                const product = products.find(p => p.id === Number(item.product_id));
+                                                const warehouse = warehouses.find(w => w.id === Number(item.warehouse_id));
+                                                const warehouseQuantity = product?.warehouse_quantities?.find(
+                                                    stock => stock.warehouse_id === Number(item.warehouse_id)
+                                                );
+                                                const availableStock = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
+                                                const lineTotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
+
+                                                return (
+                                                    <tr key={`${index}-${item.product_id || 'new'}`}>
+                                                        <td>
+                                                            <div className="sale-items-table__product">
+                                                                <div className="sale-items-table__field">
+                                                                    <Form.Select
+                                                                        name="product_id"
+                                                                        value={item.product_id}
+                                                                        onChange={(event) => handleItemChange(index, event)}
+                                                                        required
+                                                                    >
+                                                                        <option value="">Select a Product</option>
+                                                                        {products.map(productOption => (
+                                                                            <option key={productOption.id} value={productOption.id}>
+                                                                                {productOption.name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </Form.Select>
+                                                                </div>
+                                                                <div className="sale-items-table__meta">
+                                                                    {product?.sku && <span>SKU: {product.sku}</span>}
+                                                                    {product?.category_name && <span>{product.category_name}</span>}
+                                                                    {product && (
+                                                                        <span>
+                                                                            Base: {formatCurrency(product.sale_price, customerCurrency)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div className="sale-items-table__field">
+                                                                <Form.Select
+                                                                    name="warehouse_id"
+                                                                    value={item.warehouse_id}
+                                                                    onChange={(event) => handleItemChange(index, event)}
+                                                                    required
+                                                                    disabled={!hasWarehouses}
+                                                                >
+                                                                    <option value="">Select a Warehouse</option>
+                                                                    {warehouses.map(warehouseOption => (
+                                                                        <option key={warehouseOption.id} value={warehouseOption.id}>
+                                                                            {warehouseOption.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </Form.Select>
+                                                            </div>
+                                                            {!warehouse && (
+                                                                <small className="text-muted">Choose where this item ships from.</small>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {product ? (
+                                                                <Badge bg={availableStock && availableStock > 0 ? 'success' : 'danger'}>
+                                                                    {availableStock !== null ? `${availableStock}` : 'No data'}
+                                                                </Badge>
+                                                            ) : (
+                                                                <span className="text-muted">Select a product</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            <div className="sale-items-table__field">
+                                                                <Form.Control
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    name="quantity"
+                                                                    value={item.quantity}
+                                                                    onChange={(event) => handleItemChange(index, event)}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-end">
+                                                            <div className="sale-items-table__field">
+                                                                <Form.Control
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    name="unit_price"
+                                                                    value={item.unit_price}
+                                                                    onChange={(event) => handleItemChange(index, event)}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-end">{formatCurrency(lineTotal, customerCurrency)}</td>
+                                                        <td className="text-end">
+                                                            <div className="sale-items-table__actions">
+                                                                <Button
+                                                                    variant="outline-danger"
+                                                                    size="sm"
+                                                                    onClick={() => handleRemoveItem(index)}
+                                                                >
+                                                                    <FaTrash />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+            </Form>
+        </Container>
     );
-    // -------------------------------------------
 }
 
 export default EditSalePage;
