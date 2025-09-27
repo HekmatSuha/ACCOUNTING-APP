@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Alert, Badge, Button, Card, Col, Container, Form, Row, Stack, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Stack, Table } from 'react-bootstrap';
 import { PencilSquare, Plus, Trash } from 'react-bootstrap-icons';
 import axiosInstance from '../utils/axiosInstance';
 import '../styles/datatable.css';
@@ -11,9 +11,16 @@ import ProductSearchSelect from '../components/ProductSearchSelect';
 import SaleItemModal from '../components/SaleItemModal';
 
 function SaleFormPage() {
-    const { customerId, supplierId } = useParams();
-    const entityId = customerId || supplierId;
-    const isSupplierSale = Boolean(supplierId);
+    const { customerId: customerIdParam, supplierId: supplierIdParam } = useParams();
+    const initialCustomerId = customerIdParam ? Number(customerIdParam) : null;
+    const initialSupplierId = supplierIdParam ? Number(supplierIdParam) : null;
+
+    const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId);
+    const [selectedSupplierId] = useState(initialSupplierId);
+
+    const isSupplierSale = selectedSupplierId !== null;
+    const entityId = isSupplierSale ? selectedSupplierId : selectedCustomerId;
+    const isStandaloneSale = !initialCustomerId && !initialSupplierId;
     const navigate = useNavigate();
     const location = useLocation();
     const isOffer = new URLSearchParams(location.search).get('type') === 'offer';
@@ -21,6 +28,10 @@ function SaleFormPage() {
     const [customer, setCustomer] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
+    const [customerOptions, setCustomerOptions] = useState([]);
+    const [isLoadingCustomerOptions, setIsLoadingCustomerOptions] = useState(false);
+    const [loadingEntityData, setLoadingEntityData] = useState(false);
+    const [initialDataError, setInitialDataError] = useState(null);
     const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -33,7 +44,44 @@ function SaleFormPage() {
     const [quickSearchKey, setQuickSearchKey] = useState(0);
 
     useEffect(() => {
+        if (!isStandaloneSale) {
+            return;
+        }
+
+        const fetchCustomers = async () => {
+            setIsLoadingCustomerOptions(true);
+            try {
+                const response = await axiosInstance.get('/customers/');
+                setCustomerOptions(response.data || []);
+                setInitialDataError(null);
+            } catch (error) {
+                console.error('Failed to fetch customers', error);
+                setInitialDataError('Failed to load customers. Please try again.');
+            } finally {
+                setIsLoadingCustomerOptions(false);
+            }
+        };
+
+        fetchCustomers();
+    }, [isStandaloneSale]);
+
+    useEffect(() => {
+        if (!entityId) {
+            setCustomer(null);
+            setAllProducts([]);
+            setWarehouses([]);
+            setLineItems([]);
+            return;
+        }
+
         const fetchData = async () => {
+            setLoadingEntityData(true);
+            setInitialDataError(null);
+            setCustomer(null);
+            setAllProducts([]);
+            setWarehouses([]);
+            setLineItems([]);
+
             try {
                 const [custRes, prodRes, warehouseRes] = await Promise.all([
                     axiosInstance.get(isSupplierSale ? `suppliers/${entityId}/` : `customers/${entityId}/`),
@@ -46,10 +94,22 @@ function SaleFormPage() {
                 setWarehouses(warehouseRes.data);
             } catch (error) {
                 console.error('Failed to fetch initial data', error);
+                setInitialDataError('Failed to fetch sale details. Please try again.');
+            } finally {
+                setLoadingEntityData(false);
             }
         };
+
         fetchData();
     }, [entityId, isSupplierSale]);
+
+    useEffect(() => {
+        if (!entityId) {
+            return;
+        }
+        setQuickSearchKey((prev) => prev + 1);
+        setFormError(null);
+    }, [entityId]);
 
     useEffect(() => {
         if (warehouses.length === 0) return;
@@ -152,6 +212,11 @@ function SaleFormPage() {
         event.preventDefault();
         setFormError(null);
 
+        if (!entityId) {
+            setFormError('Select a customer before saving.');
+            return;
+        }
+
         const payloadItems = lineItems
             .filter((item) => item.product_id)
             .map((item) => {
@@ -184,7 +249,14 @@ function SaleFormPage() {
         try {
             setIsSubmitting(true);
             await axiosInstance.post(url, payload);
-            navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`);
+
+            if (isSupplierSale) {
+                navigate(`/suppliers/${entityId}`);
+            } else if (isStandaloneSale) {
+                navigate('/sales');
+            } else {
+                navigate(`/customers/${entityId}`);
+            }
         } catch (error) {
             console.error('Failed to create sale', error.response?.data);
             setFormError(error.response?.data?.detail || 'Failed to save the sale.');
@@ -193,27 +265,101 @@ function SaleFormPage() {
         }
     };
 
-    if (!customer) return <div>Loading...</div>;
-
     const hasWarehouses = warehouses.length > 0;
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: customer.currency,
+            currency: customer?.currency || 'USD',
         }).format(amount || 0);
     };
 
     return (
         <Container className="sale-form__container">
-            <Form onSubmit={handleSubmit}>
-                <Row className="sale-form__layout">
-                    <Col xl={4} lg={5} className="mb-4">
-                        <Card className="sale-form__sidebar-card">
-                            <Card.Header>
-                                <div className="sale-form__sidebar-title">
-                                    <div className="sale-form__sidebar-label">{isOffer ? 'Offer' : 'Sale'} Summary</div>
-                                    <div className="sale-form__sidebar-entity">{customer.name}</div>
+            {isStandaloneSale && (
+                <Card className="sale-form__selection-card mb-4">
+                    <Card.Body>
+                        <Row className="align-items-end g-3">
+                            <Col md={8}>
+                                <Form.Group controlId="saleCustomer">
+                                    <Form.Label>Select Customer</Form.Label>
+                                    <Form.Select
+                                        value={selectedCustomerId || ''}
+                                        onChange={(event) => {
+                                            const value = event.target.value;
+                                            setSelectedCustomerId(value ? Number(value) : null);
+                                        }}
+                                        disabled={isLoadingCustomerOptions}
+                                    >
+                                        <option value="">Choose a customer...</option>
+                                        {customerOptions.map((option) => (
+                                            <option key={option.id} value={option.id}>
+                                                {option.name}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={4}>
+                                <div className="text-muted small">
+                                    {isLoadingCustomerOptions
+                                        ? 'Loading customers...'
+                                        : 'Select a customer to start a new sale.'}
+                                </div>
+                            </Col>
+                        </Row>
+                        {initialDataError && !entityId && (
+                            <Alert
+                                variant="danger"
+                                className="mt-3"
+                                onClose={() => setInitialDataError(null)}
+                                dismissible
+                            >
+                                {initialDataError}
+                            </Alert>
+                        )}
+                    </Card.Body>
+                </Card>
+            )}
+
+            {!entityId && isStandaloneSale && (
+                <Card className="sale-form__empty-card">
+                    <Card.Body className="text-center text-muted py-5">
+                        {isLoadingCustomerOptions ? (
+                            <div className="d-flex flex-column align-items-center gap-2">
+                                <Spinner animation="border" size="sm" />
+                                <span>Loading customers...</span>
+                            </div>
+                        ) : (
+                            <div>
+                                <h5 className="fw-semibold mb-1">Select a customer to start a sale</h5>
+                                <p className="mb-0">Choose a customer above to load the sale workspace.</p>
+                            </div>
+                        )}
+                    </Card.Body>
+                </Card>
+            )}
+
+            {entityId && (
+                loadingEntityData ? (
+                    <div className="d-flex justify-content-center align-items-center py-5">
+                        <Spinner animation="border" />
+                    </div>
+                ) : initialDataError ? (
+                    <Alert variant="danger" onClose={() => setInitialDataError(null)} dismissible>
+                        {initialDataError}
+                    </Alert>
+                ) : (
+                    customer && (
+                        <>
+                            <Form onSubmit={handleSubmit}>
+                                <Row className="sale-form__layout">
+                                    <Col xl={4} lg={5} className="mb-4">
+                                        <Card className="sale-form__sidebar-card">
+                                            <Card.Header>
+                                                <div className="sale-form__sidebar-title">
+                                                    <div className="sale-form__sidebar-label">{isOffer ? 'Offer' : 'Sale'} Summary</div>
+                                                    <div className="sale-form__sidebar-entity">{customer.name}</div>
                                 </div>
                             </Card.Header>
                             <Card.Body>
@@ -304,7 +450,24 @@ function SaleFormPage() {
                                     </Button>
                                     <Button
                                         variant="outline-secondary"
-                                        onClick={() => navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`)}
+                                        onClick={() => {
+                                            if (isStandaloneSale) {
+                                                navigate('/sales');
+                                                return;
+                                            }
+
+                                            if (isSupplierSale && entityId) {
+                                                navigate(`/suppliers/${entityId}`);
+                                                return;
+                                            }
+
+                                            if (entityId) {
+                                                navigate(`/customers/${entityId}`);
+                                                return;
+                                            }
+
+                                            navigate('/sales');
+                                        }}
                                         type="button"
                                     >
                                         Cancel
@@ -445,16 +608,20 @@ function SaleFormPage() {
                     </Col>
                 </Row>
             </Form>
-            <SaleItemModal
-                show={itemModalState.show}
-                onHide={closeItemModal}
-                onSave={(item) => handleSaveItem(item, itemModalState.index)}
-                initialItem={itemModalState.initialItem}
-                products={allProducts}
-                warehouses={warehouses}
-                currency={customer.currency}
-                imageBaseUrl={baseApiUrl}
-            />
+                            <SaleItemModal
+                                show={itemModalState.show}
+                                onHide={closeItemModal}
+                                onSave={(item) => handleSaveItem(item, itemModalState.index)}
+                                initialItem={itemModalState.initialItem}
+                                products={allProducts}
+                                warehouses={warehouses}
+                                currency={customer.currency}
+                                imageBaseUrl={baseApiUrl}
+                            />
+                        </>
+                    )
+                )
+            )}
         </Container>
     );
 }
