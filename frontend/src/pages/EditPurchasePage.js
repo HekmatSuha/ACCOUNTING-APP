@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Form, Button, Card, Row, Col, Table, Alert, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Stack, Table } from 'react-bootstrap';
 import { FaTrash } from 'react-icons/fa';
+import { formatCurrency } from '../utils/format';
+import '../styles/saleForm.css';
 
 function EditPurchasePage() {
     const { id } = useParams();
@@ -148,101 +150,287 @@ function EditPurchasePage() {
     if (loading) return <div className="text-center"><Spinner animation="border" /></div>;
     if (error && !formData.items.length) return <Alert variant="danger">{error}</Alert>;
 
-    return (
-        <Card>
-            <Card.Header><h4>Edit Purchase</h4></Card.Header>
-            <Card.Body>
-                {error && <Alert variant="danger">{error}</Alert>}
-                <Form onSubmit={handleSubmit}>
-                    <Row>
-                        <Col md={6}>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Supplier</Form.Label>
-                                <Form.Select name="supplier_id" value={formData.supplier_id} onChange={handleInputChange} required>
-                                    <option value="">Select a Supplier</option>
-                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </Form.Select>
-                            </Form.Group>
-                        </Col>
-                        <Col md={3}>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Purchase Date</Form.Label>
-                                <Form.Control type="date" name="purchase_date" value={formData.purchase_date} onChange={handleInputChange} required />
-                            </Form.Group>
-                        </Col>
-                        <Col md={3}>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Bill / Invoice #</Form.Label>
-                                <Form.Control type="text" name="bill_number" value={formData.bill_number} onChange={handleInputChange} />
-                            </Form.Group>
-                        </Col>
-                    </Row>
-                    <Row>
-                        <Col md={4}>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Account</Form.Label>
-                                <Form.Select name="account" value={formData.account} onChange={handleInputChange}>
-                                    <option value="">No Account</option>
-                                    {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                </Form.Select>
-                            </Form.Group>
-                        </Col>
-                    </Row>
-                    <hr />
-                    <h6>Items</h6>
-                    {!hasWarehouses && (
-                        <Alert variant="warning">
-                            No warehouses available. Please create a warehouse before updating purchases.
-                        </Alert>
-                    )}
-                    {formData.items.map((item, index) => (
-                        <Row key={index} className="align-items-end mb-2">
-                            <Col md={4}>
-                                <Form.Label>Product</Form.Label>
-                                <Form.Select name="product_id" value={item.product_id} onChange={e => handleItemChange(index, e)} required>
-                                    <option value="">Select a Product</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                </Form.Select>
-                            </Col>
-                            <Col md={2}>
-                                <Form.Label>Quantity</Form.Label>
-                                <Form.Control type="number" name="quantity" value={item.quantity} onChange={e => handleItemChange(index, e)} required />
-                            </Col>
-                            <Col md={3}>
-                                <Form.Label>Warehouse</Form.Label>
-                                <Form.Select
-                                    name="warehouse_id"
-                                    value={item.warehouse_id}
-                                    onChange={e => handleItemChange(index, e)}
-                                    required
-                                    disabled={!hasWarehouses}
-                                >
-                                    <option value="">Select a Warehouse</option>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </Form.Select>
-                            </Col>
-                            <Col md={2}>
-                                <Form.Label>Unit Price (Cost)</Form.Label>
-                                <Form.Control type="number" step="0.01" name="unit_price" value={item.unit_price} onChange={e => handleItemChange(index, e)} required />
-                            </Col>
-                            <Col md={1} className="mt-3">
-                                <Button variant="danger" onClick={() => handleRemoveItem(index)}><FaTrash /></Button>
-                            </Col>
-                        </Row>
-                    ))}
-                    <Button variant="secondary" onClick={handleAddItem} className="mt-2" disabled={!hasWarehouses}>+ Add Item</Button>
+    const selectedSupplier = suppliers.find((supplier) => supplier.id === Number(formData.supplier_id));
+    const supplierCurrency = selectedSupplier?.currency || 'USD';
+    const totalQuantity = formData.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const totalAmount = formData.items.reduce((sum, item) => {
+        const quantity = Number(item.quantity) || 0;
+        const price = Number(item.unit_price) || 0;
+        return sum + quantity * price;
+    }, 0);
 
-                    <div className="mt-4 d-flex justify-content-end">
-                        <Button variant="light" className="me-2" onClick={() => navigate(`/purchases/${id}`)}>
-                            Cancel
-                        </Button>
-                        <Button variant="primary" type="submit" disabled={!hasWarehouses}>
-                            Update Purchase
-                        </Button>
-                    </div>
-                </Form>
-            </Card.Body>
-        </Card>
+    return (
+        <Container className="sale-form__container">
+            <Form onSubmit={handleSubmit}>
+                <Row className="sale-form__layout">
+                    <Col xl={4} lg={5} className="mb-4">
+                        <Card className="sale-form__sidebar-card">
+                            <Card.Header>
+                                <div className="sale-form__sidebar-title">
+                                    <div className="sale-form__sidebar-label">Edit Purchase</div>
+                                    <div className="sale-form__sidebar-entity">{selectedSupplier?.name || 'Choose supplier'}</div>
+                                </div>
+                                {selectedSupplier && (
+                                    <div className="sale-form__entity-meta mt-3">
+                                        {selectedSupplier.email && <span>{selectedSupplier.email}</span>}
+                                        {selectedSupplier.phone && <span>{selectedSupplier.phone}</span>}
+                                        <span>{supplierCurrency} account</span>
+                                    </div>
+                                )}
+                            </Card.Header>
+                            <Card.Body>
+                                <Row className="gy-3">
+                                    <Col xs={12}>
+                                        <Form.Group controlId="editPurchaseSupplier">
+                                            <Form.Label>Supplier</Form.Label>
+                                            <Form.Select
+                                                name="supplier_id"
+                                                value={formData.supplier_id}
+                                                onChange={handleInputChange}
+                                                required
+                                            >
+                                                <option value="">Select a Supplier</option>
+                                                {suppliers.map((supplier) => (
+                                                    <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                                                ))}
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group controlId="editPurchaseDate">
+                                            <Form.Label>Purchase Date</Form.Label>
+                                            <Form.Control
+                                                type="date"
+                                                name="purchase_date"
+                                                value={formData.purchase_date}
+                                                onChange={handleInputChange}
+                                                required
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group controlId="editPurchaseBill">
+                                            <Form.Label>Bill / Invoice #</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                name="bill_number"
+                                                value={formData.bill_number}
+                                                onChange={handleInputChange}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col xs={12}>
+                                        <Form.Group controlId="editPurchaseAccount">
+                                            <Form.Label>Account</Form.Label>
+                                            <Form.Select
+                                                name="account"
+                                                value={formData.account}
+                                                onChange={handleInputChange}
+                                            >
+                                                <option value="">No Account</option>
+                                                {accounts.map((account) => (
+                                                    <option key={account.id} value={account.id}>{account.name}</option>
+                                                ))}
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+
+                                <div className="sale-form__summary mt-4">
+                                    <div className="sale-form__summary-row">
+                                        <span>Line items</span>
+                                        <span>{formData.items.length}</span>
+                                    </div>
+                                    <div className="sale-form__summary-row">
+                                        <span>Total quantity</span>
+                                        <span>{totalQuantity}</span>
+                                    </div>
+                                    <div className="sale-form__summary-row sale-form__summary-row--strong">
+                                        <span>Grand total</span>
+                                        <span>{formatCurrency(totalAmount, supplierCurrency)}</span>
+                                    </div>
+                                </div>
+                            </Card.Body>
+                            <Card.Footer>
+                                <Stack gap={2}>
+                                    <Button type="submit" variant="success" disabled={!hasWarehouses}>
+                                        Update Purchase
+                                    </Button>
+                                    <Button
+                                        variant="outline-secondary"
+                                        type="button"
+                                        onClick={() => navigate(`/purchases/${id}`)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </Stack>
+                            </Card.Footer>
+                        </Card>
+                    </Col>
+                    <Col xl={8} lg={7}>
+                        <Card className="sale-form__items-card">
+                            <Card.Header>
+                                <div className="sale-form__items-header">
+                                    <div>
+                                        <h5 className="mb-0">Purchase Items</h5>
+                                        <small className="text-muted">Adjust the products, warehouses, and cost for this purchase.</small>
+                                    </div>
+                                    <Button
+                                        variant="outline-primary"
+                                        type="button"
+                                        onClick={handleAddItem}
+                                        disabled={!hasWarehouses}
+                                    >
+                                        + Add Item
+                                    </Button>
+                                </div>
+                            </Card.Header>
+                            <Card.Body>
+                                {!hasWarehouses && (
+                                    <Alert variant="warning" className="mb-3">
+                                        No warehouses available. Please create a warehouse before updating purchases.
+                                    </Alert>
+                                )}
+                                {error && (
+                                    <Alert variant="danger" className="mb-3">
+                                        {error}
+                                    </Alert>
+                                )}
+                                <div className="table-responsive">
+                                    <Table hover borderless className="sale-items-table align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Warehouse</th>
+                                                <th className="text-center">Stock</th>
+                                                <th className="text-center">Quantity</th>
+                                                <th className="text-end">Unit Cost</th>
+                                                <th className="text-end">Line Total</th>
+                                                <th className="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {formData.items.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={7} className="text-center text-muted py-4">
+                                                        Add products using the button above to build this purchase.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {formData.items.map((item, index) => {
+                                                const product = products.find((p) => p.id === Number(item.product_id));
+                                                const warehouse = warehouses.find((w) => w.id === Number(item.warehouse_id));
+                                                const warehouseQuantity = product?.warehouse_quantities?.find(
+                                                    (stock) => stock.warehouse_id === Number(item.warehouse_id)
+                                                );
+                                                const availableStock = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
+                                                const lineTotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
+
+                                                return (
+                                                    <tr key={`${index}-${item.product_id || 'new'}`}>
+                                                        <td>
+                                                            <div className="sale-items-table__product">
+                                                                <div className="sale-items-table__field">
+                                                                    <Form.Select
+                                                                        name="product_id"
+                                                                        value={item.product_id}
+                                                                        onChange={(event) => handleItemChange(index, event)}
+                                                                        required
+                                                                    >
+                                                                        <option value="">Select a Product</option>
+                                                                        {products.map((productOption) => (
+                                                                            <option key={productOption.id} value={productOption.id}>
+                                                                                {productOption.name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </Form.Select>
+                                                                </div>
+                                                                <div className="sale-items-table__meta">
+                                                                    {product?.sku && <span>SKU: {product.sku}</span>}
+                                                                    {product?.category_name && <span>{product.category_name}</span>}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div className="sale-items-table__field">
+                                                                <Form.Select
+                                                                    name="warehouse_id"
+                                                                    value={item.warehouse_id}
+                                                                    onChange={(event) => handleItemChange(index, event)}
+                                                                    required
+                                                                    disabled={!hasWarehouses}
+                                                                >
+                                                                    <option value="">Select a Warehouse</option>
+                                                                    {warehouses.map((warehouseOption) => (
+                                                                        <option key={warehouseOption.id} value={warehouseOption.id}>
+                                                                            {warehouseOption.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </Form.Select>
+                                                            </div>
+                                                            {!warehouse && (
+                                                                <small className="text-muted">Choose where this stock is received.</small>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {product ? (
+                                                                <Badge bg={availableStock && availableStock > 0 ? 'success' : 'danger'}>
+                                                                    {availableStock !== null ? `${availableStock}` : 'No data'}
+                                                                </Badge>
+                                                            ) : (
+                                                                <span className="text-muted">Select a product</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            <div className="sale-items-table__field">
+                                                                <Form.Control
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    name="quantity"
+                                                                    value={item.quantity}
+                                                                    onChange={(event) => handleItemChange(index, event)}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-end">
+                                                            <div className="sale-items-table__field">
+                                                                <Form.Control
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    name="unit_price"
+                                                                    value={item.unit_price}
+                                                                    onChange={(event) => handleItemChange(index, event)}
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-end">{formatCurrency(lineTotal, supplierCurrency)}</td>
+                                                        <td className="text-end">
+                                                            <div className="sale-items-table__actions">
+                                                                <Button
+                                                                    variant="outline-danger"
+                                                                    size="sm"
+                                                                    onClick={() => handleRemoveItem(index)}
+                                                                >
+                                                                    <FaTrash />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+            </Form>
+        </Container>
     );
 }
 
