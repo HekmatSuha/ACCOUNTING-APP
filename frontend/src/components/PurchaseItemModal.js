@@ -1,13 +1,11 @@
-// frontend/src/components/SaleItemModal.js
+// frontend/src/components/PurchaseItemModal.js
 
 import React, { useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Alert, Badge, Button, Form, Modal, Row, Col, Stack } from 'react-bootstrap';
+import { Alert, Badge, Button, Col, Form, Modal, Row, Stack } from 'react-bootstrap';
 import ProductSearchSelect from './ProductSearchSelect';
 
-function SaleItemModal({ show, onHide, onSave, initialItem, products, warehouses, currency, imageBaseUrl }) {
-
-function SaleItemModal({
+function PurchaseItemModal({
     show,
     onHide,
     onSave,
@@ -16,9 +14,7 @@ function SaleItemModal({
     warehouses,
     currency,
     imageBaseUrl,
-    priceField,
 }) {
-
     const [formState, setFormState] = useState({
         product_id: '',
         quantity: 1,
@@ -46,7 +42,7 @@ function SaleItemModal({
         return products.find((product) => product.id === Number(formState.product_id)) || null;
     }, [formState.product_id, products]);
 
-    const defaultCurrencyFormatter = useMemo(() => {
+    const currencyFormatter = useMemo(() => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency });
     }, [currency]);
 
@@ -65,11 +61,7 @@ function SaleItemModal({
             ...prev,
             product_id: product.id,
             quantity: prev.quantity || 1,
-
-            unit_price: Number(product.sale_price) || 0,
-
-            unit_price: Number(product[priceField]) || 0,
-
+            unit_price: Number(product.purchase_price) || 0,
             discount: 0,
             warehouse_id: defaultWarehouse,
         }));
@@ -81,11 +73,7 @@ function SaleItemModal({
             setFormState((prev) => ({ ...prev, discount: bounded }));
             return;
         }
-
-        const basePrice = Number(selectedProduct.sale_price) || 0;
-
-        const basePrice = Number(selectedProduct?.[priceField]) || 0;
-
+        const basePrice = Number(selectedProduct.purchase_price) || 0;
         const discountedPrice = Number((basePrice * (1 - bounded / 100)).toFixed(2));
         setFormState((prev) => ({
             ...prev,
@@ -158,20 +146,15 @@ function SaleItemModal({
                             <h5>{selectedProduct?.name || 'Select a product'}</h5>
                             <div className="sale-form__modal-meta">
                                 {selectedProduct?.sku && <span>SKU: {selectedProduct.sku}</span>}
-
-                                {selectedProduct?.sale_price && (
-                                    <span>Base: {defaultCurrencyFormatter.format(Number(selectedProduct.sale_price))}</span>
-
-                                {selectedProduct?.[priceField] && (
+                                {selectedProduct?.purchase_price && (
                                     <span>
-                                        Base:{' '}
-                                        {defaultCurrencyFormatter.format(Number(selectedProduct?.[priceField]))}
+                                        Base: {currencyFormatter.format(Number(selectedProduct.purchase_price))}
                                     </span>
-
                                 )}
                                 {availableStock !== null && (
                                     <span>
-                                        Stock: <Badge bg={availableStock > 0 ? 'success' : 'danger'}>{availableStock}</Badge>
+                                        Stock:{' '}
+                                        <Badge bg={availableStock > 0 ? 'success' : 'danger'}>{availableStock}</Badge>
                                     </span>
                                 )}
                             </div>
@@ -186,7 +169,7 @@ function SaleItemModal({
                     </div>
                     <Row className="gy-3">
                         <Col md={4}>
-                            <Form.Group controlId="itemQuantity">
+                            <Form.Group controlId="purchaseItemQuantity">
                                 <Form.Label>Quantity</Form.Label>
                                 <Form.Control
                                     type="number"
@@ -198,7 +181,7 @@ function SaleItemModal({
                             </Form.Group>
                         </Col>
                         <Col md={4}>
-                            <Form.Group controlId="itemWarehouse">
+                            <Form.Group controlId="purchaseItemWarehouse">
                                 <Form.Label>Warehouse</Form.Label>
                                 <Form.Select
                                     value={formState.warehouse_id}
@@ -215,7 +198,7 @@ function SaleItemModal({
                             </Form.Group>
                         </Col>
                         <Col md={4}>
-                            <Form.Group controlId="itemDiscount">
+                            <Form.Group controlId="purchaseItemDiscount">
                                 <Form.Label>Discount %</Form.Label>
                                 <Form.Control
                                     type="number"
@@ -224,21 +207,13 @@ function SaleItemModal({
                                     step="0.1"
                                     value={formState.discount}
                                     onChange={(event) => handleDiscountChange(event.target.value)}
-
                                     disabled={!selectedProduct}
                                 />
-
-                                    disabled={!selectedProduct || priceField !== 'sale_price'}
-                                />
-                                {priceField !== 'sale_price' && (
-                                    <Form.Text muted>Discounts are not applied on supplier purchases.</Form.Text>
-                                )}
-
                             </Form.Group>
                         </Col>
                         <Col md={6}>
-                            <Form.Group controlId="itemUnitPrice">
-                                <Form.Label>Unit Price</Form.Label>
+                            <Form.Group controlId="purchaseItemUnitPrice">
+                                <Form.Label>Unit Cost</Form.Label>
                                 <Form.Control
                                     type="number"
                                     step="0.01"
@@ -250,7 +225,7 @@ function SaleItemModal({
                             </Form.Group>
                         </Col>
                         <Col md={6}>
-                            <Form.Group controlId="itemNote">
+                            <Form.Group controlId="purchaseItemNote">
                                 <Form.Label>Note</Form.Label>
                                 <Form.Control
                                     type="text"
@@ -264,11 +239,13 @@ function SaleItemModal({
                     <div className="sale-form__modal-summary">
                         <div>
                             <span className="sale-form__modal-summary-label">Line total</span>
-                            <span className="sale-form__modal-summary-value">{defaultCurrencyFormatter.format(lineTotal)}</span>
+                            <span className="sale-form__modal-summary-value">{currencyFormatter.format(lineTotal)}</span>
                         </div>
                         <div>
                             <span className="sale-form__modal-summary-label">Discount</span>
-                            <span className="sale-form__modal-summary-value">{`${Number(formState.discount || 0).toFixed(2)}%`}</span>
+                            <span className="sale-form__modal-summary-value">
+                                {`${Number(formState.discount || 0).toFixed(2)}%`}
+                            </span>
                         </div>
                     </div>
                     {!warehouses.length && (
@@ -290,7 +267,7 @@ function SaleItemModal({
     );
 }
 
-SaleItemModal.propTypes = {
+PurchaseItemModal.propTypes = {
     show: PropTypes.bool.isRequired,
     onHide: PropTypes.func.isRequired,
     onSave: PropTypes.func.isRequired,
@@ -307,11 +284,7 @@ SaleItemModal.propTypes = {
             id: PropTypes.number.isRequired,
             name: PropTypes.string.isRequired,
             sku: PropTypes.string,
-            sale_price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-
-
             purchase_price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-
             image: PropTypes.string,
             warehouse_quantities: PropTypes.arrayOf(
                 PropTypes.shape({
@@ -329,18 +302,12 @@ SaleItemModal.propTypes = {
     ).isRequired,
     currency: PropTypes.string.isRequired,
     imageBaseUrl: PropTypes.string,
-
-
-    priceField: PropTypes.oneOf(['sale_price', 'purchase_price']),
-
 };
 
-SaleItemModal.defaultProps = {
+PurchaseItemModal.defaultProps = {
     initialItem: null,
     imageBaseUrl: '',
-
-
-    priceField: 'sale_price',
 };
 
-export default SaleItemModal;
+export default PurchaseItemModal;
+
