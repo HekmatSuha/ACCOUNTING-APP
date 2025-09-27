@@ -213,6 +213,7 @@
     background: linear-gradient(135deg, #3a7bd5 0%, #3a6073 100%);
     color: #fff;
     padding: 1.5rem;
+
     display: flex;
     align-items: flex-start;
     justify-content: space-between;

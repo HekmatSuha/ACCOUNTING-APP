@@ -66,13 +66,17 @@ function SaleFormPage() {
         return apiBase.replace(/\/?api\/?$/, '');
     }, []);
 
+
+
     const priceField = 'sale_price';
     const allowDiscounts = true;
+
 
     const getProductById = useCallback((productId) => {
         if (!productId) return null;
         return allProducts.find((p) => p.id === Number(productId)) || null;
     }, [allProducts]);
+
 
     useEffect(() => {
         if (!isSupplierSale) return;
@@ -89,11 +93,16 @@ function SaleFormPage() {
         );
     }, [allProducts, isSupplierSale, priceField]);
 
+
     const openCreateItemModal = (product = null) => {
         const defaultItem = {
             product_id: product?.id || '',
             quantity: product ? 1 : 1,
+
+            unit_price: product ? Number(product.sale_price) : 0,
+
             unit_price: product ? Number(product[priceField]) || 0 : 0,
+
             warehouse_id: warehouses[0]?.id || '',
             discount: 0,
             note: '',
@@ -115,7 +124,11 @@ function SaleFormPage() {
             quantity: Number(item.quantity),
             unit_price: Number(item.unit_price),
             warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : warehouses[0]?.id || '',
+
+            discount: Number(item.discount) || 0,
+
             discount: allowDiscounts ? Number(item.discount) || 0 : 0,
+
             note: item.note || '',
         };
         setLineItems((prev) => {
@@ -148,6 +161,12 @@ function SaleFormPage() {
                     return acc;
                 }
                 const product = getProductById(item.product_id);
+                const basePrice = Number(product?.sale_price) || Number(item.unit_price) || 0;
+                const quantity = Number(item.quantity) || 0;
+                const lineBase = basePrice * quantity;
+                const lineNet = Number(item.unit_price || 0) * quantity;
+                const lineDiscount = lineBase - lineNet;
+
                 const basePrice = Number(product?.[priceField]) || Number(item.unit_price) || 0;
                 const quantity = Number(item.quantity) || 0;
                 const lineBase = basePrice * quantity;
@@ -162,6 +181,9 @@ function SaleFormPage() {
             },
             { base: 0, discount: 0, net: 0 }
         );
+    }, [getProductById, lineItems]);
+
+    const hasLineItems = lineItems.length > 0;
     }, [allowDiscounts, getProductById, lineItems, priceField]);
 
     const hasLineItems = lineItems.some((item) => item.product_id);
@@ -186,6 +208,7 @@ function SaleFormPage() {
                     quantity: Number(item.quantity),
                     unit_price: Number(item.unit_price),
                 };
+                if (!isOffer) {
                 if (transactionKind !== 'offer') {
                     base.warehouse_id = Number(item.warehouse_id);
                 }
@@ -193,12 +216,16 @@ function SaleFormPage() {
             });
 
         if (payloadItems.length === 0) {
+            setFormError('Add at least one product before saving.');
+
             setFormError('Add at least one product before saving this transaction.');
             return;
         }
 
         const payload = { items: payloadItems };
         let url;
+        if (isOffer) {
+
         if (transactionKind === 'offer') {
             url = `/customers/${entityId}/offers/`;
             payload.details = description || undefined;
@@ -219,6 +246,9 @@ function SaleFormPage() {
             await axiosInstance.post(url, payload);
             navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`);
         } catch (error) {
+            console.error('Failed to create sale', error.response?.data);
+            setFormError(error.response?.data?.detail || 'Failed to save the sale.');
+
             console.error('Failed to create transaction', error.response?.data);
             setFormError(error.response?.data?.detail || 'Failed to save the transaction.');
         } finally {
@@ -244,6 +274,10 @@ function SaleFormPage() {
                     <Col xl={4} lg={5} className="mb-4">
                         <Card className="sale-form__sidebar-card">
                             <Card.Header>
+                                <div className="sale-form__sidebar-title">
+                                    <div className="sale-form__sidebar-label">{isOffer ? 'Offer' : 'Sale'} Summary</div>
+                                    <div className="sale-form__sidebar-entity">{customer.name}</div>
+
                                 <div className="sale-form__sidebar-header">
                                     <div className="sale-form__sidebar-title">
                                         <div className="sale-form__sidebar-label">{transactionLabel} Summary</div>
@@ -285,6 +319,8 @@ function SaleFormPage() {
                                     </Col>
                                     <Col md={6}>
                                         <Form.Group controlId="saleDate">
+                                            <Form.Label>{isOffer ? 'Offer Date' : 'Sale Date'}</Form.Label>
+
                                             <Form.Label>{saleDateLabel}</Form.Label>
                                             <Form.Control
                                                 type="date"
@@ -295,6 +331,8 @@ function SaleFormPage() {
                                     </Col>
                                     <Col md={6}>
                                         <Form.Group controlId="invoiceDate">
+                                            <Form.Label>Invoice Date</Form.Label>
+
                                             <Form.Label>{invoiceDateLabel}</Form.Label>
                                             <Form.Control
                                                 type="date"
@@ -305,6 +343,8 @@ function SaleFormPage() {
                                     </Col>
                                     <Col md={6}>
                                         <Form.Group controlId="invoiceNumber">
+                                            <Form.Label>Invoice No</Form.Label>
+
                                             <Form.Label>{invoiceNumberLabel}</Form.Label>
                                             <Form.Control
                                                 type="text"
@@ -332,6 +372,16 @@ function SaleFormPage() {
                                         <span>Subtotal</span>
                                         <span>{formatCurrency(totals.base)}</span>
                                     </div>
+                                    <div className="sale-form__summary-row">
+                                        <span>Discount</span>
+                                        <span>{formatCurrency(totals.discount)}</span>
+                                    </div>
+                                    <div className="sale-form__summary-row sale-form__summary-row--strong">
+                                        <span>Net Total</span>
+                                        <span>{formatCurrency(totals.net)}</span>
+                                    </div>
+
+                                    </div>
                                     {allowDiscounts && (
                                         <div className="sale-form__summary-row">
                                             <span>Discount</span>
@@ -351,6 +401,8 @@ function SaleFormPage() {
                                         variant="success"
                                         disabled={!hasWarehouses || !hasLineItems || isSubmitting}
                                     >
+                                        {isOffer ? 'Save Offer' : 'Save Sale'}
+
                                         {submitLabel}
                                     </Button>
                                     <Button
@@ -370,6 +422,8 @@ function SaleFormPage() {
                                 <div className="sale-form__items-header">
                                     <div>
                                         <h5 className="mb-0">Products &amp; Services</h5>
+                                        <small className="text-muted">Add items from your catalog to this {isOffer ? 'offer' : 'sale'}.</small>
+
                                         <small className="text-muted">
                                             Add items from your catalog to this {transactionLabel.toLowerCase()}.
                                         </small>
@@ -398,6 +452,8 @@ function SaleFormPage() {
                             <Card.Body>
                                 {!hasWarehouses && (
                                     <Alert variant="warning" className="mb-3">
+                                        No warehouses available. Please create a warehouse before recording sales.
+
                                         No warehouses available. Please create a warehouse before recording this transaction.
                                     </Alert>
                                 )}
@@ -424,6 +480,8 @@ function SaleFormPage() {
                                             {lineItems.length === 0 && (
                                                 <tr>
                                                     <td colSpan={8} className="text-center text-muted py-4">
+                                                        Add products using the search above to build this {isOffer ? 'offer' : 'sale'}.
+
                                                         Add products using the search above to build this {transactionLabel.toLowerCase()}.
                                                     </td>
                                                 </tr>
@@ -507,6 +565,7 @@ function SaleFormPage() {
                 warehouses={warehouses}
                 currency={customer.currency}
                 imageBaseUrl={baseApiUrl}
+
                 priceField={priceField}
             />
         </Container>
