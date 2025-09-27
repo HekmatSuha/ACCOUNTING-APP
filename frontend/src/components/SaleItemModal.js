@@ -5,8 +5,6 @@ import PropTypes from 'prop-types';
 import { Alert, Badge, Button, Form, Modal, Row, Col, Stack } from 'react-bootstrap';
 import ProductSearchSelect from './ProductSearchSelect';
 
-function SaleItemModal({ show, onHide, onSave, initialItem, products, warehouses, currency, imageBaseUrl }) {
-
 function SaleItemModal({
     show,
     onHide,
@@ -18,7 +16,6 @@ function SaleItemModal({
     imageBaseUrl,
     priceField,
 }) {
-
     const [formState, setFormState] = useState({
         product_id: '',
         quantity: 1,
@@ -50,6 +47,15 @@ function SaleItemModal({
         return new Intl.NumberFormat('en-US', { style: 'currency', currency });
     }, [currency]);
 
+    const resolvePrice = (product) => {
+        if (!product) return 0;
+        const value = product?.[priceField];
+        if (value !== undefined && value !== null && value !== '') {
+            return Number(value) || 0;
+        }
+        return Number(product.sale_price) || 0;
+    };
+
     const handleProductSelect = (product) => {
         if (!product) {
             setFormState((prev) => ({
@@ -65,11 +71,7 @@ function SaleItemModal({
             ...prev,
             product_id: product.id,
             quantity: prev.quantity || 1,
-
-            unit_price: Number(product.sale_price) || 0,
-
-            unit_price: Number(product[priceField]) || 0,
-
+            unit_price: resolvePrice(product),
             discount: 0,
             warehouse_id: defaultWarehouse,
         }));
@@ -82,10 +84,12 @@ function SaleItemModal({
             return;
         }
 
-        const basePrice = Number(selectedProduct.sale_price) || 0;
+        if (priceField !== 'sale_price') {
+            setFormState((prev) => ({ ...prev, discount: bounded }));
+            return;
+        }
 
-        const basePrice = Number(selectedProduct?.[priceField]) || 0;
-
+        const basePrice = resolvePrice(selectedProduct);
         const discountedPrice = Number((basePrice * (1 - bounded / 100)).toFixed(2));
         setFormState((prev) => ({
             ...prev,
@@ -129,6 +133,8 @@ function SaleItemModal({
         (formState.warehouse_id || warehouses.length === 0)
     );
 
+    const basePriceValue = selectedProduct ? resolvePrice(selectedProduct) : null;
+
     const handleSave = () => {
         if (!canSave) return;
         onSave({
@@ -158,16 +164,8 @@ function SaleItemModal({
                             <h5>{selectedProduct?.name || 'Select a product'}</h5>
                             <div className="sale-form__modal-meta">
                                 {selectedProduct?.sku && <span>SKU: {selectedProduct.sku}</span>}
-
-                                {selectedProduct?.sale_price && (
-                                    <span>Base: {defaultCurrencyFormatter.format(Number(selectedProduct.sale_price))}</span>
-
-                                {selectedProduct?.[priceField] && (
-                                    <span>
-                                        Base:{' '}
-                                        {defaultCurrencyFormatter.format(Number(selectedProduct?.[priceField]))}
-                                    </span>
-
+                                {basePriceValue !== null && !Number.isNaN(basePriceValue) && (
+                                    <span>Base: {defaultCurrencyFormatter.format(basePriceValue)}</span>
                                 )}
                                 {availableStock !== null && (
                                     <span>
@@ -224,16 +222,11 @@ function SaleItemModal({
                                     step="0.1"
                                     value={formState.discount}
                                     onChange={(event) => handleDiscountChange(event.target.value)}
-
-                                    disabled={!selectedProduct}
-                                />
-
                                     disabled={!selectedProduct || priceField !== 'sale_price'}
                                 />
                                 {priceField !== 'sale_price' && (
                                     <Form.Text muted>Discounts are not applied on supplier purchases.</Form.Text>
                                 )}
-
                             </Form.Group>
                         </Col>
                         <Col md={6}>
@@ -264,11 +257,15 @@ function SaleItemModal({
                     <div className="sale-form__modal-summary">
                         <div>
                             <span className="sale-form__modal-summary-label">Line total</span>
-                            <span className="sale-form__modal-summary-value">{defaultCurrencyFormatter.format(lineTotal)}</span>
+                            <span className="sale-form__modal-summary-value">
+                                {defaultCurrencyFormatter.format(lineTotal)}
+                            </span>
                         </div>
                         <div>
                             <span className="sale-form__modal-summary-label">Discount</span>
-                            <span className="sale-form__modal-summary-value">{`${Number(formState.discount || 0).toFixed(2)}%`}</span>
+                            <span className="sale-form__modal-summary-value">
+                                {`${Number(formState.discount || 0).toFixed(2)}%`}
+                            </span>
                         </div>
                     </div>
                     {!warehouses.length && (
@@ -308,10 +305,7 @@ SaleItemModal.propTypes = {
             name: PropTypes.string.isRequired,
             sku: PropTypes.string,
             sale_price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-
-
             purchase_price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-
             image: PropTypes.string,
             warehouse_quantities: PropTypes.arrayOf(
                 PropTypes.shape({
@@ -329,17 +323,12 @@ SaleItemModal.propTypes = {
     ).isRequired,
     currency: PropTypes.string.isRequired,
     imageBaseUrl: PropTypes.string,
-
-
     priceField: PropTypes.oneOf(['sale_price', 'purchase_price']),
-
 };
 
 SaleItemModal.defaultProps = {
     initialItem: null,
     imageBaseUrl: '',
-
-
     priceField: 'sale_price',
 };
 
