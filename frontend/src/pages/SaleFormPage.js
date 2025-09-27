@@ -1,13 +1,14 @@
 // frontend/src/pages/SaleFormPage.js
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Stack, Table } from 'react-bootstrap';
+import { PencilSquare, Plus, Trash } from 'react-bootstrap-icons';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Alert, Image, Badge } from 'react-bootstrap';
-import { Trash } from 'react-bootstrap-icons';
 import '../styles/datatable.css';
 import '../styles/saleForm.css';
 import ProductSearchSelect from '../components/ProductSearchSelect';
+import SaleItemModal from '../components/SaleItemModal';
 
 function SaleFormPage() {
     const { customerId, supplierId } = useParams();
@@ -21,10 +22,17 @@ function SaleFormPage() {
     const [allProducts, setAllProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
     const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
-    const [lineItems, setLineItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, warehouse_id: '', discount: 0 }]);
-    
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+    const [invoiceNumber, setInvoiceNumber] = useState('');
+    const [documentNumber, setDocumentNumber] = useState('');
+    const [description, setDescription] = useState('');
+    const [lineItems, setLineItems] = useState([]);
+    const [formError, setFormError] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [itemModalState, setItemModalState] = useState({ show: false, index: null, initialItem: null });
+    const [quickSearchKey, setQuickSearchKey] = useState(0);
+
     useEffect(() => {
-        // Fetch customer/supplier and all products
         const fetchData = async () => {
             try {
                 const [custRes, prodRes, warehouseRes] = await Promise.all([
@@ -45,10 +53,12 @@ function SaleFormPage() {
 
     useEffect(() => {
         if (warehouses.length === 0) return;
-        setLineItems(prev => prev.map(item => ({
-            ...item,
-            warehouse_id: item.warehouse_id || warehouses[0]?.id || '',
-        })));
+        setLineItems((prev) =>
+            prev.map((item) => ({
+                ...item,
+                warehouse_id: item.warehouse_id || warehouses[0]?.id || '',
+            }))
+        );
     }, [warehouses]);
 
     const baseApiUrl = useMemo(() => {
@@ -56,111 +66,114 @@ function SaleFormPage() {
         return apiBase.replace(/\/?api\/?$/, '');
     }, []);
 
-    const getProductById = (productId) => {
+    const getProductById = useCallback((productId) => {
         if (!productId) return null;
-        return allProducts.find(p => p.id === Number(productId)) || null;
+        return allProducts.find((p) => p.id === Number(productId)) || null;
+    }, [allProducts]);
+
+    const openCreateItemModal = (product = null) => {
+        const defaultItem = {
+            product_id: product?.id || '',
+            quantity: product ? 1 : 1,
+            unit_price: product ? Number(product.sale_price) : 0,
+            warehouse_id: warehouses[0]?.id || '',
+            discount: 0,
+            note: '',
+        };
+        setItemModalState({ show: true, index: null, initialItem: defaultItem });
     };
 
-    const handleProductSelect = (index, product) => {
-        setLineItems(prev => {
-            const updated = [...prev];
-            const warehouseId = updated[index].warehouse_id || warehouses[0]?.id || '';
-            updated[index] = {
-                ...updated[index],
-                product_id: product?.id || '',
-                unit_price: product ? Number(product.sale_price) : 0,
-                discount: 0,
-                warehouse_id: warehouseId,
-            };
-            return updated;
-        });
+    const openEditItemModal = (index) => {
+        setItemModalState({ show: true, index, initialItem: lineItems[index] });
     };
 
-    const handleLineItemChange = (index, event) => {
-        const { name } = event.target;
-        let { value } = event.target;
-        setLineItems(prev => {
-            const values = [...prev];
-            const current = { ...values[index] };
+    const closeItemModal = () => {
+        setItemModalState({ show: false, index: null, initialItem: null });
+    };
 
-            if (name === 'quantity' || name === 'unit_price' || name === 'discount') {
-                value = Number(value);
+    const handleSaveItem = (item, index) => {
+        const normalized = {
+            product_id: Number(item.product_id),
+            quantity: Number(item.quantity),
+            unit_price: Number(item.unit_price),
+            warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : warehouses[0]?.id || '',
+            discount: Number(item.discount) || 0,
+            note: item.note || '',
+        };
+        setLineItems((prev) => {
+            if (index === null || typeof index === 'undefined') {
+                return [...prev, normalized];
             }
-
-            if (name === 'discount') {
-                const boundedDiscount = Math.min(Math.max(value || 0, 0), 100);
-                current.discount = boundedDiscount;
-                const selectedProduct = getProductById(current.product_id);
-                if (selectedProduct) {
-                    const basePrice = Number(selectedProduct.sale_price) || 0;
-                    current.unit_price = Number((basePrice * (1 - boundedDiscount / 100)).toFixed(2));
-                }
-            } else if (name === 'unit_price') {
-                current.unit_price = value || 0;
-                current.discount = 0;
-            } else if (name === 'quantity') {
-                current.quantity = value ? Math.max(value, 0) : 0;
-            } else if (name === 'warehouse_id') {
-                current.warehouse_id = value;
-            } else if (name === 'product_id') {
-                current.product_id = value;
-                const selectedProduct = getProductById(value);
-                current.unit_price = selectedProduct ? Number(selectedProduct.sale_price) : 0;
-                current.discount = 0;
-            }
-
-            values[index] = current;
-            return values;
+            return prev.map((existing, idx) => (idx === index ? normalized : existing));
         });
-    };
-
-    const handleAddItem = () => {
-        setLineItems([
-            ...lineItems,
-            {
-                product_id: '',
-                quantity: 1,
-                unit_price: 0,
-                warehouse_id: warehouses[0]?.id || '',
-                discount: 0,
-            },
-        ]);
+        closeItemModal();
     };
 
     const handleRemoveItem = (index) => {
-        const values = [...lineItems];
-        values.splice(index, 1);
-        setLineItems(values);
+        setLineItems((prev) => prev.filter((_, idx) => idx !== index));
     };
 
-    const calculateTotal = () => {
-        return lineItems.reduce((total, item) => total + (Number(item.quantity) * Number(item.unit_price || 0)), 0);
+    const handleQuickProductSelect = (product) => {
+        if (!product) return;
+        if (!warehouses.length) {
+            setFormError('Please create a warehouse before adding items.');
+            return;
+        }
+        openCreateItemModal(product);
+        setQuickSearchKey((prev) => prev + 1);
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        // Base payload used for both sales and offers
+    const totals = useMemo(() => {
+        return lineItems.reduce(
+            (acc, item) => {
+                if (!item.product_id) {
+                    return acc;
+                }
+                const product = getProductById(item.product_id);
+                const basePrice = Number(product?.sale_price) || Number(item.unit_price) || 0;
+                const quantity = Number(item.quantity) || 0;
+                const lineBase = basePrice * quantity;
+                const lineNet = Number(item.unit_price || 0) * quantity;
+                const lineDiscount = lineBase - lineNet;
+
+                return {
+                    base: acc.base + lineBase,
+                    discount: acc.discount + lineDiscount,
+                    net: acc.net + lineNet,
+                };
+            },
+            { base: 0, discount: 0, net: 0 }
+        );
+    }, [getProductById, lineItems]);
+
+    const hasLineItems = lineItems.length > 0;
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setFormError(null);
+
         const payloadItems = lineItems
-            .filter(item => item.product_id)
-            .map(item => {
+            .filter((item) => item.product_id)
+            .map((item) => {
                 const base = {
-                    product_id: parseInt(item.product_id, 10),
+                    product_id: Number(item.product_id),
                     quantity: Number(item.quantity),
-                    unit_price: parseFloat(item.unit_price),
+                    unit_price: Number(item.unit_price),
                 };
                 if (!isOffer) {
-                    base.warehouse_id = parseInt(item.warehouse_id, 10);
+                    base.warehouse_id = Number(item.warehouse_id);
                 }
                 return base;
             });
 
-        const payload = { items: payloadItems };
+        if (payloadItems.length === 0) {
+            setFormError('Add at least one product before saving.');
+            return;
+        }
 
-        // Choose the correct endpoint and augment payload as needed
+        const payload = { items: payloadItems };
         let url;
         if (isOffer) {
-            // When creating an offer, use the nested customer route and
-            // avoid sending sale-specific fields like ``sale_date``.
             url = `/customers/${entityId}/offers/`;
         } else {
             url = '/sales/';
@@ -169,14 +182,17 @@ function SaleFormPage() {
         }
 
         try {
+            setIsSubmitting(true);
             await axiosInstance.post(url, payload);
-            // Redirect back to the detail page after creation
             navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`);
         } catch (error) {
-            console.error("Failed to create sale", error.response?.data);
+            console.error('Failed to create sale', error.response?.data);
+            setFormError(error.response?.data?.detail || 'Failed to save the sale.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
-    
+
     if (!customer) return <div>Loading...</div>;
 
     const hasWarehouses = warehouses.length > 0;
@@ -189,174 +205,256 @@ function SaleFormPage() {
     };
 
     return (
-        <Container>
-            <Card>
-                <Card.Header as="h4">{isOffer ? `New Offer for ${customer.name}` : `New Sale for ${customer.name}`}</Card.Header>
-                <Card.Body>
-                    <Form onSubmit={handleSubmit}>
-                        <Row className="mb-3">
-                            <Col md={4}>
-                                <Form.Group>
-                                    <Form.Label>{isOffer ? 'Offer Date' : 'Sale Date'}</Form.Label>
-                                    <Form.Control type="date" value={saleDate} onChange={e => setSaleDate(e.target.value)} />
-                                </Form.Group>
-                            </Col>
-                        </Row>
-
-                        <h5>Items</h5>
-                        {!hasWarehouses && (
-                            <Alert variant="warning">
-                                No warehouses available. Please create a warehouse before recording sales.
-                            </Alert>
-                        )}
-                        <div className="sale-items">
-                            <div className="sale-items__header">
-                                <span>Product</span>
-                                <span>Quantity</span>
-                                <span>Warehouse</span>
-                                <span>Stock</span>
-                                <span>Discount</span>
-                                <span>Unit Price</span>
-                                <span>Total</span>
-                                <span></span>
-                            </div>
-                            {lineItems.map((item, index) => {
-                                const selectedProduct = getProductById(item.product_id);
-                                const warehouseQuantity = selectedProduct?.warehouse_quantities?.find(
-                                    (stock) => stock.warehouse_id === Number(item.warehouse_id)
-                                );
-                                const stockRemaining = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
-                                const productImage = selectedProduct?.image
-                                    ? (selectedProduct.image.startsWith('http')
-                                        ? selectedProduct.image
-                                        : `${baseApiUrl}${selectedProduct.image}`)
-                                    : null;
-
-                                return (
-                                    <div className="sale-items__row" key={index}>
-                                        <div className="sale-items__cell sale-items__cell--product" data-label="Product">
-                                            <div className="sale-items__product">
-                                                <div className="sale-form__product-thumb">
-                                                    {productImage ? (
-                                                        <Image src={productImage} rounded thumbnail alt={selectedProduct?.name || 'Product preview'} />
-                                                    ) : (
-                                                        <div className="sale-form__product-placeholder">No Image</div>
-                                                    )}
-                                                </div>
-                                                <div className="sale-items__product-details">
-                                                    <ProductSearchSelect
-                                                        products={allProducts}
-                                                        value={selectedProduct}
-                                                        onSelect={(product) => handleProductSelect(index, product)}
-                                                        placeholder="Search name or SKU"
-                                                        imageBaseUrl={baseApiUrl}
-                                                    />
-                                                    {selectedProduct ? (
-                                                        <div className="sale-items__meta">
-                                                            <span>{selectedProduct.sku ? `SKU: ${selectedProduct.sku}` : 'No SKU assigned'}</span>
-                                                            <span>Base price: {formatCurrency(Number(selectedProduct.sale_price))}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="sale-items__meta">Choose a product to see details</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="sale-items__cell" data-label="Quantity">
+        <Container className="sale-form__container">
+            <Form onSubmit={handleSubmit}>
+                <Row className="sale-form__layout">
+                    <Col xl={4} lg={5} className="mb-4">
+                        <Card className="sale-form__sidebar-card">
+                            <Card.Header>
+                                <div className="sale-form__sidebar-title">
+                                    <div className="sale-form__sidebar-label">{isOffer ? 'Offer' : 'Sale'} Summary</div>
+                                    <div className="sale-form__sidebar-entity">{customer.name}</div>
+                                </div>
+                            </Card.Header>
+                            <Card.Body>
+                                <div className="sale-form__entity-meta">
+                                    {customer.phone && <span>{customer.phone}</span>}
+                                    {customer.email && <span>{customer.email}</span>}
+                                    <span>{customer.currency} account</span>
+                                </div>
+                                <Row className="gy-3 mt-1">
+                                    <Col xs={12}>
+                                        <Form.Group controlId="documentNumber">
+                                            <Form.Label>Document No</Form.Label>
                                             <Form.Control
-                                                type="number"
-                                                name="quantity"
-                                                min="0"
-                                                step="0.01"
-                                                value={item.quantity}
-                                                onChange={(e) => handleLineItemChange(index, e)}
+                                                type="text"
+                                                value={documentNumber}
+                                                placeholder="Auto"
+                                                onChange={(event) => setDocumentNumber(event.target.value)}
                                             />
-                                        </div>
-                                        <div className="sale-items__cell" data-label="Warehouse">
-                                            <Form.Select
-                                                name="warehouse_id"
-                                                value={item.warehouse_id}
-                                                onChange={(e) => handleLineItemChange(index, e)}
-                                                disabled={!hasWarehouses}
-                                            >
-                                                <option value="">Select Warehouse</option>
-                                                {warehouses.map((warehouse) => (
-                                                    <option key={warehouse.id} value={warehouse.id}>
-                                                        {warehouse.name}
-                                                    </option>
-                                                ))}
-                                            </Form.Select>
-                                        </div>
-                                        <div className="sale-items__cell" data-label="Stock">
-                                            {selectedProduct ? (
-                                                <Badge bg={stockRemaining && stockRemaining > 0 ? 'success' : 'danger'}>
-                                                    {stockRemaining !== null ? `${stockRemaining} available` : 'No data'}
-                                                </Badge>
-                                            ) : (
-                                                <span className="text-muted">Select a product</span>
-                                            )}
-                                        </div>
-                                        <div className="sale-items__cell" data-label="Discount">
-                                            <div className="sale-items__input-group">
-                                                <Form.Control
-                                                    type="number"
-                                                    name="discount"
-                                                    min="0"
-                                                    max="100"
-                                                    step="0.1"
-                                                    value={item.discount}
-                                                    onChange={(e) => handleLineItemChange(index, e)}
-                                                    placeholder="0"
-                                                    disabled={!selectedProduct}
-                                                />
-                                                <span className="sale-items__input-addon">%</span>
-                                            </div>
-                                        </div>
-                                        <div className="sale-items__cell" data-label="Unit Price">
-                                            <div className="sale-items__input-group">
-                                                <Form.Control
-                                                    type="number"
-                                                    step="0.01"
-                                                    name="unit_price"
-                                                    value={item.unit_price}
-                                                    onChange={(e) => handleLineItemChange(index, e)}
-                                                    disabled={!selectedProduct}
-                                                />
-                                                <span className="sale-items__input-addon">{customer.currency}</span>
-                                            </div>
-                                            <Form.Text muted>Final unit price</Form.Text>
-                                        </div>
-                                        <div className="sale-items__cell sale-items__cell--total" data-label="Line Total">
-                                            {formatCurrency(Number(item.quantity) * Number(item.unit_price || 0))}
-                                        </div>
-                                        <div className="sale-items__cell sale-items__cell--actions" data-label="Actions">
-                                            <Button variant="outline-danger" onClick={() => handleRemoveItem(index)}>
-                                                <Trash />
-                                            </Button>
-                                        </div>
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group controlId="saleDate">
+                                            <Form.Label>{isOffer ? 'Offer Date' : 'Sale Date'}</Form.Label>
+                                            <Form.Control
+                                                type="date"
+                                                value={saleDate}
+                                                onChange={(event) => setSaleDate(event.target.value)}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group controlId="invoiceDate">
+                                            <Form.Label>Invoice Date</Form.Label>
+                                            <Form.Control
+                                                type="date"
+                                                value={invoiceDate}
+                                                onChange={(event) => setInvoiceDate(event.target.value)}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group controlId="invoiceNumber">
+                                            <Form.Label>Invoice No</Form.Label>
+                                            <Form.Control
+                                                type="text"
+                                                value={invoiceNumber}
+                                                placeholder="Auto"
+                                                onChange={(event) => setInvoiceNumber(event.target.value)}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col xs={12}>
+                                        <Form.Group controlId="description">
+                                            <Form.Label>Description</Form.Label>
+                                            <Form.Control
+                                                as="textarea"
+                                                rows={3}
+                                                value={description}
+                                                onChange={(event) => setDescription(event.target.value)}
+                                                placeholder="Optional notes about this transaction"
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+                                <div className="sale-form__summary mt-4">
+                                    <div className="sale-form__summary-row">
+                                        <span>Subtotal</span>
+                                        <span>{formatCurrency(totals.base)}</span>
                                     </div>
-                                );
-                            })}
-                        </div>
-                        <Button className="sale-items__add" variant="outline-primary" onClick={handleAddItem} disabled={!hasWarehouses}>+ Add Item</Button>
+                                    <div className="sale-form__summary-row">
+                                        <span>Discount</span>
+                                        <span>{formatCurrency(totals.discount)}</span>
+                                    </div>
+                                    <div className="sale-form__summary-row sale-form__summary-row--strong">
+                                        <span>Net Total</span>
+                                        <span>{formatCurrency(totals.net)}</span>
+                                    </div>
+                                </div>
+                            </Card.Body>
+                            <Card.Footer>
+                                <Stack gap={2}>
+                                    <Button
+                                        type="submit"
+                                        variant="success"
+                                        disabled={!hasWarehouses || !hasLineItems || isSubmitting}
+                                    >
+                                        {isOffer ? 'Save Offer' : 'Save Sale'}
+                                    </Button>
+                                    <Button
+                                        variant="outline-secondary"
+                                        onClick={() => navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`)}
+                                        type="button"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </Stack>
+                            </Card.Footer>
+                        </Card>
+                    </Col>
+                    <Col xl={8} lg={7}>
+                        <Card className="sale-form__items-card">
+                            <Card.Header>
+                                <div className="sale-form__items-header">
+                                    <div>
+                                        <h5 className="mb-0">Products &amp; Services</h5>
+                                        <small className="text-muted">Add items from your catalog to this {isOffer ? 'offer' : 'sale'}.</small>
+                                    </div>
+                                    <div className="sale-form__quick-add">
+                                        <ProductSearchSelect
+                                            key={quickSearchKey}
+                                            products={allProducts}
+                                            value={null}
+                                            onSelect={handleQuickProductSelect}
+                                            placeholder="Search products to add"
+                                            imageBaseUrl={baseApiUrl}
+                                        />
+                                        <Button
+                                            type="button"
+                                            className="mt-2 mt-sm-0"
+                                            variant="outline-primary"
+                                            onClick={() => openCreateItemModal()}
+                                            disabled={!hasWarehouses}
+                                        >
+                                            <Plus className="me-1" /> New Line
+                                        </Button>
+                                    </div>
+                                </div>
+                            </Card.Header>
+                            <Card.Body>
+                                {!hasWarehouses && (
+                                    <Alert variant="warning" className="mb-3">
+                                        No warehouses available. Please create a warehouse before recording sales.
+                                    </Alert>
+                                )}
+                                {formError && (
+                                    <Alert variant="danger" className="mb-3" onClose={() => setFormError(null)} dismissible>
+                                        {formError}
+                                    </Alert>
+                                )}
+                                <div className="table-responsive">
+                                    <Table hover borderless className="sale-items-table align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Warehouse</th>
+                                                <th className="text-center">Stock</th>
+                                                <th className="text-center">Quantity</th>
+                                                <th className="text-end">Unit Price</th>
+                                                <th className="text-center">Discount</th>
+                                                <th className="text-end">Line Total</th>
+                                                <th className="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {lineItems.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={8} className="text-center text-muted py-4">
+                                                        Add products using the search above to build this {isOffer ? 'offer' : 'sale'}.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {lineItems.map((item, index) => {
+                                                const product = getProductById(item.product_id);
+                                                const warehouse = warehouses.find((w) => w.id === Number(item.warehouse_id));
+                                                const warehouseQuantity = product?.warehouse_quantities?.find(
+                                                    (stock) => stock.warehouse_id === Number(item.warehouse_id)
+                                                );
+                                                const availableStock = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
+                                                const discountLabel = item.discount ? `${Number(item.discount).toFixed(2)}%` : '—';
+                                                const lineTotal = Number(item.quantity) * Number(item.unit_price || 0);
 
-                        <div className="d-flex justify-content-end mt-3">
-                            <h3>Total: {formatCurrency(calculateTotal())}</h3>
-                        </div>
-                        
-                        <div className="mt-4">
-                            <Button variant="success" type="submit" disabled={!hasWarehouses}>{isOffer ? 'Save Offer' : 'Save Sale'}</Button>
-                            <Button
-                                variant="light"
-                                className="ms-2"
-                                onClick={() => navigate(isSupplierSale ? `/suppliers/${entityId}` : `/customers/${entityId}`)}
-                            >
-                                Cancel
-                            </Button>
-                        </div>
-                    </Form>
-                </Card.Body>
-            </Card>
+                                                return (
+                                                    <tr key={`${item.product_id}-${index}`}>
+                                                        <td>
+                                                            <div className="sale-items-table__product">
+                                                                <div className="sale-items-table__name">{product?.name || 'Unnamed product'}</div>
+                                                                <div className="sale-items-table__meta">
+                                                                    {product?.sku && <span>SKU: {product.sku}</span>}
+                                                                    {item.note && <span>Note: {item.note}</span>}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            {warehouse ? (
+                                                                <span>{warehouse.name}</span>
+                                                            ) : (
+                                                                <span className="text-muted">No warehouse</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {product ? (
+                                                                <Badge bg={availableStock && availableStock > 0 ? 'success' : 'danger'}>
+                                                                    {availableStock !== null ? `${availableStock}` : 'No data'}
+                                                                </Badge>
+                                                            ) : (
+                                                                <span className="text-muted">Select a product</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="text-center">{Number(item.quantity)}</td>
+                                                        <td className="text-end">{formatCurrency(item.unit_price)}</td>
+                                                        <td className="text-center">{discountLabel}</td>
+                                                        <td className="text-end">{formatCurrency(lineTotal)}</td>
+                                                        <td className="text-end">
+                                                            <div className="sale-items-table__actions">
+                                                                <Button
+                                                                    variant="outline-secondary"
+                                                                    size="sm"
+                                                                    onClick={() => openEditItemModal(index)}
+                                                                >
+                                                                    <PencilSquare />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline-danger"
+                                                                    size="sm"
+                                                                    onClick={() => handleRemoveItem(index)}
+                                                                >
+                                                                    <Trash />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+            </Form>
+            <SaleItemModal
+                show={itemModalState.show}
+                onHide={closeItemModal}
+                onSave={(item) => handleSaveItem(item, itemModalState.index)}
+                initialItem={itemModalState.initialItem}
+                products={allProducts}
+                warehouses={warehouses}
+                currency={customer.currency}
+                imageBaseUrl={baseApiUrl}
+            />
         </Container>
     );
 }
