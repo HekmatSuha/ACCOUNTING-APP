@@ -242,3 +242,67 @@ body {
 .offcanvas.app-sidebar .btn-close:hover {
   opacity: 1;
 }
+
+/*
+ * Slim, accent-colored scrollbars for the application shell. The sidebar keeps
+ * its scrollbar almost invisible until hovered so the navigation looks clean,
+ * while the dashboard/content area gets a minimal scrollbar that becomes more
+ * vibrant on interaction.
+ */
+body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(37, 99, 235, 0.35) transparent;
+}
+
+body:hover {
+  scrollbar-color: rgba(37, 99, 235, 0.65) transparent;
+}
+
+body::-webkit-scrollbar {
+  width: 6px;
+}
+
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb {
+  background-color: rgba(37, 99, 235, 0.35);
+  border-radius: 999px;
+}
+
+body:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(37, 99, 235, 0.65);
+}
+
+.app-sidebar,
+.offcanvas.app-sidebar .offcanvas-body,
+.sidebar-submenu {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.app-sidebar:hover,
+.offcanvas.app-sidebar .offcanvas-body:hover,
+.sidebar-submenu:hover {
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+.app-sidebar::-webkit-scrollbar,
+.offcanvas.app-sidebar .offcanvas-body::-webkit-scrollbar,
+.sidebar-submenu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb,
+.offcanvas.app-sidebar .offcanvas-body::-webkit-scrollbar-thumb,
+.sidebar-submenu::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+}
+
+.app-sidebar:hover::-webkit-scrollbar-thumb,
+.offcanvas.app-sidebar .offcanvas-body:hover::-webkit-scrollbar-thumb,
+.sidebar-submenu:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.55);
+}
