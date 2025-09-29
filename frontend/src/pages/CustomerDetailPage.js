@@ -344,7 +344,7 @@ function CustomerDetailPage() {
                         <Card.Body className="p-0">
                             {payments.length > 0 ? (
                                 <Accordion alwaysOpen className="transaction-accordion">
-                                    {payments.map((payment, index) => {
+                                    {[...payments].reverse().map((payment, index) => {
                                         const paymentDate = new Date(payment.payment_date).toLocaleDateString();
                                         const paymentAmount =
                                             payment.converted_amount ??
