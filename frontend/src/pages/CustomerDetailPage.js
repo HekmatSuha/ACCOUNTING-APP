@@ -182,9 +182,9 @@ function CustomerDetailPage() {
             </Modal>
 
             {/* Transaction Lists */}
-            <Row className="g-4">
+            <Row className="g-4 align-items-start">
                 <Col md={6}>
-                    <Card className="transaction-history-card transaction-history-card--sales h-100">
+                    <Card className="transaction-history-card transaction-history-card--sales">
                         <Card.Header className="transaction-history-card__header">
                             <div>
                                 <span className="transaction-history-card__eyebrow">History</span>
@@ -310,7 +310,7 @@ function CustomerDetailPage() {
                     </Card>
                 </Col>
                 <Col md={6}>
-                    <Card className="transaction-history-card transaction-history-card--payments h-100">
+                    <Card className="transaction-history-card transaction-history-card--payments">
                         <Card.Header className="transaction-history-card__header">
                             <div>
                                 <span className="transaction-history-card__eyebrow">History</span>
