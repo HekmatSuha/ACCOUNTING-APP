@@ -6,6 +6,9 @@ import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+
+const BASE_API_URL = getBaseApiUrl();
 
 function PurchaseDetailPage() {
     const { id } = useParams();
@@ -60,17 +63,46 @@ function PurchaseDetailPage() {
                           <h5>Items Purchased</h5>
                           <div className="data-table-container">
                             <Table responsive className="data-table data-table--compact">
-                                <thead><tr><th>Product</th><th>Quantity</th><th>Warehouse</th><th>Unit Price</th><th>Line Total</th></tr></thead>
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Warehouse</th>
+                                        <th>Unit Price</th>
+                                        <th>Line Total</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    {purchase.items.map(item => (
-                                        <tr key={item.id}>
-                                            <td>{item.product_name}</td>
-                                            <td>{item.quantity}</td>
-                                            <td>{item.warehouse_name || '—'}</td>
-                                            <td>{formatCurrency(item.unit_price, purchase.original_currency || 'USD')}</td>
-                                            <td>{formatCurrency(item.line_total, purchase.original_currency || 'USD')}</td>
-                                        </tr>
-                                    ))}
+                                    {purchase.items.map(item => {
+                                        const productImage = resolveImageUrl(
+                                            item.product_image || item.product?.image,
+                                            BASE_API_URL
+                                        );
+                                        const imageInitial = getImageInitial(item.product_name);
+
+                                        return (
+                                            <tr key={item.id}>
+                                                <td>
+                                                    <div className="product-name-cell">
+                                                        <div className="product-name-cell__image">
+                                                            {productImage ? (
+                                                                <img src={productImage} alt={item.product_name} />
+                                                            ) : (
+                                                                <span>{imageInitial}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="product-name-cell__info">
+                                                            <div className="product-name-cell__name">{item.product_name}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{item.quantity}</td>
+                                                <td>{item.warehouse_name || '—'}</td>
+                                                <td>{formatCurrency(item.unit_price, purchase.original_currency || 'USD')}</td>
+                                                <td>{formatCurrency(item.line_total, purchase.original_currency || 'USD')}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </Table>
                           </div>

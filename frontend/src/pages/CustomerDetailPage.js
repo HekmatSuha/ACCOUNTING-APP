@@ -1,6 +1,6 @@
 // frontend/src/pages/CustomerDetailPage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table, Modal } from 'react-bootstrap';
@@ -10,8 +10,9 @@ import CustomerPaymentModal from '../components/CustomerPaymentModal';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
 import '../styles/transaction-history.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const BASE_API_URL = getBaseApiUrl();
 
 function CustomerDetailPage() {
     const { id } = useParams();
@@ -123,8 +124,8 @@ function CustomerDetailPage() {
             <Card className="mb-3" style={{ background: '#f5f5f5' }}>
                 <Card.Body className="d-flex align-items-center customer-header">
                     {customer.image ? (
-                        <img
-                            src={`${API_BASE_URL}${customer.image}`}
+                                <img
+                                    src={`${BASE_API_URL}${customer.image}`}
                             alt={customer.name}
                             className="rounded-circle me-3 customer-image"
                             style={{ width: '60px', height: '60px' }}
@@ -195,7 +196,7 @@ function CustomerDetailPage() {
             <Modal show={showImageModal} onHide={handleCloseImageModal} centered>
                 <Modal.Body className="text-center">
                     {customer.image && (
-                        <img src={`${API_BASE_URL}${customer.image}`} alt={customer.name} className="img-fluid" />
+                        <img src={`${BASE_API_URL}${customer.image}`} alt={customer.name} className="img-fluid" />
                     )}
                 </Modal.Body>
             </Modal>
@@ -281,16 +282,37 @@ function CustomerDetailPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {saleItems.map(item => (
-                                                                <tr key={item.id}>
-                                                                    <td>{item.product_name}</td>
-                                                                    <td>{item.quantity}</td>
-                                                                    <td>{formatCurrency(item.unit_price, customer.currency)}</td>
-                                                                    <td className="text-end">
-                                                                        {formatCurrency(item.line_total, customer.currency)}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
+                                                            {saleItems.map(item => {
+                                                                const productImage = resolveImageUrl(
+                                                                    item.product_image || item.product?.image,
+                                                                    BASE_API_URL
+                                                                );
+                                                                const imageInitial = getImageInitial(item.product_name);
+
+                                                                return (
+                                                                    <tr key={item.id}>
+                                                                        <td>
+                                                                            <div className="product-name-cell">
+                                                                                <div className="product-name-cell__image">
+                                                                                    {productImage ? (
+                                                                                        <img src={productImage} alt={item.product_name} />
+                                                                                    ) : (
+                                                                                        <span>{imageInitial}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="product-name-cell__info">
+                                                                                    <div className="product-name-cell__name">{item.product_name}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td>{item.quantity}</td>
+                                                                        <td>{formatCurrency(item.unit_price, customer.currency)}</td>
+                                                                        <td className="text-end">
+                                                                            {formatCurrency(item.line_total, customer.currency)}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
                                                         </tbody>
                                                     </Table>
                                                 </Accordion.Body>
@@ -436,16 +458,37 @@ function CustomerDetailPage() {
                                                             <th className="text-end">Line Total</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody>
-                                                        {purchase.items.map(item => (
-                                                            <tr key={item.id}>
-                                                                <td>{item.product_name}</td>
-                                                                <td>{item.quantity}</td>
-                                                                <td>{formatCurrency(item.unit_price, customer.currency)}</td>
-                                                                <td className="text-end">{formatCurrency(item.line_total, customer.currency)}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
+                                                      <tbody>
+                                                          {purchase.items.map(item => {
+                                                              const productImage = resolveImageUrl(
+                                                                  item.product_image || item.product?.image,
+                                                                  BASE_API_URL
+                                                              );
+                                                              const imageInitial = getImageInitial(item.product_name);
+
+                                                              return (
+                                                                  <tr key={item.id}>
+                                                                      <td>
+                                                                          <div className="product-name-cell">
+                                                                              <div className="product-name-cell__image">
+                                                                                  {productImage ? (
+                                                                                      <img src={productImage} alt={item.product_name} />
+                                                                                  ) : (
+                                                                                      <span>{imageInitial}</span>
+                                                                                  )}
+                                                                              </div>
+                                                                              <div className="product-name-cell__info">
+                                                                                  <div className="product-name-cell__name">{item.product_name}</div>
+                                                                              </div>
+                                                                          </div>
+                                                                      </td>
+                                                                      <td>{item.quantity}</td>
+                                                                      <td>{formatCurrency(item.unit_price, customer.currency)}</td>
+                                                                      <td className="text-end">{formatCurrency(item.line_total, customer.currency)}</td>
+                                                                  </tr>
+                                                              );
+                                                          })}
+                                                      </tbody>
                                                 </Table>
                                             </Accordion.Body>
                                         </Accordion.Item>

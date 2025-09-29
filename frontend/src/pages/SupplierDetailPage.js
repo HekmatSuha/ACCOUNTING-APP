@@ -1,6 +1,6 @@
 // frontend/src/pages/SupplierDetailPage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
@@ -10,8 +10,9 @@ import SupplierPaymentModal from '../components/SupplierPaymentModal';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
 import '../styles/transaction-history.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const BASE_API_URL = getBaseApiUrl();
 
 function SupplierDetailPage() {
     const { id } = useParams();
@@ -279,16 +280,37 @@ function SupplierDetailPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {purchaseItems.map(item => (
-                                                                <tr key={item.id}>
-                                                                    <td>{item.product_name}</td>
-                                                                    <td>{item.quantity}</td>
-                                                                    <td>{formatCurrency(item.unit_price, purchaseCurrency)}</td>
-                                                                    <td className="text-end">
-                                                                        {formatCurrency(item.line_total, purchaseCurrency)}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
+                                                            {purchaseItems.map(item => {
+                                                                const productImage = resolveImageUrl(
+                                                                    item.product_image || item.product?.image,
+                                                                    BASE_API_URL
+                                                                );
+                                                                const imageInitial = getImageInitial(item.product_name);
+
+                                                                return (
+                                                                    <tr key={item.id}>
+                                                                        <td>
+                                                                            <div className="product-name-cell">
+                                                                                <div className="product-name-cell__image">
+                                                                                    {productImage ? (
+                                                                                        <img src={productImage} alt={item.product_name} />
+                                                                                    ) : (
+                                                                                        <span>{imageInitial}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="product-name-cell__info">
+                                                                                    <div className="product-name-cell__name">{item.product_name}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td>{item.quantity}</td>
+                                                                        <td>{formatCurrency(item.unit_price, purchaseCurrency)}</td>
+                                                                        <td className="text-end">
+                                                                            {formatCurrency(item.line_total, purchaseCurrency)}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
                                                         </tbody>
                                                     </Table>
                                                 </Accordion.Body>
@@ -389,18 +411,39 @@ function SupplierDetailPage() {
                                                                 </th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody>
-                                                            {saleItems.map(item => (
-                                                                <tr key={item.id}>
-                                                                    <td>{item.product_name}</td>
-                                                                    <td>{item.quantity}</td>
-                                                                    <td>{formatCurrency(item.unit_price, saleCurrency)}</td>
-                                                                    <td className="text-end">
-                                                                        {formatCurrency(item.line_total, saleCurrency)}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
+                                                      <tbody>
+                                                          {saleItems.map(item => {
+                                                              const productImage = resolveImageUrl(
+                                                                  item.product_image || item.product?.image,
+                                                                  BASE_API_URL
+                                                              );
+                                                              const imageInitial = getImageInitial(item.product_name);
+
+                                                              return (
+                                                                  <tr key={item.id}>
+                                                                      <td>
+                                                                          <div className="product-name-cell">
+                                                                              <div className="product-name-cell__image">
+                                                                                  {productImage ? (
+                                                                                      <img src={productImage} alt={item.product_name} />
+                                                                                  ) : (
+                                                                                      <span>{imageInitial}</span>
+                                                                                  )}
+                                                                              </div>
+                                                                              <div className="product-name-cell__info">
+                                                                                  <div className="product-name-cell__name">{item.product_name}</div>
+                                                                              </div>
+                                                                          </div>
+                                                                      </td>
+                                                                      <td>{item.quantity}</td>
+                                                                      <td>{formatCurrency(item.unit_price, saleCurrency)}</td>
+                                                                      <td className="text-end">
+                                                                          {formatCurrency(item.line_total, saleCurrency)}
+                                                                      </td>
+                                                                  </tr>
+                                                              );
+                                                          })}
+                                                      </tbody>
                                                     </Table>
                                                 </Accordion.Body>
                                             </Accordion.Item>

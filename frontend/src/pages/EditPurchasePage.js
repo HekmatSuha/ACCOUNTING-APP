@@ -1,12 +1,13 @@
 // frontend/src/pages/EditPurchasePage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Stack, Table } from 'react-bootstrap';
 import { FaTrash } from 'react-icons/fa';
 import { formatCurrency } from '../utils/format';
 import '../styles/saleForm.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
 
 function EditPurchasePage() {
     const { id } = useParams();
@@ -32,6 +33,7 @@ function EditPurchasePage() {
     const [error, setError] = useState('');
 
     const hasWarehouses = warehouses.length > 0;
+    const baseApiUrl = useMemo(() => getBaseApiUrl(), []);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -325,29 +327,40 @@ function EditPurchasePage() {
                                                 );
                                                 const availableStock = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
                                                 const lineTotal = (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
+                                                const resolvedImage = resolveImageUrl(product?.image, baseApiUrl);
+                                                const imageInitial = getImageInitial(product?.name);
 
                                                 return (
                                                     <tr key={`${index}-${item.product_id || 'new'}`}>
                                                         <td>
-                                                            <div className="sale-items-table__product">
-                                                                <div className="sale-items-table__field">
-                                                                    <Form.Select
-                                                                        name="product_id"
-                                                                        value={item.product_id}
-                                                                        onChange={(event) => handleItemChange(index, event)}
-                                                                        required
-                                                                    >
-                                                                        <option value="">Select a Product</option>
-                                                                        {products.map((productOption) => (
-                                                                            <option key={productOption.id} value={productOption.id}>
-                                                                                {productOption.name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </Form.Select>
+                                                            <div className="sale-items-table__product product-name-cell">
+                                                                <div className="product-name-cell__image">
+                                                                    {resolvedImage ? (
+                                                                        <img src={resolvedImage} alt={product?.name || 'Product preview'} />
+                                                                    ) : (
+                                                                        <span>{imageInitial}</span>
+                                                                    )}
                                                                 </div>
-                                                                <div className="sale-items-table__meta">
-                                                                    {product?.sku && <span>SKU: {product.sku}</span>}
-                                                                    {product?.category_name && <span>{product.category_name}</span>}
+                                                                <div className="sale-items-table__info product-name-cell__info">
+                                                                    <div className="sale-items-table__field">
+                                                                        <Form.Select
+                                                                            name="product_id"
+                                                                            value={item.product_id}
+                                                                            onChange={(event) => handleItemChange(index, event)}
+                                                                            required
+                                                                        >
+                                                                            <option value="">Select a Product</option>
+                                                                            {products.map((productOption) => (
+                                                                                <option key={productOption.id} value={productOption.id}>
+                                                                                    {productOption.name}
+                                                                                </option>
+                                                                            ))}
+                                                                        </Form.Select>
+                                                                    </div>
+                                                                    <div className="sale-items-table__meta product-name-cell__meta">
+                                                                        {product?.sku && <span>SKU: {product.sku}</span>}
+                                                                        {product?.category_name && <span>{product.category_name}</span>}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>
