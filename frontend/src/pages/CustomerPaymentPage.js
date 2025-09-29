@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { getCurrencyOptions, loadCurrencyOptions, loadCurrencyRates } from '../config/currency';
@@ -50,6 +50,16 @@ const describeOpenBalance = (value) => {
 function CustomerPaymentPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const editingPaymentId = searchParams.get('paymentId');
+    const paymentFromState = location.state?.paymentToEdit || null;
+
+    const [editingPayment, setEditingPayment] = useState(paymentFromState);
+    const [hasHydratedEdit, setHasHydratedEdit] = useState(false);
+    const [editingLoading, setEditingLoading] = useState(false);
+
+    const isEditing = Boolean(editingPaymentId);
 
     const [customerData, setCustomerData] = useState(null);
     const [accounts, setAccounts] = useState([]);
@@ -108,6 +118,7 @@ function CustomerPaymentPage() {
             setMethod('Cash');
             setExchangeRate('1');
             setExchangeRateEdited(false);
+            setHasHydratedEdit(false);
 
             try {
                 const rates = await loadCurrencyRates();
@@ -126,6 +137,100 @@ function CustomerPaymentPage() {
     useEffect(() => {
         fetchInitialData();
     }, [id]);
+
+    useEffect(() => {
+        if (!isEditing) {
+            setEditingPayment(null);
+            setHasHydratedEdit(false);
+            setEditingLoading(false);
+        }
+    }, [isEditing]);
+
+    useEffect(() => {
+        if (paymentFromState && isEditing) {
+            setEditingPayment(paymentFromState);
+            setHasHydratedEdit(false);
+            setEditingLoading(false);
+        }
+    }, [paymentFromState, isEditing]);
+
+    useEffect(() => {
+        if (!isEditing) {
+            return;
+        }
+        if (paymentFromState) {
+            return;
+        }
+        if (!editingPaymentId) {
+            return;
+        }
+
+        let ignore = false;
+
+        const loadPayment = async () => {
+            try {
+                setEditingLoading(true);
+                const response = await axiosInstance.get(`/customers/${id}/payments/${editingPaymentId}/`);
+                if (!ignore) {
+                    setEditingPayment(response.data);
+                    setHasHydratedEdit(false);
+                    setError('');
+                }
+            } catch (err) {
+                console.error('Failed to load payment for editing:', err);
+                if (!ignore) {
+                    setError('Failed to load payment details for editing.');
+                }
+            } finally {
+                if (!ignore) {
+                    setEditingLoading(false);
+                }
+            }
+        };
+
+        loadPayment();
+
+        return () => {
+            ignore = true;
+        };
+    }, [isEditing, paymentFromState, editingPaymentId, id]);
+
+    useEffect(() => {
+        if (!isEditing) {
+            return;
+        }
+        if (!editingPayment) {
+            return;
+        }
+        if (!customerData) {
+            return;
+        }
+        if (hasHydratedEdit) {
+            return;
+        }
+
+        const rawAmount = Number(editingPayment.original_amount ?? editingPayment.amount ?? 0);
+        const absoluteAmount = Math.abs(rawAmount);
+        setTransactionType(rawAmount < 0 ? 'refund' : 'collection');
+        setPaymentDate(editingPayment.payment_date || getTodayDate());
+        setMethod(editingPayment.method || 'Cash');
+        setNotes(editingPayment.notes || '');
+        const accountId = editingPayment.account ?? editingPayment.account_id ?? null;
+        const accountValue = accountId ? String(accountId) : '';
+        setAccount(accountValue);
+        setPaymentCurrency(editingPayment.original_currency || customerCurrency);
+        setAmount(absoluteAmount ? absoluteAmount.toString() : '');
+        const existingRate = editingPayment.account_exchange_rate
+            ? String(editingPayment.account_exchange_rate)
+            : editingPayment.exchange_rate
+                ? String(editingPayment.exchange_rate)
+                : '1';
+        setExchangeRate(existingRate);
+        setExchangeRateEdited(Boolean(editingPayment.account_exchange_rate || editingPayment.exchange_rate));
+        setSuccess('');
+        setError('');
+        setHasHydratedEdit(true);
+    }, [isEditing, editingPayment, hasHydratedEdit, customerCurrency, customerData]);
 
     const refreshCustomerSummary = async () => {
         try {
@@ -216,12 +321,16 @@ function CustomerPaymentPage() {
         }
 
         const selectedAccount = accounts.find((acc) => acc.id === Number(account));
-        if (!selectedAccount && requiresExchangeRate) {
-            const rate = parseFloat(exchangeRate);
-            if (!rate || rate <= 0) {
-                setError('Please provide a valid exchange rate.');
-                return;
-            }
+        const chosenCurrency = paymentCurrency || customerCurrency;
+        const numericRate = parseFloat(exchangeRate);
+        const requiresCustomerRate = Boolean(chosenCurrency && chosenCurrency !== customerCurrency);
+        const requiresAccountRate = Boolean(
+            selectedAccount && chosenCurrency && selectedAccount.currency !== chosenCurrency,
+        );
+
+        if ((requiresCustomerRate || requiresAccountRate) && (!numericRate || numericRate <= 0)) {
+            setError('Please provide a valid exchange rate.');
+            return;
         }
 
         const finalAmount = transactionType === 'collection' ? numericAmount : -numericAmount;
@@ -231,29 +340,38 @@ function CustomerPaymentPage() {
             original_amount: finalAmount,
             method,
             notes,
+            original_currency: chosenCurrency,
         };
 
         if (selectedAccount) {
             payload.account = selectedAccount.id;
-        } else {
-            payload.original_currency = paymentCurrency || customerCurrency;
-            if (requiresExchangeRate) {
-                payload.exchange_rate = parseFloat(exchangeRate);
+            if (requiresAccountRate) {
+                payload.account_exchange_rate = numericRate;
             }
+        }
+
+        if (requiresCustomerRate) {
+            payload.exchange_rate = numericRate;
         }
 
         try {
             setSaving(true);
-            await axiosInstance.post(`/customers/${id}/payments/`, payload);
-            setSuccess('Payment recorded successfully.');
-            setAmount('');
-            setNotes('');
-            setAccount('');
-            setMethod('Cash');
-            setTransactionType('collection');
-            setPaymentCurrency(customerCurrency);
-            setExchangeRate('1');
-            await refreshCustomerSummary();
+            if (isEditing && editingPaymentId) {
+                await axiosInstance.put(`/customers/${id}/payments/${editingPaymentId}/`, payload);
+                await refreshCustomerSummary();
+                navigate(`/customers/${id}`, { replace: true });
+            } else {
+                await axiosInstance.post(`/customers/${id}/payments/`, payload);
+                setSuccess('Payment recorded successfully.');
+                setAmount('');
+                setNotes('');
+                setAccount('');
+                setMethod('Cash');
+                setTransactionType('collection');
+                setPaymentCurrency(customerCurrency);
+                setExchangeRate('1');
+                await refreshCustomerSummary();
+            }
         } catch (err) {
             console.error('Failed to save payment:', err);
             const message = buildErrorMessage(err?.response?.data) || 'Could not save the payment. Please try again.';
@@ -263,6 +381,19 @@ function CustomerPaymentPage() {
         }
     };
 
+    const isPageLoading = loading || editingLoading;
+    const isFormReady = !isEditing || (hasHydratedEdit && !editingLoading);
+    const fieldDisabled = saving || !isFormReady;
+    const isSaveDisabled = saving || !isFormReady || isPageLoading;
+    const saveButtonLabel = saving
+        ? isEditing
+            ? 'Güncelleniyor…'
+            : 'Kaydediliyor…'
+        : isEditing
+            ? 'Güncelle'
+            : 'Kaydet';
+    const formSubtitle = isEditing ? 'Müşteri Tahsilatı Düzenle' : 'Müşteri Tahsilatı Kaydı';
+
     return (
         <Container fluid className="payment-page">
             <div className="payment-page__header">
@@ -270,9 +401,9 @@ function CustomerPaymentPage() {
                     type="submit"
                     form="customer-payment-form"
                     className="payment-page__save-btn"
-                    disabled={loading || saving}
+                    disabled={isSaveDisabled}
                 >
-                    {saving ? 'Kaydediliyor…' : 'Kaydet'}
+                    {saveButtonLabel}
                 </Button>
                 <Button
                     type="button"
@@ -286,7 +417,7 @@ function CustomerPaymentPage() {
             {error && <Alert variant="danger" className="payment-page__alert">{error}</Alert>}
             {success && <Alert variant="success" className="payment-page__alert">{success}</Alert>}
 
-            {loading ? (
+            {isPageLoading ? (
                 <div className="text-center py-5">
                     <Spinner animation="border" variant="primary" />
                 </div>
@@ -296,7 +427,7 @@ function CustomerPaymentPage() {
                         <Card className="payment-form-card">
                             <div className="payment-form-card__header">
                                 <div className="payment-form-card__title">GİRİŞ</div>
-                                <h5 className="payment-form-card__subtitle">Müşteri Tahsilatı Kaydı</h5>
+                                <h5 className="payment-form-card__subtitle">{formSubtitle}</h5>
                             </div>
                             <Card.Body>
                                 <Form id="customer-payment-form" onSubmit={handleSubmit}>
@@ -307,7 +438,7 @@ function CustomerPaymentPage() {
                                                 <Form.Select
                                                     value={transactionType}
                                                     onChange={(event) => setTransactionType(event.target.value)}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 >
                                                     <option value="collection">Müşteriden Tahsilat</option>
                                                     <option value="refund">Müşteriye Ödeme</option>
@@ -321,7 +452,7 @@ function CustomerPaymentPage() {
                                                     type="date"
                                                     value={paymentDate}
                                                     onChange={(event) => setPaymentDate(event.target.value)}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                     required
                                                 />
                                             </Form.Group>
@@ -332,7 +463,7 @@ function CustomerPaymentPage() {
                                                 <Form.Select
                                                     value={method}
                                                     onChange={(event) => setMethod(event.target.value)}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 >
                                                     <option value="Cash">Nakit</option>
                                                     <option value="Bank">Banka Transferi</option>
@@ -346,7 +477,7 @@ function CustomerPaymentPage() {
                                                 <Form.Select
                                                     value={account}
                                                     onChange={handleAccountChange}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 >
                                                     <option value="">Hesap seçin</option>
                                                     {accounts.map((acc) => (
@@ -367,7 +498,7 @@ function CustomerPaymentPage() {
                                                     value={amount}
                                                     onChange={(event) => setAmount(event.target.value)}
                                                     placeholder="Ödeme tutarını girin"
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                     required
                                                 />
                                             </Form.Group>
@@ -378,7 +509,7 @@ function CustomerPaymentPage() {
                                                 <Form.Select
                                                     value={paymentCurrency}
                                                     onChange={(event) => handleCurrencyChange(event.target.value)}
-                                                    disabled={saving || Boolean(account)}
+                                                    disabled={fieldDisabled || Boolean(account)}
                                                 >
                                                     {(currencyOptions.length ? currencyOptions : [[customerCurrency, customerCurrency]]).map(([code, label]) => (
                                                         <option key={code} value={code}>
@@ -403,7 +534,7 @@ function CustomerPaymentPage() {
                                                                 setExchangeRate(event.target.value);
                                                                 setExchangeRateEdited(true);
                                                             }}
-                                                            disabled={saving}
+                                                            disabled={fieldDisabled}
                                                             required
                                                         />
                                                     </Form.Group>
@@ -433,7 +564,7 @@ function CustomerPaymentPage() {
                                                     value={notes}
                                                     onChange={(event) => setNotes(event.target.value)}
                                                     placeholder="İsteğe bağlı açıklama ekleyin"
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 />
                                             </Form.Group>
                                         </Col>
