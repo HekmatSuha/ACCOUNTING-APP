@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+
+const BASE_API_URL = getBaseApiUrl();
 
 function OfferDetailPage() {
     const { id } = useParams();
@@ -87,15 +90,36 @@ function OfferDetailPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {offer.items.map((item, index) => (
-                                        <tr key={item.id}>
-                                            <td>{index + 1}</td>
-                                            <td>{item.product_name}</td>
-                                            <td>{item.quantity}</td>
-                                            <td>{formatCurrency(item.unit_price)}</td>
-                                            <td>{formatCurrency(item.quantity * item.unit_price)}</td>
-                                        </tr>
-                                    ))}
+                                    {offer.items.map((item, index) => {
+                                        const productImage = resolveImageUrl(
+                                            item.product_image || item.product?.image,
+                                            BASE_API_URL
+                                        );
+                                        const imageInitial = getImageInitial(item.product_name);
+
+                                        return (
+                                            <tr key={item.id}>
+                                                <td>{index + 1}</td>
+                                                <td>
+                                                    <div className="product-name-cell">
+                                                        <div className="product-name-cell__image">
+                                                            {productImage ? (
+                                                                <img src={productImage} alt={item.product_name} />
+                                                            ) : (
+                                                                <span>{imageInitial}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="product-name-cell__info">
+                                                            <div className="product-name-cell__name">{item.product_name}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{item.quantity}</td>
+                                                <td>{formatCurrency(item.unit_price)}</td>
+                                                <td>{formatCurrency(item.quantity * item.unit_price)}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </Table>
                         </div>

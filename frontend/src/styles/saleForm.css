@@ -380,6 +380,12 @@
 
 .sale-items-table__product {
     display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.sale-items-table__info {
+    display: flex;
     flex-direction: column;
     gap: 0.35rem;
 }
@@ -411,25 +417,7 @@
 }
 
 .sale-items-table__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-.sale-items-table__meta span::before {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: currentColor;
-    margin-right: 0.35rem;
-}
-
-.sale-items-table__meta span:first-child::before {
-    display: none;
+    gap: 0.6rem;
 }
 
 .sale-items-table__actions {

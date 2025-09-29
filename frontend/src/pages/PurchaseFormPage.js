@@ -8,6 +8,7 @@ import axiosInstance from '../utils/axiosInstance';
 import '../styles/saleForm.css';
 import ProductSearchSelect from '../components/ProductSearchSelect';
 import PurchaseItemModal from '../components/PurchaseItemModal';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
 
 function PurchaseFormPage() {
     const { supplierId, customerId } = useParams();
@@ -57,10 +58,7 @@ function PurchaseFormPage() {
         );
     }, [warehouses]);
 
-    const baseApiUrl = useMemo(() => {
-        const apiBase = axiosInstance.defaults.baseURL || '';
-        return apiBase.replace(/\/?api\/?$/, '');
-    }, []);
+    const baseApiUrl = useMemo(() => getBaseApiUrl(), []);
 
     const getProductById = useCallback(
         (productId) => {
@@ -383,15 +381,26 @@ function PurchaseFormPage() {
                                                 const availableStock = warehouseQuantity ? Number(warehouseQuantity.quantity) : null;
                                                 const discountLabel = item.discount ? `${Number(item.discount).toFixed(2)}%` : '—';
                                                 const lineTotal = Number(item.quantity) * Number(item.unit_price || 0);
+                                                const resolvedImage = resolveImageUrl(product?.image, baseApiUrl);
+                                                const imageInitial = getImageInitial(product?.name);
 
                                                 return (
                                                     <tr key={`${item.product_id}-${index}`}>
                                                         <td>
-                                                            <div className="sale-items-table__product">
-                                                                <div className="sale-items-table__name">{product?.name || 'Unnamed product'}</div>
-                                                                <div className="sale-items-table__meta">
-                                                                    {product?.sku && <span>SKU: {product.sku}</span>}
-                                                                    {item.note && <span>Note: {item.note}</span>}
+                                                            <div className="sale-items-table__product product-name-cell">
+                                                                <div className="product-name-cell__image">
+                                                                    {resolvedImage ? (
+                                                                        <img src={resolvedImage} alt={product?.name || 'Product preview'} />
+                                                                    ) : (
+                                                                        <span>{imageInitial}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="sale-items-table__info product-name-cell__info">
+                                                                    <div className="sale-items-table__name product-name-cell__name">{product?.name || 'Unnamed product'}</div>
+                                                                    <div className="sale-items-table__meta product-name-cell__meta">
+                                                                        {product?.sku && <span>SKU: {product.sku}</span>}
+                                                                        {item.note && <span>Note: {item.note}</span>}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>
