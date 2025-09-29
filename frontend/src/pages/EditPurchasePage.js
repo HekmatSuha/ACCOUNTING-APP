@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Stack, Table } from 'react-bootstrap';
 import { FaTrash } from 'react-icons/fa';
 import { formatCurrency } from '../utils/format';
@@ -12,6 +12,9 @@ import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image'
 function EditPurchasePage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const returnTo = location.state?.returnTo ?? null;
+    const fallbackDestination = returnTo || `/purchases/${id}`;
 
     // Data state
     const [suppliers, setSuppliers] = useState([]);
@@ -142,7 +145,7 @@ function EditPurchasePage() {
         };
         try {
             await axiosInstance.put(`/purchases/${id}/`, dataToSubmit);
-            navigate(`/purchases/${id}`);
+            navigate(fallbackDestination, { replace: Boolean(returnTo) });
         } catch (err) {
             console.error('Failed to update purchase:', err.response?.data);
             setError('Failed to update purchase. Please check all fields.');
@@ -261,7 +264,7 @@ function EditPurchasePage() {
                                     <Button
                                         variant="outline-secondary"
                                         type="button"
-                                        onClick={() => navigate(`/purchases/${id}`)}
+                                        onClick={() => navigate(fallbackDestination)}
                                     >
                                         Cancel
                                     </Button>
