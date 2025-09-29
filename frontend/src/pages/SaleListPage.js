@@ -1,6 +1,6 @@
 // frontend/src/pages/SaleListPage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Button, Alert, Spinner, Accordion, Table } from 'react-bootstrap';
@@ -9,6 +9,9 @@ import ActionMenu from '../components/ActionMenu';
 import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
 import '../styles/transaction-history.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+
+const BASE_API_URL = getBaseApiUrl();
 
 function SaleListPage() {
     const [sales, setSales] = useState([]);
@@ -166,16 +169,37 @@ function SaleListPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {saleItems.map(item => (
-                                                            <tr key={item.id || `${sale.id}-${item.product_name}`}>
-                                                                <td>{item.product_name}</td>
-                                                                <td>{item.quantity}</td>
-                                                                <td>{formatCurrency(item.unit_price, sale.original_currency || 'USD')}</td>
-                                                                <td className="text-end">
-                                                                    {formatCurrency(item.line_total, sale.original_currency || 'USD')}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
+                                                        {saleItems.map(item => {
+                                                            const productImage = resolveImageUrl(
+                                                                item.product_image || item.product?.image,
+                                                                BASE_API_URL
+                                                            );
+                                                            const imageInitial = getImageInitial(item.product_name);
+
+                                                            return (
+                                                                <tr key={item.id || `${sale.id}-${item.product_name}`}>
+                                                                    <td>
+                                                                        <div className="product-name-cell">
+                                                                            <div className="product-name-cell__image">
+                                                                                {productImage ? (
+                                                                                    <img src={productImage} alt={item.product_name} />
+                                                                                ) : (
+                                                                                    <span>{imageInitial}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="product-name-cell__info">
+                                                                                <div className="product-name-cell__name">{item.product_name}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>{item.quantity}</td>
+                                                                    <td>{formatCurrency(item.unit_price, sale.original_currency || 'USD')}</td>
+                                                                    <td className="text-end">
+                                                                        {formatCurrency(item.line_total, sale.original_currency || 'USD')}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
                                                     </tbody>
                                                 </Table>
                                             ) : (

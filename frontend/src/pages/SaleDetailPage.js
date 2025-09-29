@@ -1,12 +1,15 @@
 // frontend/src/pages/SaleDetailPage.js
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import AddPaymentModal from '../components/AddPaymentModal';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
 import '../styles/datatable.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+
+const BASE_API_URL = getBaseApiUrl();
 
 function SaleDetailPage() {
     const { id } = useParams();
@@ -165,7 +168,6 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
                                     <tr>
                                         <th>#</th>
                                         <th>Product</th>
-                                        <th>Image</th>
                                         <th>Quantity</th>
                                         <th>Warehouse</th>
                                         <th>Unit Price</th>
@@ -173,27 +175,37 @@ const balanceDueBase = sale ? parseFloat(sale.converted_amount || sale.total_amo
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sale.items.map((item, index) => (
-                                        <tr key={item.id}>
-                                            <td>{index + 1}</td>
-                                            <td>{item.product_name}</td>
-                                            <td>
-                                                {item.product_image ? (
-                                                    <img
-                                                        src={item.product_image}
-                                                        alt={item.product_name}
-                                                        style={{ width: '60px', height: '60px', objectFit: 'contain' }}
-                                                    />
-                                                ) : (
-                                                    <span className="text-muted">No image</span>
-                                                )}
-                                            </td>
-                                            <td>{item.quantity}</td>
-                                            <td>{item.warehouse_name || '—'}</td>
-                                            <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
-                                            <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
-                                        </tr>
-                                    ))}
+                                    {sale.items.map((item, index) => {
+                                        const productImage = resolveImageUrl(
+                                            item.product_image || item.product?.image,
+                                            BASE_API_URL
+                                        );
+                                        const imageInitial = getImageInitial(item.product_name);
+
+                                        return (
+                                            <tr key={item.id}>
+                                                <td>{index + 1}</td>
+                                                <td>
+                                                    <div className="product-name-cell">
+                                                        <div className="product-name-cell__image">
+                                                            {productImage ? (
+                                                                <img src={productImage} alt={item.product_name} />
+                                                            ) : (
+                                                                <span>{imageInitial}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="product-name-cell__info">
+                                                            <div className="product-name-cell__name">{item.product_name}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{item.quantity}</td>
+                                                <td>{item.warehouse_name || '—'}</td>
+                                                <td>{formatCurrency(item.unit_price, sale.original_currency)}</td>
+                                                <td>{formatCurrency(item.quantity * item.unit_price, sale.original_currency)}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </Table>
                         </div>
