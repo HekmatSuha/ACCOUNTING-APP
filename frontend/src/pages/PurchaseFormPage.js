@@ -383,6 +383,13 @@ function PurchaseFormPage() {
                                                 const lineTotal = Number(item.quantity) * Number(item.unit_price || 0);
                                                 const resolvedImage = resolveImageUrl(product?.image, baseApiUrl);
                                                 const imageInitial = getImageInitial(product?.name);
+                                                const metaDetails = [];
+
+                                                if (item.note) {
+                                                    metaDetails.push(
+                                                        <span key="note">Note: {item.note}</span>
+                                                    );
+                                                }
 
                                                 return (
                                                     <tr key={`${item.product_id}-${index}`}>
@@ -395,12 +402,20 @@ function PurchaseFormPage() {
                                                                         <span>{imageInitial}</span>
                                                                     )}
                                                                 </div>
-                                                                <div className="sale-items-table__info product-name-cell__info">
-                                                                    <div className="sale-items-table__name product-name-cell__name">{product?.name || 'Unnamed product'}</div>
-                                                                    <div className="sale-items-table__meta product-name-cell__meta">
-                                                                        {product?.sku && <span>SKU: {product.sku}</span>}
-                                                                        {item.note && <span>Note: {item.note}</span>}
+                                                                <div className="sale-items-table__info product-name-cell__info product-name-cell__body">
+                                                                    <div className="product-name-cell__header">
+                                                                        <div className="sale-items-table__name product-name-cell__name">
+                                                                            {product?.name || 'Unnamed product'}
+                                                                        </div>
+                                                                        {product?.sku && (
+                                                                            <span className="product-name-cell__badge">SKU {product.sku}</span>
+                                                                        )}
                                                                     </div>
+                                                                    {metaDetails.length > 0 && (
+                                                                        <div className="sale-items-table__meta product-name-cell__meta">
+                                                                            {metaDetails}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </td>
