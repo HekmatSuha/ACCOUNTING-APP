@@ -257,7 +257,9 @@ function SupplierDetailPage() {
                                                                 {
                                                                     label: 'Edit Purchase',
                                                                     icon: <PencilSquare />,
-                                                                    onClick: () => navigate(`/purchases/${purchase.id}/edit`),
+                                                                    onClick: () => navigate(`/purchases/${purchase.id}/edit`, {
+                                                                        state: { returnTo: `/suppliers/${id}` },
+                                                                    }),
                                                                 },
                                                                 {
                                                                     label: 'Delete Purchase',
