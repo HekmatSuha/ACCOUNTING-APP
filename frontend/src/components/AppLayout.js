@@ -159,6 +159,7 @@ function AppLayout({ children }) {
                     className="app-sidebar d-flex flex-column p-3"
                     style={{
                         width: sidebarWidth,
+                        height: '100vh',
                         minHeight: '100vh',
                         transition: 'width 0.3s',
                         position: 'fixed',
