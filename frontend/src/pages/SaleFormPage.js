@@ -10,20 +10,43 @@ import '../styles/saleForm.css';
 import ProductSearchSelect from '../components/ProductSearchSelect';
 import SaleItemModal from '../components/SaleItemModal';
 
-function SaleFormPage() {
-    const { customerId: customerIdParam, supplierId: supplierIdParam } = useParams();
-    const initialCustomerId = customerIdParam ? Number(customerIdParam) : null;
-    const initialSupplierId = supplierIdParam ? Number(supplierIdParam) : null;
+function SaleFormPage({
+    mode: modeProp,
+    saleId: saleIdProp = null,
+    initialEntityId = null,
+    initialSaleDate = null,
+    initialInvoiceDate = null,
+    initialInvoiceNumber = '',
+    initialDocumentNumber = '',
+    initialDescription = '',
+    initialLineItems = [],
+    allowCustomerSwitch = false,
+    onCancel = null,
+    onSuccess = null,
+} = {}) {
+    const routeParams = useParams();
+    const { customerId: customerIdParam, supplierId: supplierIdParam, id: saleIdRouteParam } = routeParams;
+    const initialCustomerIdFromRoute = customerIdParam ? Number(customerIdParam) : null;
+    const initialSupplierIdFromRoute = supplierIdParam ? Number(supplierIdParam) : null;
+    const saleIdFromRoute = saleIdRouteParam ? Number(saleIdRouteParam) : null;
 
-    const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId);
-    const [selectedSupplierId] = useState(initialSupplierId);
+    const saleId = saleIdProp ?? saleIdFromRoute;
+    const computedMode = modeProp ?? (saleId ? 'edit' : 'create');
+    const isEditMode = computedMode === 'edit';
+
+    const [selectedCustomerId, setSelectedCustomerId] = useState(
+        isEditMode
+            ? (initialEntityId ?? null)
+            : (initialEntityId ?? initialCustomerIdFromRoute)
+    );
+    const [selectedSupplierId] = useState(initialSupplierIdFromRoute ?? null);
 
     const isSupplierSale = selectedSupplierId !== null;
     const entityId = isSupplierSale ? selectedSupplierId : selectedCustomerId;
-    const isStandaloneSale = !initialCustomerId && !initialSupplierId;
+    const isStandaloneSale = !isEditMode && !initialCustomerIdFromRoute && !initialSupplierIdFromRoute;
     const navigate = useNavigate();
     const location = useLocation();
-    const isOffer = new URLSearchParams(location.search).get('type') === 'offer';
+    const isOffer = !isEditMode && new URLSearchParams(location.search).get('type') === 'offer';
 
     const [customer, setCustomer] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
@@ -32,19 +55,21 @@ function SaleFormPage() {
     const [isLoadingCustomerOptions, setIsLoadingCustomerOptions] = useState(false);
     const [loadingEntityData, setLoadingEntityData] = useState(false);
     const [initialDataError, setInitialDataError] = useState(null);
-    const [saleDate, setSaleDate] = useState(new Date().toISOString().slice(0, 10));
-    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
-    const [invoiceNumber, setInvoiceNumber] = useState('');
-    const [documentNumber, setDocumentNumber] = useState('');
-    const [description, setDescription] = useState('');
-    const [lineItems, setLineItems] = useState([]);
+    const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+    const [saleDate, setSaleDate] = useState(initialSaleDate || todayIso);
+    const [invoiceDate, setInvoiceDate] = useState(initialInvoiceDate || todayIso);
+    const [invoiceNumber, setInvoiceNumber] = useState(initialInvoiceNumber || '');
+    const [documentNumber, setDocumentNumber] = useState(initialDocumentNumber || '');
+    const [description, setDescription] = useState(initialDescription || '');
+    const [lineItems, setLineItems] = useState(() => initialLineItems.map((item) => ({ ...item })));
     const [formError, setFormError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [itemModalState, setItemModalState] = useState({ show: false, index: null, initialItem: null });
     const [quickSearchKey, setQuickSearchKey] = useState(0);
+    const [hasHydratedFromProps, setHasHydratedFromProps] = useState(initialLineItems.length > 0);
 
     useEffect(() => {
-        if (!isStandaloneSale) {
+        if (!(isStandaloneSale || allowCustomerSwitch)) {
             return;
         }
 
@@ -63,14 +88,32 @@ function SaleFormPage() {
         };
 
         fetchCustomers();
-    }, [isStandaloneSale]);
+    }, [allowCustomerSwitch, isStandaloneSale]);
+
+    useEffect(() => {
+        if (!isEditMode || !initialEntityId || hasHydratedFromProps) {
+            return;
+        }
+
+        setSelectedCustomerId(initialEntityId);
+    }, [hasHydratedFromProps, initialEntityId, isEditMode]);
+
+    useEffect(() => {
+        if (initialLineItems.length === 0 || hasHydratedFromProps) {
+            return;
+        }
+        setLineItems(initialLineItems.map((item) => ({ ...item })));
+        setHasHydratedFromProps(true);
+    }, [hasHydratedFromProps, initialLineItems]);
 
     useEffect(() => {
         if (!entityId) {
             setCustomer(null);
             setAllProducts([]);
             setWarehouses([]);
-            setLineItems([]);
+            if (!isEditMode) {
+                setLineItems([]);
+            }
             return;
         }
 
@@ -80,7 +123,9 @@ function SaleFormPage() {
             setCustomer(null);
             setAllProducts([]);
             setWarehouses([]);
-            setLineItems([]);
+            if (!isEditMode || !hasHydratedFromProps) {
+                setLineItems([]);
+            }
 
             try {
                 const [custRes, prodRes, warehouseRes] = await Promise.all([
@@ -101,7 +146,7 @@ function SaleFormPage() {
         };
 
         fetchData();
-    }, [entityId, isSupplierSale]);
+    }, [entityId, hasHydratedFromProps, isEditMode, isSupplierSale]);
 
     useEffect(() => {
         if (!entityId) {
@@ -238,19 +283,45 @@ function SaleFormPage() {
 
         const payload = { items: payloadItems };
         let url;
+        let method;
         if (isOffer) {
             url = `/customers/${entityId}/offers/`;
+            method = 'post';
+        } else if (isEditMode) {
+            url = `/sales/${saleId}/`;
+            method = 'put';
+            payload.customer_id = entityId;
+            payload.sale_date = saleDate;
+            payload.invoice_date = invoiceDate;
+            if (invoiceNumber) {
+                payload.invoice_number = invoiceNumber;
+            }
+            if (documentNumber) {
+                payload.document_number = documentNumber;
+            }
+            if (description) {
+                payload.description = description;
+            }
         } else {
             url = '/sales/';
+            method = 'post';
             payload.customer_id = entityId;
             payload.sale_date = saleDate;
         }
 
         try {
             setIsSubmitting(true);
-            await axiosInstance.post(url, payload);
+            if (method === 'put') {
+                await axiosInstance.put(url, payload);
+            } else {
+                await axiosInstance.post(url, payload);
+            }
 
-            if (isSupplierSale) {
+            if (onSuccess) {
+                onSuccess();
+            } else if (isEditMode) {
+                navigate(`/sales/${saleId}`);
+            } else if (isSupplierSale) {
                 navigate(`/suppliers/${entityId}`);
             } else if (isStandaloneSale) {
                 navigate('/sales');
@@ -273,6 +344,37 @@ function SaleFormPage() {
             currency: customer?.currency || 'USD',
         }).format(amount || 0);
     };
+
+    const handleCancel = () => {
+        if (onCancel) {
+            onCancel();
+            return;
+        }
+
+        if (isEditMode && saleId) {
+            navigate(`/sales/${saleId}`);
+            return;
+        }
+
+        if (isStandaloneSale) {
+            navigate('/sales');
+            return;
+        }
+
+        if (isSupplierSale && entityId) {
+            navigate(`/suppliers/${entityId}`);
+            return;
+        }
+
+        if (entityId) {
+            navigate(`/customers/${entityId}`);
+            return;
+        }
+
+        navigate('/sales');
+    };
+
+    const primaryActionLabel = isEditMode ? 'Update Sale' : (isOffer ? 'Save Offer' : 'Save Sale');
 
     return (
         <Container className="sale-form__container">
@@ -358,16 +460,43 @@ function SaleFormPage() {
                                         <Card className="sale-form__sidebar-card">
                                             <Card.Header>
                                                 <div className="sale-form__sidebar-title">
-                                                    <div className="sale-form__sidebar-label">{isOffer ? 'Offer' : 'Sale'} Summary</div>
+                                                    <div className="sale-form__sidebar-label">{isEditMode ? 'Edit Sale' : (isOffer ? 'Offer' : 'Sale')} Summary</div>
                                                     <div className="sale-form__sidebar-entity">{customer.name}</div>
-                                </div>
-                            </Card.Header>
-                            <Card.Body>
-                                <div className="sale-form__entity-meta">
-                                    {customer.phone && <span>{customer.phone}</span>}
-                                    {customer.email && <span>{customer.email}</span>}
-                                    <span>{customer.currency} account</span>
-                                </div>
+                                                </div>
+                                            </Card.Header>
+                                            <Card.Body>
+                                                {allowCustomerSwitch && (
+                                                    <Row className="gy-3 mb-1">
+                                                        <Col xs={12}>
+                                                            <Form.Group controlId="saleEditorCustomer">
+                                                                <Form.Label>Customer</Form.Label>
+                                                                <Form.Select
+                                                                    value={selectedCustomerId || ''}
+                                                                    onChange={(event) => {
+                                                                        const value = event.target.value;
+                                                                        const numericValue = value ? Number(value) : null;
+                                                                        setSelectedCustomerId(numericValue);
+                                                                        setLineItems([]);
+                                                                    }}
+                                                                    disabled={isLoadingCustomerOptions}
+                                                                    required
+                                                                >
+                                                                    <option value="">Select a customer</option>
+                                                                    {customerOptions.map((option) => (
+                                                                        <option key={option.id} value={option.id}>
+                                                                            {option.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </Form.Select>
+                                                            </Form.Group>
+                                                        </Col>
+                                                    </Row>
+                                                )}
+                                                <div className="sale-form__entity-meta">
+                                                    {customer.phone && <span>{customer.phone}</span>}
+                                                    {customer.email && <span>{customer.email}</span>}
+                                                    <span>{customer.currency} account</span>
+                                                </div>
                                 <Row className="gy-3 mt-1">
                                     <Col xs={12}>
                                         <Form.Group controlId="documentNumber">
@@ -446,28 +575,11 @@ function SaleFormPage() {
                                         variant="success"
                                         disabled={!hasWarehouses || !hasLineItems || isSubmitting}
                                     >
-                                        {isOffer ? 'Save Offer' : 'Save Sale'}
+                                        {primaryActionLabel}
                                     </Button>
                                     <Button
                                         variant="outline-secondary"
-                                        onClick={() => {
-                                            if (isStandaloneSale) {
-                                                navigate('/sales');
-                                                return;
-                                            }
-
-                                            if (isSupplierSale && entityId) {
-                                                navigate(`/suppliers/${entityId}`);
-                                                return;
-                                            }
-
-                                            if (entityId) {
-                                                navigate(`/customers/${entityId}`);
-                                                return;
-                                            }
-
-                                            navigate('/sales');
-                                        }}
+                                        onClick={handleCancel}
                                         type="button"
                                     >
                                         Cancel
