@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table, Modal } from 'react-bootstrap';
-import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2 } from 'react-bootstrap-icons';
+import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2, CartCheck } from 'react-bootstrap-icons';
 import './CustomerDetailPage.css';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
@@ -413,74 +413,119 @@ function CustomerDetailPage() {
                 </Col>
             </Row>
 
-            <Row className="mt-3">
+            <Row className="g-4 align-items-start mt-0">
                 <Col md={6}>
-                    <Card>
-                        <Card.Header as="h5">Purchases / Returns</Card.Header>
-                        <Card.Body>
+                    <Card className="transaction-history-card transaction-history-card--purchases">
+                        <Card.Header className="transaction-history-card__header">
+                            <div>
+                                <span className="transaction-history-card__eyebrow">History</span>
+                                <h5 className="transaction-history-card__title mb-1">Purchases / Returns</h5>
+                                <p className="transaction-history-card__subtitle mb-0">Goods bought from this customer</p>
+                            </div>
+                            <div className="transaction-history-card__icon transaction-history-card__icon--purchases">
+                                <CartCheck size={24} />
+                            </div>
+                        </Card.Header>
+                        <Card.Body className="p-0">
                             {purchases.length > 0 ? (
-                                <Accordion>
-                                    {purchases.map((purchase, index) => (
-                                        <Accordion.Item eventKey={index.toString()} key={purchase.id}>
-                                            <Accordion.Header style={{ backgroundColor: '#f8f9fa' }}>
-                                                <div className="d-flex justify-content-between w-100 pe-3">
-                                                    <span>{new Date(purchase.purchase_date).toLocaleDateString()}</span>
-                                                    <strong>{formatCurrency(purchase.total_amount, customer.currency)}</strong>
-                                                </div>
-                                            </Accordion.Header>
-                                            <Accordion.Body>
-                                                <Table size="sm" className="data-table data-table--compact data-table--subtle">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Product</th>
-                                                            <th>Quantity</th>
-                                                            <th>Unit Price</th>
-                                                            <th className="text-end">Line Total</th>
-                                                        </tr>
-                                                    </thead>
-                                                      <tbody>
-                                                          {purchase.items.map(item => {
-                                                              const productImage = resolveImageUrl(
-                                                                  item.product_image || item.product?.image,
-                                                                  BASE_API_URL
-                                                              );
-                                                              const imageInitial = getImageInitial(item.product_name);
+                                <Accordion alwaysOpen className="transaction-accordion">
+                                    {purchases.map((purchase, index) => {
+                                        const purchaseDate = new Date(purchase.purchase_date).toLocaleDateString();
+                                        const purchaseItems = Array.isArray(purchase.items) ? purchase.items : [];
+                                        const itemsCount = purchaseItems.length;
+                                        const purchaseCurrency = purchase.original_currency || customer.currency;
+                                        const purchaseTags = [];
 
-                                                              return (
-                                                                  <tr key={item.id}>
-                                                                      <td>
-                                                                          <div className="product-name-cell">
-                                                                              <div className="product-name-cell__image">
-                                                                                  {productImage ? (
-                                                                                      <img src={productImage} alt={item.product_name} />
-                                                                                  ) : (
-                                                                                      <span>{imageInitial}</span>
-                                                                                  )}
-                                                                              </div>
-                                                                              <div className="product-name-cell__info">
-                                                                                  <div className="product-name-cell__name">{item.product_name}</div>
-                                                                              </div>
-                                                                          </div>
-                                                                      </td>
-                                                                      <td>{item.quantity}</td>
-                                                                      <td>{formatCurrency(item.unit_price, customer.currency)}</td>
-                                                                      <td className="text-end">{formatCurrency(item.line_total, customer.currency)}</td>
-                                                                  </tr>
-                                                              );
-                                                          })}
-                                                      </tbody>
-                                                </Table>
-                                            </Accordion.Body>
-                                        </Accordion.Item>
-                                    ))}
+                                        if (purchase.invoice_number) {
+                                            purchaseTags.push(`Invoice ${purchase.invoice_number}`);
+                                        } else if (purchase.reference) {
+                                            purchaseTags.push(purchase.reference);
+                                        }
+                                        if (itemsCount > 0) {
+                                            purchaseTags.push(`${itemsCount} item${itemsCount !== 1 ? 's' : ''}`);
+                                        }
+
+                                        return (
+                                            <Accordion.Item
+                                                eventKey={index.toString()}
+                                                key={purchase.id}
+                                                className="transaction-accordion__item"
+                                            >
+                                                <Accordion.Header>
+                                                    <div className="transaction-accordion__header">
+                                                        <div className="transaction-accordion__meta">
+                                                            <span className="transaction-accordion__date">{purchaseDate}</span>
+                                                            {purchaseTags.length > 0 && (
+                                                                <div className="transaction-accordion__tags">
+                                                                    {purchaseTags.map(tag => (
+                                                                        <span key={tag} className="transaction-accordion__tag">
+                                                                            {tag}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="transaction-accordion__amount">
+                                                            {formatCurrency(purchase.total_amount, purchaseCurrency)}
+                                                        </div>
+                                                    </div>
+                                                </Accordion.Header>
+                                                <Accordion.Body>
+                                                    <Table responsive borderless size="sm" className="transaction-detail-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col">Product</th>
+                                                                <th scope="col">Quantity</th>
+                                                                <th scope="col">Unit Price</th>
+                                                                <th scope="col" className="text-end">
+                                                                    Line Total
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {purchaseItems.map(item => {
+                                                                const productImage = resolveImageUrl(
+                                                                    item.product_image || item.product?.image,
+                                                                    BASE_API_URL
+                                                                );
+                                                                const imageInitial = getImageInitial(item.product_name);
+
+                                                                return (
+                                                                    <tr key={item.id}>
+                                                                        <td>
+                                                                            <div className="product-name-cell">
+                                                                                <div className="product-name-cell__image">
+                                                                                    {productImage ? (
+                                                                                        <img src={productImage} alt={item.product_name} />
+                                                                                    ) : (
+                                                                                        <span>{imageInitial}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="product-name-cell__info">
+                                                                                    <div className="product-name-cell__name">{item.product_name}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td>{item.quantity}</td>
+                                                                        <td>{formatCurrency(item.unit_price, purchaseCurrency)}</td>
+                                                                        <td className="text-end">
+                                                                            {formatCurrency(item.line_total, purchaseCurrency)}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </Table>
+                                                </Accordion.Body>
+                                            </Accordion.Item>
+                                        );
+                                    })}
                                 </Accordion>
                             ) : (
-                                <p className="text-muted mb-0">
-                                    This customer has no previous purchase records.{' '}
-                                    <Button variant="link" className="p-0" onClick={() => navigate(`/customers/${customer.id}/new-purchase`)}>
-                                        Click to make one.
-                                    </Button>
-                                </p>
+                                <div className="transaction-empty-state">
+                                    <p className="fw-semibold mb-1">No purchases or returns recorded</p>
+                                    <p className="mb-0">Record a purchase from this customer to track their history.</p>
+                                </div>
                             )}
                         </Card.Body>
                     </Card>
