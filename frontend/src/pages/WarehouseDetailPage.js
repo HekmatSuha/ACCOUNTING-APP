@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, Table, Button, Form, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import '../styles/datatable.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
 
 function WarehouseDetailPage() {
     const { id } = useParams();
@@ -23,6 +24,7 @@ function WarehouseDetailPage() {
     const [transferError, setTransferError] = useState('');
     const [transferSuccess, setTransferSuccess] = useState('');
     const [transferring, setTransferring] = useState(false);
+    const baseApiUrl = useMemo(() => getBaseApiUrl(), []);
 
     const fetchWarehouse = async (showSpinner = true) => {
         if (showSpinner) {
@@ -240,13 +242,34 @@ function WarehouseDetailPage() {
                         </thead>
                         <tbody>
                             {warehouse.stocks && warehouse.stocks.length > 0 ? (
-                                warehouse.stocks.map(stock => (
-                                    <tr key={stock.id}>
-                                        <td>{stock.product_name}</td>
-                                        <td>{stock.sku || '—'}</td>
-                                        <td>{stock.quantity}</td>
-                                    </tr>
-                                ))
+                                warehouse.stocks.map(stock => {
+                                    const productImage = resolveImageUrl(
+                                        stock.product_image || stock.image,
+                                        baseApiUrl
+                                    );
+                                    const imageInitial = getImageInitial(stock.product_name);
+
+                                    return (
+                                        <tr key={stock.id}>
+                                            <td>
+                                                <div className="product-name-cell">
+                                                    <div className="product-name-cell__image">
+                                                        {productImage ? (
+                                                            <img src={productImage} alt={stock.product_name} />
+                                                        ) : (
+                                                            <span>{imageInitial}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="product-name-cell__info">
+                                                        <div className="product-name-cell__name">{stock.product_name}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>{stock.sku || '—'}</td>
+                                            <td>{stock.quantity}</td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 <tr>
                                     <td colSpan="3" className="data-table-empty">No inventory tracked in this warehouse.</td>

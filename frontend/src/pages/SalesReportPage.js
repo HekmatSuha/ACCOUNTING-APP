@@ -4,6 +4,9 @@ import { Card, Button, Form, Row, Col, Spinner, Alert, Table, Collapse } from 'r
 import { formatCurrency } from '../utils/format';
 import { downloadBlobResponse } from '../utils/download';
 import '../styles/datatable.css';
+import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+
+const BASE_API_URL = getBaseApiUrl();
 
 // Helper to get the first day of the current month
 const getFirstDayOfMonth = () => {
@@ -207,14 +210,35 @@ function SalesReportPage() {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {sale.items.map(item => (
-                                                                            <tr key={item.id}>
-                                                                                <td>{item.product_name}</td>
-                                                                                <td>{item.quantity}</td>
-                                                                                <td>{formatCurrency(item.unit_price)}</td>
-                                                                                <td className="text-end">{formatCurrency(item.line_total)}</td>
-                                                                            </tr>
-                                                                        ))}
+                                                                        {sale.items.map(item => {
+                                                                            const productImage = resolveImageUrl(
+                                                                                item.product_image || item.product?.image,
+                                                                                BASE_API_URL
+                                                                            );
+                                                                            const imageInitial = getImageInitial(item.product_name);
+
+                                                                            return (
+                                                                                <tr key={item.id}>
+                                                                                    <td>
+                                                                                        <div className="product-name-cell">
+                                                                                            <div className="product-name-cell__image">
+                                                                                                {productImage ? (
+                                                                                                    <img src={productImage} alt={item.product_name} />
+                                                                                                ) : (
+                                                                                                    <span>{imageInitial}</span>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <div className="product-name-cell__info">
+                                                                                                <div className="product-name-cell__name">{item.product_name}</div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td>{item.quantity}</td>
+                                                                                    <td>{formatCurrency(item.unit_price)}</td>
+                                                                                    <td className="text-end">{formatCurrency(item.line_total)}</td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
                                                                     </tbody>
                                                                 </Table>
                                                             </Card.Body>
