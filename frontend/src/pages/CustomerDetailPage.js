@@ -6,7 +6,6 @@ import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table, Modal } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2 } from 'react-bootstrap-icons';
 import './CustomerDetailPage.css';
-import CustomerPaymentModal from '../components/CustomerPaymentModal';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
 import '../styles/transaction-history.css';
@@ -20,8 +19,6 @@ function CustomerDetailPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [editingPayment, setEditingPayment] = useState(null);
     const [showImageModal, setShowImageModal] = useState(false);
 
     const fetchDetails = async () => {
@@ -40,10 +37,6 @@ function CustomerDetailPage() {
         fetchDetails();
     }, [id]);
 
-    const handlePaymentAdded = () => {
-        fetchDetails(); // Refresh data after payment
-    };
-
     const handleDeleteSale = async (saleId) => {
         if (!window.confirm('Are you sure you want to delete this sale?')) return;
         try {
@@ -55,8 +48,9 @@ function CustomerDetailPage() {
     };
 
     const handleEditPayment = (payment) => {
-        setEditingPayment(payment);
-        setShowPaymentModal(true);
+        navigate(`/customers/${id}/payment?paymentId=${payment.id}`, {
+            state: { paymentToEdit: payment },
+        });
     };
 
     const handleDeletePayment = async (paymentId) => {
@@ -67,11 +61,6 @@ function CustomerDetailPage() {
         } catch (err) {
             setError('Failed to delete payment.');
         }
-    };
-
-    const handleClosePaymentModal = () => {
-        setShowPaymentModal(false);
-        setEditingPayment(null);
     };
 
     const handleImageClick = () => setShowImageModal(true);
@@ -183,15 +172,6 @@ function CustomerDetailPage() {
                     Collection / Payment
                 </Button>
             </ButtonToolbar>
-
-            <CustomerPaymentModal
-                show={showPaymentModal}
-                handleClose={handleClosePaymentModal}
-                customerId={id}
-                onPaymentAdded={handlePaymentAdded}
-                payment={editingPayment}
-                customerCurrency={customer.currency}
-            />
 
             <Modal show={showImageModal} onHide={handleCloseImageModal} centered>
                 <Modal.Body className="text-center">
