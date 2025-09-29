@@ -170,26 +170,28 @@
   text-align: center;
 }
 
+
 .product-name-cell {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .product-name-cell__image {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(148, 163, 184, 0.25), rgba(226, 232, 240, 0.45));
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.18), rgba(226, 232, 240, 0.6));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #475569;
+  color: #1e293b;
   font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 .product-name-cell__image img {
@@ -199,41 +201,56 @@
   display: block;
 }
 
-.product-name-cell__info {
+.product-name-cell__info,
+.product-name-cell__body {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
   min-width: 0;
+}
+
+.product-name-cell__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .product-name-cell__name {
   font-weight: 600;
-  color: #1e293b;
-  line-height: 1.3;
+  color: #0f172a;
+  line-height: 1.35;
+  font-size: 0.95rem;
+  white-space: normal;
   word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.product-name-cell__badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
 }
 
 .product-name-cell__meta,
 .sale-items-table__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  font-size: 0.8rem;
-  color: #64748b;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: #475569;
 }
 
-.product-name-cell__meta span::before,
-.sale-items-table__meta span::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-right: 0.35rem;
-}
-
-.product-name-cell__meta span:first-child::before,
-.sale-items-table__meta span:first-child::before {
-  display: none;
+.product-name-cell__meta span,
+.sale-items-table__meta span {
+  background: rgba(148, 163, 184, 0.18);
+  color: inherit;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  line-height: 1.2;
 }
