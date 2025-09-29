@@ -39,6 +39,8 @@ body {
   color: var(--text-secondary);
   box-shadow: var(--shadow-sm);
   border-right: 1px solid var(--color-surface-muted);
+  overflow-y: auto;
+  max-height: 100vh;
 }
 
 .app-sidebar h4 {
@@ -87,6 +89,8 @@ body {
   flex-direction: column;
   gap: 0.35rem;
   box-shadow: inset 0 0 0 1px var(--color-surface-muted);
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 .sidebar-submenu-collapsed {
@@ -224,6 +228,10 @@ body {
 .offcanvas.app-sidebar .offcanvas-header {
   background: var(--color-surface);
   color: var(--text-primary);
+}
+
+.offcanvas.app-sidebar .offcanvas-body {
+  overflow-y: auto;
 }
 
 .offcanvas.app-sidebar .btn-close {
