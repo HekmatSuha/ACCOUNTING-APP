@@ -14,7 +14,15 @@ function EditPurchasePage() {
     const navigate = useNavigate();
     const location = useLocation();
     const returnTo = location.state?.returnTo ?? null;
-    const fallbackDestination = returnTo || `/purchases/${id}`;
+
+    const navigateBackToOrigin = () => {
+        if (returnTo) {
+            navigate(returnTo, { replace: true });
+            return;
+        }
+
+        navigate('/purchases');
+    };
 
     // Data state
     const [suppliers, setSuppliers] = useState([]);
@@ -145,7 +153,7 @@ function EditPurchasePage() {
         };
         try {
             await axiosInstance.put(`/purchases/${id}/`, dataToSubmit);
-            navigate(fallbackDestination, { replace: Boolean(returnTo) });
+            navigateBackToOrigin();
         } catch (err) {
             console.error('Failed to update purchase:', err.response?.data);
             setError('Failed to update purchase. Please check all fields.');
@@ -264,7 +272,7 @@ function EditPurchasePage() {
                                     <Button
                                         variant="outline-secondary"
                                         type="button"
-                                        onClick={() => navigate(fallbackDestination)}
+                                        onClick={navigateBackToOrigin}
                                     >
                                         Cancel
                                     </Button>
