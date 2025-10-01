@@ -109,7 +109,15 @@ function PurchaseDetailPage() {
                         <h4 className="text-end mt-3">Total: {formatCurrency(purchase.total_amount, purchase.original_currency || 'USD')}</h4>
                     </Card.Body>
                     <Card.Footer className="text-end">
-                        <Button as={Link} to={`/purchases/${purchase.id}/edit`} variant="warning" className="me-2">Edit</Button>
+                        <Button
+                            as={Link}
+                            to={`/purchases/${purchase.id}/edit`}
+                            state={{ returnTo: `/purchases/${purchase.id}` }}
+                            variant="warning"
+                            className="me-2"
+                        >
+                            Edit
+                        </Button>
                         <Button variant="danger" onClick={handleDelete}>Delete</Button>
                     </Card.Footer>
                 </Card>
