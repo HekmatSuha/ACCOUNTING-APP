@@ -1,7 +1,7 @@
 // frontend/src/pages/PurchaseDetailPage.js
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
@@ -110,11 +110,11 @@ function PurchaseDetailPage() {
                     </Card.Body>
                     <Card.Footer className="text-end">
                         <Button
-                            as={Link}
-                            to={`/purchases/${purchase.id}/edit`}
-                            state={{ returnTo: `/purchases/${purchase.id}` }}
                             variant="warning"
                             className="me-2"
+                            onClick={() => navigate(`/purchases/${purchase.id}/edit`, {
+                                state: { returnTo: `/purchases/${purchase.id}` },
+                            })}
                         >
                             Edit
                         </Button>
