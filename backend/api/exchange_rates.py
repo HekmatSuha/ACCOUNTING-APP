@@ -154,9 +154,14 @@ def _manual_exchange_rate(from_currency: str, to_currency: str) -> Optional[Deci
     except Currency.DoesNotExist:
         return None
 
-    from_rate = Decimal(from_currency_obj.exchange_rate)
-    to_rate = Decimal(to_currency_obj.exchange_rate)
+    from_rate = from_currency_obj.exchange_rate
+    to_rate = to_currency_obj.exchange_rate
     if from_rate <= 0 or to_rate <= 0:
+        return None
+
+    # When both currencies have the default exchange rate, we should not consider
+    # it a valid manual rate.
+    if from_rate == Decimal("1.0") and to_rate == Decimal("1.0"):
         return None
 
     quantizer = Decimal('1.000000')
