@@ -1,6 +1,6 @@
 // frontend/src/pages/SaleDetailPage.js
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
@@ -8,6 +8,15 @@ import AddPaymentModal from '../components/AddPaymentModal';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
 import '../styles/datatable.css';
 import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+
+const extractFilenameFromDisposition = disposition => {
+    if (!disposition) {
+        return null;
+    }
+
+    const filenameMatch = /filename="?([^";]+)"?/i.exec(disposition);
+    return filenameMatch ? decodeURIComponent(filenameMatch[1]) : null;
+};
 
 const BASE_API_URL = getBaseApiUrl();
 
@@ -80,8 +89,10 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
                 responseType: 'blob', // Important for handling binary data
             });
 
-            const filename = `invoice_${sale.invoice_number || sale.id}.pdf`;
-            const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const fallbackFilename = `invoice_${sale.invoice_number || sale.id}.pdf`;
+            const filename = extractFilenameFromDisposition(response.headers['content-disposition']) || fallbackFilename;
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const blobUrl = window.URL.createObjectURL(blob);
 
             // Try to render the PDF in a new tab for printing.
             const pdfWindow = window.open('', '_blank');
