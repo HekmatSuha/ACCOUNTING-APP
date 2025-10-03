@@ -450,6 +450,12 @@ class OfferNestedRouteTest(TestCase):
         self.client.force_authenticate(user=self.user)
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=Decimal('10.00'), created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
+        WarehouseInventory.objects.create(
+            product=self.product,
+            warehouse=self.warehouse,
+            quantity=Decimal('10.00'),
+        )
 
     def test_create_offer_via_customer_route(self):
         url = f'/api/customers/{self.customer.id}/offers/'

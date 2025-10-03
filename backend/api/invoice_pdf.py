@@ -1,5 +1,6 @@
 """Utilities for generating PDF invoices."""
 
+import logging
 from io import BytesIO
 from pathlib import Path
 from typing import IO
@@ -47,7 +48,8 @@ def _build_image_flowable(image_field, width, height, **image_kwargs):
     if image_path:
         try:
             return Image(image_path, width=width, height=height, **image_kwargs)
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error loading image from path {image_path}: {e}")
             pass
 
     # Fallback to loading the bytes through Django's storage backend.
@@ -59,7 +61,8 @@ def _build_image_flowable(image_field, width, height, **image_kwargs):
             image_field.close()
         if image_bytes:
             return Image(ImageReader(BytesIO(image_bytes)), width=width, height=height, **image_kwargs)
-    except Exception:
+    except Exception as e:
+        logging.error(f"Error loading image from storage: {e}")
         return ''
 
     return ''
