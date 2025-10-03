@@ -6,7 +6,6 @@ import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2, CartCheck } from 'react-bootstrap-icons';
 import './SupplierDetailPage.css';
-import SupplierPaymentModal from '../components/SupplierPaymentModal';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
 import '../styles/transaction-history.css';
@@ -20,9 +19,6 @@ function SupplierDetailPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [editingPayment, setEditingPayment] = useState(null);
-
     const fetchDetails = async () => {
         try {
             const response = await axiosInstance.get(`suppliers/${id}/details/`);
@@ -37,10 +33,6 @@ function SupplierDetailPage() {
     useEffect(() => {
         fetchDetails();
     }, [id]);
-
-    const handlePaymentAdded = () => {
-        fetchDetails(); // Refresh data after payment
-    };
 
     const handleDeletePurchase = async (purchaseId) => {
         if (!window.confirm('Are you sure you want to delete this purchase?')) return;
@@ -63,8 +55,9 @@ function SupplierDetailPage() {
     };
 
     const handleEditPayment = (payment) => {
-        setEditingPayment(payment);
-        setShowPaymentModal(true);
+        navigate(`/suppliers/${id}/payment?paymentId=${payment.id}`, {
+            state: { paymentToEdit: payment },
+        });
     };
 
     const handleDeletePayment = async (paymentId) => {
@@ -75,11 +68,6 @@ function SupplierDetailPage() {
         } catch (err) {
             setError('Failed to delete payment.');
         }
-    };
-
-    const handleClosePaymentModal = () => {
-        setShowPaymentModal(false);
-        setEditingPayment(null);
     };
 
     const formatCurrency = (amount, currency) => {
@@ -182,15 +170,6 @@ function SupplierDetailPage() {
                     Make Payment
                 </Button>
             </ButtonToolbar>
-
-            <SupplierPaymentModal
-                show={showPaymentModal}
-                handleClose={handleClosePaymentModal}
-                supplierId={id}
-                onPaymentAdded={handlePaymentAdded}
-                payment={editingPayment}
-                supplierCurrency={supplier.currency}
-            />
 
             {/* Transaction Lists */}
             <Row className="g-4 align-items-start">
