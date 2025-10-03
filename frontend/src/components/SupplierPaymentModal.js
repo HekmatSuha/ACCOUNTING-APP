@@ -7,9 +7,9 @@ import '../styles/paymentModal.css';
 
 function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, payment, supplierCurrency }) {
     const [amount, setAmount] = useState('');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
     const [method, setMethod] = useState('Cash');
-    const [notes, setNotes] = useState('');
+    const [description, setDescription] = useState('');
     const [account, setAccount] = useState('');
     const [accounts, setAccounts] = useState([]);
     const [accountCurrency, setAccountCurrency] = useState(getBaseCurrency());
@@ -48,19 +48,33 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
         }
 
         if (payment) {
-            setAmount(payment.original_amount);
-            setPaymentDate(payment.payment_date);
-            setMethod(payment.method);
-            setNotes(payment.notes);
-            setAccount(payment.account);
-            setPaymentCurrency(payment.original_currency || supplierCurrency || getBaseCurrency());
-            setExchangeRate(payment.account_exchange_rate ? Number(payment.account_exchange_rate) : 1);
-            setConvertedAmount(payment.account_converted_amount ? String(payment.account_converted_amount) : '');
+            const originalAmount = payment.original_amount ?? payment.amount ?? '';
+            const paymentCurrencyCode = payment.original_currency || supplierCurrency || getBaseCurrency();
+            const initialExchangeRate = payment.account_exchange_rate
+                ? Number(payment.account_exchange_rate)
+                : payment.exchange_rate
+                    ? Number(payment.exchange_rate)
+                    : 1;
+            const initialConvertedAmount =
+                payment.account_converted_amount ?? payment.converted_amount ?? originalAmount ?? '';
+
+            setAmount(originalAmount !== null && originalAmount !== undefined ? String(originalAmount) : '');
+            setExpenseDate(payment.expense_date || new Date().toISOString().slice(0, 10));
+            setMethod(payment.method || 'Cash');
+            setDescription(payment.description || '');
+            setAccount(payment.account ? String(payment.account) : '');
+            setPaymentCurrency(paymentCurrencyCode);
+            setExchangeRate(initialExchangeRate || 1);
+            setConvertedAmount(
+                initialConvertedAmount !== null && initialConvertedAmount !== undefined
+                    ? String(initialConvertedAmount)
+                    : ''
+            );
         } else {
             setAmount('');
-            setPaymentDate(new Date().toISOString().slice(0, 10));
+            setExpenseDate(new Date().toISOString().slice(0, 10));
             setMethod('Cash');
-            setNotes('');
+            setDescription('');
             setAccount('');
             setPaymentCurrency(supplierCurrency || getBaseCurrency());
             setAccountCurrency(supplierCurrency || getBaseCurrency());
@@ -83,13 +97,12 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
 
     useEffect(() => {
         const amt = parseFloat(amount) || 0;
-        if (paymentCurrency !== accountCurrency) {
+        if (account && paymentCurrency !== accountCurrency) {
             setConvertedAmount((amt * exchangeRate).toFixed(2));
         } else {
-            setExchangeRate(1);
             setConvertedAmount(amount);
         }
-    }, [amount, paymentCurrency, accountCurrency, exchangeRate]);
+    }, [account, amount, paymentCurrency, accountCurrency, exchangeRate]);
 
 
     const handleSubmit = async (e) => {
@@ -107,17 +120,20 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
         }
 
         const paymentData = {
-            payment_date: paymentDate,
+            expense_date: expenseDate,
             original_amount: parseFloat(amount),
             method,
-            notes,
-            account: account || null,
+            description,
+            account: account ? parseInt(account, 10) : null,
             original_currency: paymentCurrency,
         };
 
         if (account && paymentCurrency !== accountCurrency) {
+            const converted = parseFloat(convertedAmount);
             paymentData.account_exchange_rate = exchangeRate;
-            paymentData.account_converted_amount = parseFloat(convertedAmount);
+            paymentData.account_converted_amount = Number.isNaN(converted)
+                ? parseFloat(amount) * exchangeRate
+                : converted;
         }
 
         if (paymentCurrency !== supplierCurrency) {
@@ -177,8 +193,8 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             <Form.Label>Payment Date</Form.Label>
                             <Form.Control
                                 type="date"
-                                value={paymentDate}
-                                onChange={(event) => setPaymentDate(event.target.value)}
+                                value={expenseDate}
+                                onChange={(event) => setExpenseDate(event.target.value)}
                                 required
                             />
                         </Form.Group>
@@ -231,8 +247,8 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             <Form.Control
                                 as="textarea"
                                 rows={3}
-                                value={notes}
-                                onChange={(event) => setNotes(event.target.value)}
+                                value={description}
+                                onChange={(event) => setDescription(event.target.value)}
                                 placeholder="Optional notes"
                             />
                         </Form.Group>
