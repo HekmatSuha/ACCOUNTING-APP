@@ -1,15 +1,19 @@
+"""Utilities for generating PDF invoices."""
+
 from io import BytesIO
 from pathlib import Path
+from typing import IO
 
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_RIGHT, TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate, Spacer,
+                                Table, TableStyle)
 
 from .models import CompanyInfo, Sale
 
@@ -60,8 +64,9 @@ def _build_image_flowable(image_field, width, height, **image_kwargs):
 
     return ''
 
-def generate_invoice_pdf(sale):
-    """Generate a professional PDF invoice for the given Sale instance."""
+def generate_invoice_pdf(sale: Sale) -> IO[bytes]:
+    """Generate a professional PDF invoice for the given ``Sale`` instance."""
+
     buffer = BytesIO()
 
     _ensure_custom_fonts()
@@ -234,6 +239,5 @@ def generate_invoice_pdf(sale):
 
     # --- Build PDF ---
     doc.build(elements)
-    pdf = buffer.getvalue()
-    buffer.close()
-    return pdf
+    buffer.seek(0)
+    return buffer
