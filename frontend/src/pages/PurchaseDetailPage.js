@@ -112,9 +112,27 @@ function PurchaseDetailPage() {
                         <Button
                             variant="warning"
                             className="me-2"
-                            onClick={() => navigate(`/purchases/${purchase.id}/edit`, {
-                                state: { returnTo: `/purchases/${purchase.id}` },
-                            })}
+                            onClick={() => {
+                                if (purchase.supplier) {
+                                    navigate(`/suppliers/${purchase.supplier}/new-purchase`, {
+                                        state: {
+                                            purchaseId: purchase.id,
+                                            returnTo: `/purchases/${purchase.id}`,
+                                        },
+                                    });
+                                } else if (purchase.customer) {
+                                    navigate(`/customers/${purchase.customer}/new-purchase`, {
+                                        state: {
+                                            purchaseId: purchase.id,
+                                            returnTo: `/purchases/${purchase.id}`,
+                                        },
+                                    });
+                                } else {
+                                    navigate(`/purchases/${purchase.id}/edit`, {
+                                        state: { returnTo: `/purchases/${purchase.id}` },
+                                    });
+                                }
+                            }}
                         >
                             Edit
                         </Button>

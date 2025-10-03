@@ -1,7 +1,7 @@
 // frontend/src/pages/PurchaseFormPage.js
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Container, Form, Row, Stack, Table } from 'react-bootstrap';
 import { PencilSquare, Plus, Trash } from 'react-bootstrap-icons';
 import axiosInstance from '../utils/axiosInstance';
@@ -14,10 +14,15 @@ function PurchaseFormPage() {
     const { supplierId, customerId } = useParams();
     const isCustomerPurchase = Boolean(customerId);
     const navigate = useNavigate();
+    const location = useLocation();
+    const purchaseId = location.state?.purchaseId ?? null;
+    const returnTo = location.state?.returnTo ?? null;
+    const isEditing = Boolean(purchaseId);
 
     const [partner, setPartner] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
+    const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -32,21 +37,51 @@ function PurchaseFormPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [partnerRes, productRes, warehouseRes] = await Promise.all([
+                setIsLoadingInitialData(true);
+                const requests = [
                     axiosInstance.get(supplierId ? `suppliers/${supplierId}/` : `customers/${customerId}/`),
                     axiosInstance.get('/products/'),
                     axiosInstance.get('/warehouses/'),
-                ]);
+                ];
+
+                if (purchaseId) {
+                    requests.push(axiosInstance.get(`/purchases/${purchaseId}/`));
+                }
+
+                const responses = await Promise.all(requests);
+                const [partnerRes, productRes, warehouseRes, purchaseRes] = responses;
                 const partnerData = { currency: 'USD', ...partnerRes.data };
                 setPartner(partnerData);
                 setAllProducts(productRes.data);
                 setWarehouses(warehouseRes.data);
+
+                if (purchaseId && purchaseRes) {
+                    const purchaseData = purchaseRes.data;
+                    setPurchaseDate(purchaseData.purchase_date || new Date().toISOString().slice(0, 10));
+                    const fallbackWarehouseId = warehouseRes.data[0]?.id || '';
+                    setLineItems(
+                        (purchaseData.items || []).map((item) => ({
+                            product_id:
+                                typeof item.product === 'object'
+                                    ? item.product.id
+                                    : item.product,
+                            quantity: Number(item.quantity),
+                            unit_price: Number(item.unit_price),
+                            warehouse_id: item.warehouse_id || fallbackWarehouseId,
+                            discount: Number(item.discount) || 0,
+                            note: item.note || '',
+                        }))
+                    );
+                }
             } catch (error) {
                 console.error('Failed to fetch initial data', error);
+                setFormError('Failed to load purchase details.');
+            } finally {
+                setIsLoadingInitialData(false);
             }
         };
         fetchData();
-    }, [supplierId, customerId]);
+    }, [supplierId, customerId, purchaseId]);
 
     useEffect(() => {
         if (warehouses.length === 0) return;
@@ -169,24 +204,34 @@ function PurchaseFormPage() {
         };
 
         if (supplierId) {
-            payload.supplier_id = supplierId;
+            payload.supplier_id = Number(supplierId);
         } else if (customerId) {
-            payload.customer_id = customerId;
+            payload.customer_id = Number(customerId);
         }
 
         try {
             setIsSubmitting(true);
-            await axiosInstance.post('/purchases/', payload);
-            navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`);
+            if (isEditing) {
+                await axiosInstance.put(`/purchases/${purchaseId}/`, payload);
+            } else {
+                await axiosInstance.post('/purchases/', payload);
+            }
+
+            if (returnTo) {
+                navigate(returnTo, { replace: true });
+            } else {
+                navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`);
+            }
         } catch (error) {
-            console.error('Failed to create purchase', error.response?.data);
+            console.error('Failed to save purchase', error.response?.data);
             setFormError(error.response?.data?.detail || 'Failed to save the purchase.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    if (!partner) return <div>Loading...</div>;
+    if (isLoadingInitialData) return <div>Loading...</div>;
+    if (!partner) return <Alert variant="danger">Unable to load purchase information.</Alert>;
 
     const hasWarehouses = warehouses.length > 0;
 
@@ -197,7 +242,15 @@ function PurchaseFormPage() {
         }).format(amount || 0);
     };
 
-    const formTitle = isCustomerPurchase ? 'Purchase from Customer' : 'Purchase from Supplier';
+    const formTitle = isCustomerPurchase
+        ? isEditing
+            ? 'Edit Purchase from Customer'
+            : 'Purchase from Customer'
+        : isEditing
+            ? 'Edit Purchase from Supplier'
+            : 'Purchase from Supplier';
+    const submitLabel = isEditing ? 'Update Purchase' : 'Save Purchase';
+    const submittingLabel = isEditing ? 'Updating...' : 'Saving...';
 
     return (
         <Container className="sale-form__container">
@@ -295,11 +348,21 @@ function PurchaseFormPage() {
                                         variant="success"
                                         disabled={!hasWarehouses || !hasLineItems || isSubmitting}
                                     >
-                                        Save Purchase
+                                        {isSubmitting ? submittingLabel : submitLabel}
                                     </Button>
                                     <Button
                                         variant="outline-secondary"
-                                        onClick={() => navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`)}
+                                        onClick={() => {
+                                            if (returnTo) {
+                                                navigate(returnTo);
+                                            } else {
+                                                navigate(
+                                                    supplierId
+                                                        ? `/suppliers/${supplierId}`
+                                                        : `/customers/${customerId}`
+                                                );
+                                            }
+                                        }}
                                         type="button"
                                     >
                                         Cancel
