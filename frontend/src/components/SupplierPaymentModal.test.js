@@ -47,13 +47,13 @@ describe('SupplierPaymentModal', () => {
 
   test('renders correctly for a new payment', async () => {
     render(<SupplierPaymentModal {...defaultProps} />);
-    await screen.findByText('Add Payment');
+    await screen.findByText('Record Payment');
     expect(screen.getByLabelText(/^Amount$/)).toHaveValue(null);
   });
 
   test('shows exchange rate fields when payment currency and account currency differ', async () => {
     render(<SupplierPaymentModal {...defaultProps} />);
-    await screen.findByText('Add Payment');
+    await screen.findByText('Record Payment');
 
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } }); // EUR Account
 
@@ -73,7 +73,7 @@ describe('SupplierPaymentModal', () => {
 
   test('hides exchange rate fields when payment and account currencies are the same', async () => {
     render(<SupplierPaymentModal {...defaultProps} />);
-    await screen.findByText('Add Payment');
+    await screen.findByText('Record Payment');
 
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: '1' } }); // USD Account
 
@@ -85,7 +85,7 @@ describe('SupplierPaymentModal', () => {
   test('submits correct data when creating a new payment with currency conversion', async () => {
     axiosInstance.post.mockResolvedValue({ data: {} });
     render(<SupplierPaymentModal {...defaultProps} />);
-    await screen.findByText('Add Payment');
+    await screen.findByText('Record Payment');
 
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } }); // EUR Account
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
@@ -102,9 +102,11 @@ describe('SupplierPaymentModal', () => {
         expect.objectContaining({
           original_amount: 120,
           original_currency: 'USD',
-          account: '2',
+          account: 2,
           account_exchange_rate: 0.95,
-          account_converted_amount: 114.00,
+          account_converted_amount: 114,
+          expense_date: expect.any(String),
+          description: '',
         })
       );
     });
