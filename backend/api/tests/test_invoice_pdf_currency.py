@@ -92,7 +92,7 @@ class InvoicePDFCurrencyTest(TestCase):
         )
         sale = self._create_sale(customer=customer)
         pdf = generate_invoice_pdf(sale)
-        text = extract_pdf_text(pdf)
+        text = extract_pdf_text(pdf.getvalue())
         self.assertIn("€10.00", text)
         self.assertNotIn("$", text)
 
@@ -100,6 +100,6 @@ class InvoicePDFCurrencyTest(TestCase):
         supplier = Supplier.objects.create(name="Supp", currency="EUR", created_by=self.user)
         sale = self._create_sale(supplier=supplier)
         pdf = generate_invoice_pdf(sale)
-        text = extract_pdf_text(pdf)
+        text = extract_pdf_text(pdf.getvalue())
         self.assertIn("€10.00", text)
         self.assertNotIn("$", text)

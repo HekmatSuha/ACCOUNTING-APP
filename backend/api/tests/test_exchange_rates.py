@@ -3,15 +3,18 @@ from unittest.mock import Mock, patch
 import requests
 
 from django.core.cache import cache
-from django.test import SimpleTestCase, override_settings
+from django.test import TestCase, override_settings
 
+from ..models import Currency
 from ..exchange_rates import get_exchange_rate
 
 
-class GetExchangeRateTests(SimpleTestCase):
+class GetExchangeRateTests(TestCase):
     def setUp(self):
         super().setUp()
         cache.clear()
+        Currency.objects.get_or_create(code="USD", defaults={"name": "US Dollar"})
+        Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
 
     def tearDown(self):
         cache.clear()
