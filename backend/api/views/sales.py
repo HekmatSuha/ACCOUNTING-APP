@@ -4,7 +4,7 @@ from datetime import date
 
 from django.db import transaction
 from django.db.models import F
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound
@@ -89,10 +89,12 @@ class SaleViewSet(viewsets.ModelViewSet):
         """Return a PDF representation of the sale invoice."""
 
         sale = self.get_object()
-        pdf_bytes = generate_invoice_pdf(sale)
+        pdf_buffer = generate_invoice_pdf(sale)
         filename = f"invoice_{sale.invoice_number or sale.id}.pdf"
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        response = FileResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        response['Content-Length'] = str(len(pdf_buffer.getbuffer()))
         return response
 
 
