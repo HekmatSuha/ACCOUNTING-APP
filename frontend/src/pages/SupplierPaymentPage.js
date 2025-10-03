@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
@@ -47,9 +47,66 @@ const describeSupplierBalance = (value) => {
     return 'Hesap kapandı.';
 };
 
+const extractMethodFromPayment = (payment) => {
+    if (!payment) {
+        return 'Cash';
+    }
+    if (payment.method) {
+        return payment.method;
+    }
+    const description = payment.description || '';
+    const methodPart = description
+        .split(' - ')
+        .map((part) => part.trim())
+        .find((part) => part.toLowerCase().startsWith('yöntem:'));
+    if (!methodPart) {
+        return 'Cash';
+    }
+    const [, methodValue] = methodPart.split(':');
+    return methodValue ? methodValue.trim() : 'Cash';
+};
+
+const extractNotesFromPayment = (payment) => {
+    if (!payment) {
+        return '';
+    }
+    if (payment.notes) {
+        return payment.notes;
+    }
+    const description = payment.description || '';
+    if (!description) {
+        return '';
+    }
+    const parts = description
+        .split(' - ')
+        .map((part) => part.trim())
+        .filter(Boolean);
+    const filtered = parts.filter((part) => {
+        const lower = part.toLowerCase();
+        if (lower === 'tedarikçiye ödeme' || lower === 'tedarikçiden tahsilat') {
+            return false;
+        }
+        if (lower.startsWith('yöntem:')) {
+            return false;
+        }
+        return true;
+    });
+    return filtered.join(' - ');
+};
+
 function SupplierPaymentPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const editingPaymentId = searchParams.get('paymentId');
+    const paymentFromState = location.state?.paymentToEdit || null;
+
+    const [editingPayment, setEditingPayment] = useState(paymentFromState);
+    const [hasHydratedEdit, setHasHydratedEdit] = useState(false);
+    const [editingLoading, setEditingLoading] = useState(false);
+
+    const isEditing = Boolean(editingPaymentId);
 
     const [supplierData, setSupplierData] = useState(null);
     const [accounts, setAccounts] = useState([]);
@@ -84,6 +141,7 @@ function SupplierPaymentPage() {
     const fetchInitialData = async () => {
         setLoading(true);
         setError('');
+        setSuccess('');
         try {
             const [detailsRes, accountsRes] = await Promise.all([
                 axiosInstance.get(`suppliers/${id}/details/`),
@@ -118,6 +176,7 @@ function SupplierPaymentPage() {
             setMethod('Cash');
             setAccountExchangeRate('1');
             setAccountRateEdited(false);
+            setHasHydratedEdit(false);
         } catch (err) {
             console.error('Failed to load supplier payment data:', err);
             setError('Failed to load supplier information for payment.');
@@ -129,6 +188,95 @@ function SupplierPaymentPage() {
     useEffect(() => {
         fetchInitialData();
     }, [id]);
+
+    useEffect(() => {
+        if (!isEditing) {
+            setEditingPayment(null);
+            setHasHydratedEdit(false);
+            setEditingLoading(false);
+        }
+    }, [isEditing]);
+
+    useEffect(() => {
+        if (paymentFromState && isEditing) {
+            setEditingPayment(paymentFromState);
+            setHasHydratedEdit(false);
+            setEditingLoading(false);
+        }
+    }, [paymentFromState, isEditing]);
+
+    useEffect(() => {
+        if (!isEditing) {
+            return;
+        }
+        if (paymentFromState) {
+            return;
+        }
+        if (!editingPaymentId) {
+            return;
+        }
+
+        let ignore = false;
+
+        const loadPayment = async () => {
+            try {
+                setEditingLoading(true);
+                const response = await axiosInstance.get(`suppliers/${id}/payments/${editingPaymentId}/`);
+                if (!ignore) {
+                    setEditingPayment(response.data);
+                    setHasHydratedEdit(false);
+                    setError('');
+                }
+            } catch (err) {
+                console.error('Failed to load supplier payment for editing:', err);
+                if (!ignore) {
+                    setError('Failed to load payment details for editing.');
+                }
+            } finally {
+                if (!ignore) {
+                    setEditingLoading(false);
+                }
+            }
+        };
+
+        loadPayment();
+
+        return () => {
+            ignore = true;
+        };
+    }, [isEditing, paymentFromState, editingPaymentId, id]);
+
+    useEffect(() => {
+        if (!isEditing) {
+            return;
+        }
+        if (!editingPayment) {
+            return;
+        }
+        if (hasHydratedEdit) {
+            return;
+        }
+
+        const rawAmount = Number(editingPayment.original_amount ?? editingPayment.amount ?? 0);
+        const absoluteAmount = Math.abs(rawAmount);
+        setTransactionType(rawAmount < 0 ? 'collection' : 'payment');
+        setPaymentDate(editingPayment.expense_date || getTodayDate());
+        setMethod(extractMethodFromPayment(editingPayment));
+        setNotes(extractNotesFromPayment(editingPayment));
+        const accountId = editingPayment.account ?? editingPayment.account_id ?? null;
+        setAccount(accountId ? String(accountId) : '');
+        setAmount(absoluteAmount ? absoluteAmount.toString() : '');
+        const existingRate = editingPayment.account_exchange_rate
+            ? String(editingPayment.account_exchange_rate)
+            : editingPayment.exchange_rate
+                ? String(editingPayment.exchange_rate)
+                : '1';
+        setAccountExchangeRate(existingRate || '1');
+        setAccountRateEdited(Boolean(editingPayment.account_exchange_rate));
+        setSuccess('');
+        setError('');
+        setHasHydratedEdit(true);
+    }, [isEditing, editingPayment, hasHydratedEdit]);
 
     useEffect(() => {
         if (!selectedAccount) {
@@ -255,16 +403,22 @@ function SupplierPaymentPage() {
 
         try {
             setSaving(true);
-            await axiosInstance.post(`suppliers/${id}/payments/`, payload);
-            setSuccess('Payment saved successfully.');
-            setAmount('');
-            setNotes('');
-            setAccount('');
-            setMethod('Cash');
-            setTransactionType('payment');
-            setAccountExchangeRate('1');
-            setAccountRateEdited(false);
-            await refreshSupplierSummary();
+            if (isEditing && editingPaymentId) {
+                await axiosInstance.put(`suppliers/${id}/payments/${editingPaymentId}/`, payload);
+                await refreshSupplierSummary();
+                navigate(`/suppliers/${id}`, { replace: true });
+            } else {
+                await axiosInstance.post(`suppliers/${id}/payments/`, payload);
+                setSuccess('Payment saved successfully.');
+                setAmount('');
+                setNotes('');
+                setAccount('');
+                setMethod('Cash');
+                setTransactionType('payment');
+                setAccountExchangeRate('1');
+                setAccountRateEdited(false);
+                await refreshSupplierSummary();
+            }
         } catch (err) {
             console.error('Failed to save supplier payment:', err);
             const message = buildErrorMessage(err?.response?.data) || 'Unable to save the payment. Please try again.';
@@ -274,6 +428,19 @@ function SupplierPaymentPage() {
         }
     };
 
+    const isFormReady = !isEditing || (hasHydratedEdit && !editingLoading);
+    const isPageLoading = loading || (isEditing && !isFormReady);
+    const fieldDisabled = saving || !isFormReady;
+    const isSaveDisabled = saving || !isFormReady;
+    const saveButtonLabel = saving
+        ? isEditing
+            ? 'Güncelleniyor…'
+            : 'Kaydediliyor…'
+        : isEditing
+            ? 'Güncelle'
+            : 'Kaydet';
+    const formSubtitle = isEditing ? 'Tedarikçi Ödemesini Düzenle' : 'Tedarikçiye Ödeme Kaydı';
+
     return (
         <Container fluid className="payment-page">
             <div className="payment-page__header">
@@ -281,9 +448,9 @@ function SupplierPaymentPage() {
                     type="submit"
                     form="supplier-payment-form"
                     className="payment-page__save-btn"
-                    disabled={loading || saving}
+                    disabled={isSaveDisabled}
                 >
-                    {saving ? 'Kaydediliyor…' : 'Kaydet'}
+                    {saveButtonLabel}
                 </Button>
                 <Button
                     type="button"
@@ -297,7 +464,7 @@ function SupplierPaymentPage() {
             {error && <Alert variant="danger" className="payment-page__alert">{error}</Alert>}
             {success && <Alert variant="success" className="payment-page__alert">{success}</Alert>}
 
-            {loading ? (
+            {isPageLoading ? (
                 <div className="text-center py-5">
                     <Spinner animation="border" variant="primary" />
                 </div>
@@ -307,7 +474,7 @@ function SupplierPaymentPage() {
                         <Card className="payment-form-card">
                             <div className="payment-form-card__header">
                                 <div className="payment-form-card__title">GİRİŞ</div>
-                                <h5 className="payment-form-card__subtitle">Tedarikçiye Ödeme Kaydı</h5>
+                                <h5 className="payment-form-card__subtitle">{formSubtitle}</h5>
                             </div>
                             <Card.Body>
                                 <Form id="supplier-payment-form" onSubmit={handleSubmit}>
@@ -318,7 +485,7 @@ function SupplierPaymentPage() {
                                                 <Form.Select
                                                     value={transactionType}
                                                     onChange={(event) => setTransactionType(event.target.value)}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 >
                                                     <option value="payment">Tedarikçiye Ödeme</option>
                                                     <option value="collection">Tedarikçiden Tahsilat</option>
@@ -332,7 +499,7 @@ function SupplierPaymentPage() {
                                                     type="date"
                                                     value={paymentDate}
                                                     onChange={(event) => setPaymentDate(event.target.value)}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                     required
                                                 />
                                             </Form.Group>
@@ -343,7 +510,7 @@ function SupplierPaymentPage() {
                                                 <Form.Select
                                                     value={method}
                                                     onChange={(event) => setMethod(event.target.value)}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 >
                                                     <option value="Cash">Nakit</option>
                                                     <option value="Bank">Banka Transferi</option>
@@ -357,7 +524,7 @@ function SupplierPaymentPage() {
                                                 <Form.Select
                                                     value={account}
                                                     onChange={handleAccountChange}
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 >
                                                     <option value="">Hesap seçin</option>
                                                     {accounts.map((acc) => (
@@ -378,7 +545,7 @@ function SupplierPaymentPage() {
                                                     value={amount}
                                                     onChange={(event) => setAmount(event.target.value)}
                                                     placeholder="Ödeme tutarını girin"
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                     required
                                                 />
                                             </Form.Group>
@@ -405,7 +572,7 @@ function SupplierPaymentPage() {
                                                                 setAccountRateEdited(true);
                                                                 setAccountExchangeRate(event.target.value);
                                                             }}
-                                                            disabled={saving}
+                                                            disabled={fieldDisabled}
                                                             required
                                                         />
                                                     </Form.Group>
@@ -439,7 +606,7 @@ function SupplierPaymentPage() {
                                                     value={notes}
                                                     onChange={(event) => setNotes(event.target.value)}
                                                     placeholder="İsteğe bağlı açıklama ekleyin"
-                                                    disabled={saving}
+                                                    disabled={fieldDisabled}
                                                 />
                                             </Form.Group>
                                         </Col>
