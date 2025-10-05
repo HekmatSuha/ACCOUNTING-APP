@@ -1,4 +1,6 @@
 # backend/api/models.py
+from datetime import date
+
 from django.db import models, transaction
 from django.db.models import F, Sum, DecimalField
 from django.db.models.functions import Coalesce
@@ -125,7 +127,7 @@ class Sale(models.Model):
     # Either a customer or supplier can be the counterparty of a sale
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
-    sale_date = models.DateField(auto_now_add=True)
+    sale_date = models.DateField(default=date.today)
     invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
     original_currency = models.CharField(max_length=3, default='USD')
     original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
