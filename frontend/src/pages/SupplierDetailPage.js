@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
-import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2, CartCheck } from 'react-bootstrap-icons';
+import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2, CartCheck, Printer } from 'react-bootstrap-icons';
 import './SupplierDetailPage.css';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
@@ -13,12 +13,22 @@ import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image'
 
 const BASE_API_URL = getBaseApiUrl();
 
+const extractFilenameFromDisposition = disposition => {
+    if (!disposition) {
+        return null;
+    }
+
+    const filenameMatch = /filename="?([^";]+)"?/i.exec(disposition);
+    return filenameMatch ? decodeURIComponent(filenameMatch[1]) : null;
+};
+
 function SupplierDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [printingSaleId, setPrintingSaleId] = useState(null);
     const fetchDetails = async () => {
         try {
             const response = await axiosInstance.get(`suppliers/${id}/details/`);
@@ -51,6 +61,56 @@ function SupplierDetailPage() {
             fetchDetails();
         } catch (err) {
             setError('Failed to delete sale.');
+        }
+    };
+
+    const handlePrintSale = async (sale) => {
+        if (!sale) {
+            return;
+        }
+
+        setPrintingSaleId(sale.id);
+        setError('');
+
+        try {
+            const response = await axiosInstance.get(`/sales/${sale.id}/invoice_pdf/`, {
+                responseType: 'blob',
+            });
+
+            const fallbackFilename = `invoice_${sale.invoice_number || sale.id}.pdf`;
+            const filename =
+                extractFilenameFromDisposition(response.headers['content-disposition']) || fallbackFilename;
+
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const pdfWindow = window.open('', '_blank');
+            if (pdfWindow && !pdfWindow.closed) {
+                pdfWindow.document.title = filename;
+                pdfWindow.document.write(`
+                    <html>
+                        <head><title>${filename}</title></head>
+                        <body style="margin:0">
+                            <embed src="${blobUrl}" type="application/pdf" width="100%" height="100%" />
+                        </body>
+                    </html>
+                `);
+                pdfWindow.document.close();
+            } else {
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60 * 1000);
+        } catch (err) {
+            console.error('Failed to generate or open PDF:', err);
+            setError('Could not generate the invoice PDF. Please try again.');
+        } finally {
+            setPrintingSaleId(null);
         }
     };
 
@@ -370,6 +430,15 @@ function SupplierDetailPage() {
                                                         <ActionMenu
                                                             toggleAriaLabel={`Sale actions for ${saleDate}`}
                                                             actions={[
+                                                                {
+                                                                    label:
+                                                                        printingSaleId === sale.id
+                                                                            ? 'Printing…'
+                                                                            : 'Print Invoice',
+                                                                    icon: <Printer />,
+                                                                    onClick: () => handlePrintSale(sale),
+                                                                    disabled: printingSaleId === sale.id,
+                                                                },
                                                                 {
                                                                     label: 'Edit Sale',
                                                                     icon: <PencilSquare />,
