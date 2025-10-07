@@ -18,7 +18,7 @@ from .views.customers import (
     customer_balance_report,
 )
 from .views.expenses import ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report
-from .views.products import ProductViewSet
+from .views.products import ProductViewSet, inventory_report
 from .views.purchases import PurchaseReturnViewSet, PurchaseViewSet
 from .views.sales import OfferViewSet, PaymentViewSet, SaleReturnViewSet, SaleViewSet, sales_report
 from .views.warehouses import WarehouseViewSet
@@ -68,6 +68,7 @@ urlpatterns = [
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),
     path('reports/customer-balances/', customer_balance_report, name='customer-balance-report'),
     path('reports/sales/', sales_report, name='sales-report'),
+    path('reports/inventory/', inventory_report, name='inventory-report'),
     path('', include(router.urls)),
     path('', include(sales_router.urls)),
     path('', include(customers_router.urls)),

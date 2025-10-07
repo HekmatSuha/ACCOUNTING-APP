@@ -12,7 +12,7 @@ from .customers import (
     customer_balance_report,
 )
 from .expenses import ExpenseCategoryViewSet, ExpenseViewSet, profit_and_loss_report
-from .products import ProductViewSet
+from .products import ProductViewSet, inventory_report
 from .purchases import PurchaseReturnViewSet, PurchaseViewSet
 from .sales import (
     OfferViewSet,
@@ -49,4 +49,5 @@ __all__ = [
     'profit_and_loss_report',
     'customer_balance_report',
     'sales_report',
+    'inventory_report',
 ]
