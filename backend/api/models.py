@@ -436,8 +436,8 @@ class WarehouseInventory(models.Model):
         """Adjust the quantity of ``product`` stored in ``warehouse``.
 
         ``delta`` may be positive (stock increases) or negative (stock
-        decreases).  A ``ValueError`` is raised if the adjustment would result
-        in negative stock either for the warehouse or for the product overall.
+        decreases).  Negative balances are permitted so we simply persist the
+        new quantity for both the warehouse and aggregate product stock.
         """
 
         if delta in (None, 0, Decimal("0")):
@@ -454,21 +454,10 @@ class WarehouseInventory(models.Model):
             )
 
             new_quantity = Decimal(inventory.quantity) + delta
-            if new_quantity < 0:
-                raise ValueError(
-                    f"Insufficient stock for '{locked_product.name}' in "
-                    f"warehouse '{warehouse.name}'."
-                )
-
             inventory.quantity = new_quantity
             inventory.save(update_fields=["quantity"])
 
             new_total = Decimal(locked_product.stock_quantity or 0) + delta
-            if new_total < 0:
-                raise ValueError(
-                    f"Total stock for '{locked_product.name}' cannot be negative."
-                )
-
             locked_product.stock_quantity = new_total
             locked_product.save(update_fields=["stock_quantity"])
 
