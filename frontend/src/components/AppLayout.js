@@ -135,6 +135,14 @@ function AppLayout({ children }) {
                             >
                                 Customer Balances
                             </NavLink>
+                            <NavLink
+                                to="/reports/inventory"
+                                className={({ isActive }) =>
+                                    `sidebar-submenu-link ${isActive ? 'active' : ''}`
+                                }
+                            >
+                                Inventory
+                            </NavLink>
                         </div>
                     )}
                 </div>

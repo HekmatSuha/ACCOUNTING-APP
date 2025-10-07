@@ -25,6 +25,7 @@ import ExpenseListPage from './pages/ExpenseListPage';
 import ProfitLossPage from './pages/ProfitLossPage';
 import SalesReportPage from './pages/SalesReportPage';
 import CustomerBalanceReportPage from './pages/CustomerBalanceReportPage';
+import InventoryReportPage from './pages/InventoryReportPage';
 import PurchaseFormPage from './pages/PurchaseFormPage';
 import EditSalePage from './pages/EditSalePage';
 import PurchaseListPage from './pages/PurchaseListPage';
@@ -89,6 +90,7 @@ function App() {
                   <Route path="reports/profit-loss" element={<ProfitLossPage />} />
                   <Route path="reports/sales" element={<SalesReportPage />} />
                   <Route path="reports/customer-balances" element={<CustomerBalanceReportPage />} />
+                  <Route path="reports/inventory" element={<InventoryReportPage />} />
                   <Route path="sales/:id/edit" element={<EditSalePage />} /> {/* <-- Add Route */}
                   <Route path="purchases" element={<PurchaseListPage />} /> {/* <-- Add Route */}
                   <Route path="purchases/:id" element={<PurchaseDetailPage />} /> {/* <-- Add Route */}

@@ -9,7 +9,15 @@ from django.test import TestCase
 from openpyxl import load_workbook
 from rest_framework.test import APIClient
 
-from ..models import Customer, Expense, ExpenseCategory, Sale
+from ..models import (
+    Customer,
+    Expense,
+    ExpenseCategory,
+    Product,
+    Sale,
+    Warehouse,
+    WarehouseInventory,
+)
 
 
 class ReportExportTests(TestCase):
@@ -38,12 +46,32 @@ class ReportExportTests(TestCase):
         )
 
         category = ExpenseCategory.objects.create(name="Office", created_by=self.user)
-        Expense.objects.create(
+        self.expense = Expense.objects.create(
             category=category,
             amount=Decimal("40.00"),
+            original_amount=Decimal("40.00"),
             expense_date=date(2024, 1, 2),
             created_by=self.user,
         )
+        self.expense.refresh_from_db()
+
+        self.product = Product.objects.create(
+            name="Widget",
+            description="Test product",
+            sku="W-001",
+            purchase_price=Decimal("12.50"),
+            sale_price=Decimal("20.00"),
+            created_by=self.user,
+        )
+
+        self.default_warehouse = Warehouse.get_default(self.user)
+        WarehouseInventory.adjust_stock(self.product, self.default_warehouse, Decimal("5"))
+
+        self.secondary_warehouse = Warehouse.objects.create(
+            name="Secondary Warehouse",
+            created_by=self.user,
+        )
+        WarehouseInventory.adjust_stock(self.product, self.secondary_warehouse, Decimal("3"))
 
     def _assert_pdf_response(self, response):
         self.assertEqual(response.status_code, 200, response.content)
@@ -89,6 +117,18 @@ class ReportExportTests(TestCase):
         self._assert_pdf_response(response)
 
     def test_profit_loss_excel_contains_totals(self):
+        self.assertEqual(self.expense.amount, Decimal("40.00"))
+        json_response = self.client.get(
+            "/api/reports/profit-loss/",
+            {
+                "start_date": "2023-01-01",
+                "end_date": self.report_end_date,
+            },
+        )
+        payload = json_response.json()
+        self.assertAlmostEqual(float(payload["total_expenses"]), 40.0)
+        self.assertAlmostEqual(float(payload["net_profit"]), float(self.sale.total_amount) - 40.0)
+
         response = self.client.get(
             "/api/reports/profit-loss/",
             {
@@ -108,10 +148,20 @@ class ReportExportTests(TestCase):
 
         self.assertEqual(worksheet["A5"].value, "Revenue")
         self.assertAlmostEqual(worksheet["C5"].value, float(self.sale.total_amount))
-        self.assertEqual(worksheet["B7"].value, "Total Expenses")
-        self.assertAlmostEqual(worksheet["C7"].value, 40.0)
-        self.assertEqual(worksheet["A8"].value, "Summary")
-        self.assertAlmostEqual(worksheet["C8"].value, float(self.sale.total_amount) - 40.0)
+        rows = list(worksheet.iter_rows(values_only=True))
+        total_expenses_row = next(
+            (row for row in rows if row and len(row) > 2 and row[1] == "Total Expenses"),
+            None,
+        )
+        self.assertIsNotNone(total_expenses_row)
+        self.assertAlmostEqual(total_expenses_row[2], 40.0)
+
+        summary_row = next(
+            (row for row in rows if row and row[0] == "Summary"),
+            None,
+        )
+        self.assertIsNotNone(summary_row)
+        self.assertAlmostEqual(summary_row[2], float(self.sale.total_amount) - 40.0)
 
     def test_profit_loss_pdf_download(self):
         response = self.client.get(
@@ -170,6 +220,51 @@ class ReportExportTests(TestCase):
     def test_customer_balance_pdf_download(self):
         response = self.client.get(
             "/api/reports/customer-balances/",
+            {
+                "export_format": "pdf",
+            },
+        )
+
+        self._assert_pdf_response(response)
+
+    def test_inventory_report_json_includes_totals(self):
+        response = self.client.get("/api/reports/inventory/")
+
+        self.assertEqual(response.status_code, 200, response.content)
+        data = response.json()
+        product_row = next((item for item in data if item["id"] == self.product.id), None)
+        self.assertIsNotNone(product_row, data)
+        self.assertEqual(product_row["name"], self.product.name)
+        self.assertEqual(product_row["sku"], self.product.sku)
+        self.assertEqual(Decimal(str(product_row["stock_quantity"])), Decimal("8"))
+
+    def test_inventory_report_excel_contains_totals(self):
+        response = self.client.get(
+            "/api/reports/inventory/",
+            {
+                "export_format": "xlsx",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        workbook = load_workbook(BytesIO(response.content))
+        worksheet = workbook.active
+
+        self.assertEqual(worksheet["A1"].value, "Inventory Report")
+        self.assertEqual(worksheet["B5"].value, self.product.name)
+        self.assertAlmostEqual(worksheet["E5"].value, 8.0)
+        self.assertAlmostEqual(worksheet["F5"].value, float(self.product.purchase_price))
+        self.assertAlmostEqual(worksheet["G5"].value, float(self.product.sale_price))
+        self.assertEqual(worksheet["D7"].value, "Totals")
+        self.assertAlmostEqual(worksheet["E7"].value, 8.0)
+
+    def test_inventory_report_pdf_download(self):
+        response = self.client.get(
+            "/api/reports/inventory/",
             {
                 "export_format": "pdf",
             },
