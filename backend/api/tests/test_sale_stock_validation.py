@@ -3,9 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
-from rest_framework import serializers
-
-from ..models import Customer, Product, Sale, Warehouse
+from ..models import Customer, Product, Sale, Warehouse, WarehouseInventory
 from ..serializers import SaleWriteSerializer
 
 
@@ -52,7 +50,7 @@ class SaleStockValidationTest(TestCase):
         self.assertEqual(self.product.stock_quantity, Decimal("2"))
         self.assertEqual(sale.total_amount, Decimal("30.00"))
 
-    def test_sale_fails_when_insufficient_stock(self):
+    def test_sale_allows_negative_stock_when_insufficient(self):
         serializer = SaleWriteSerializer(
             data={
                 "customer_id": self.customer.id,
@@ -70,10 +68,13 @@ class SaleStockValidationTest(TestCase):
         )
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        with self.assertRaises(serializers.ValidationError):
-            serializer.save()
+        sale = serializer.save()
 
         self.product.refresh_from_db()
-        self.assertEqual(self.product.stock_quantity, Decimal("5"))
-        self.assertEqual(Sale.objects.count(), 0)
+        warehouse_stock = WarehouseInventory.objects.get(
+            product=self.product, warehouse=self.warehouse
+        )
+        self.assertEqual(self.product.stock_quantity, Decimal("-1"))
+        self.assertEqual(warehouse_stock.quantity, Decimal("-1"))
+        self.assertEqual(sale.total_amount, Decimal("60.00"))
 
