@@ -29,6 +29,7 @@ function SupplierDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [printingSaleId, setPrintingSaleId] = useState(null);
+    const [printingPurchaseId, setPrintingPurchaseId] = useState(null);
     const fetchDetails = async () => {
         try {
             const response = await axiosInstance.get(`suppliers/${id}/details/`);
@@ -111,6 +112,57 @@ function SupplierDetailPage() {
             setError('Could not generate the invoice PDF. Please try again.');
         } finally {
             setPrintingSaleId(null);
+        }
+    };
+
+    const handlePrintPurchase = async (purchase) => {
+        if (!purchase) {
+            return;
+        }
+
+        setPrintingPurchaseId(purchase.id);
+        setError('');
+
+        try {
+            const response = await axiosInstance.get(`/purchases/${purchase.id}/invoice_pdf/`, {
+                responseType: 'blob',
+            });
+
+            const fallbackIdentifier = purchase.bill_number || purchase.invoice_number || purchase.id;
+            const fallbackFilename = `purchase_${fallbackIdentifier}.pdf`;
+            const filename =
+                extractFilenameFromDisposition(response.headers['content-disposition']) || fallbackFilename;
+
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const pdfWindow = window.open('', '_blank');
+            if (pdfWindow && !pdfWindow.closed) {
+                pdfWindow.document.title = filename;
+                pdfWindow.document.write(`
+                    <html>
+                        <head><title>${filename}</title></head>
+                        <body style="margin:0">
+                            <embed src="${blobUrl}" type="application/pdf" width="100%" height="100%" />
+                        </body>
+                    </html>
+                `);
+                pdfWindow.document.close();
+            } else {
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60 * 1000);
+        } catch (err) {
+            console.error('Failed to generate or open PDF:', err);
+            setError('Could not generate the purchase invoice PDF. Please try again.');
+        } finally {
+            setPrintingPurchaseId(null);
         }
     };
 
@@ -256,6 +308,8 @@ function SupplierDetailPage() {
                                         const purchaseTags = [];
                                         if (purchase.invoice_number) {
                                             purchaseTags.push(`Invoice ${purchase.invoice_number}`);
+                                        } else if (purchase.bill_number) {
+                                            purchaseTags.push(`Bill ${purchase.bill_number}`);
                                         } else if (purchase.reference) {
                                             purchaseTags.push(purchase.reference);
                                         }
@@ -293,6 +347,15 @@ function SupplierDetailPage() {
                                                         <ActionMenu
                                                             toggleAriaLabel={`Purchase actions for ${purchaseDate}`}
                                                             actions={[
+                                                                {
+                                                                    label:
+                                                                        printingPurchaseId === purchase.id
+                                                                            ? 'Printing…'
+                                                                            : 'Print Invoice',
+                                                                    icon: <Printer />,
+                                                                    onClick: () => handlePrintPurchase(purchase),
+                                                                    disabled: printingPurchaseId === purchase.id,
+                                                                },
                                                                 {
                                                                     label: 'Edit Purchase',
                                                                     icon: <PencilSquare />,

@@ -2,10 +2,13 @@
 
 from django.db import transaction
 from django.db.models import F
+from django.http import FileResponse
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
 from ..activity_logger import log_activity
+from ..invoice_pdf import generate_purchase_invoice_pdf
 from ..models import (
     Customer,
     Product,
@@ -64,6 +67,20 @@ class PurchaseViewSet(viewsets.ModelViewSet):
                 )
 
         instance.delete()
+
+    @action(detail=True, methods=['get'])
+    def invoice_pdf(self, request, pk=None):
+        """Return a PDF representation of a purchase invoice."""
+
+        purchase = self.get_object()
+        pdf_buffer = generate_purchase_invoice_pdf(purchase)
+        identifier = purchase.bill_number or purchase.id
+        filename = f"purchase_{identifier}.pdf"
+
+        response = FileResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        response['Content-Length'] = str(len(pdf_buffer.getbuffer()))
+        return response
 
 
 class PurchaseReturnViewSet(viewsets.ModelViewSet):

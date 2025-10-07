@@ -2,7 +2,6 @@
 
 import logging
 from io import BytesIO
-from pathlib import Path
 from typing import IO
 
 from reportlab.lib import colors
@@ -11,31 +10,18 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate, Spacer,
                                 Table, TableStyle)
 
-from .models import CompanyInfo, Sale
+from .models import CompanyInfo, Purchase, Sale
 
-FONT_DIR = Path(__file__).resolve().parent / 'fonts'
-FONT_REGULAR = 'DejaVuSans'
-FONT_BOLD = 'DejaVuSans-Bold'
-
-
-def _register_font(font_name: str, file_name: str) -> None:
-    """Register a TrueType font with ReportLab if it hasn't been registered."""
-    try:
-        pdfmetrics.getFont(font_name)
-    except KeyError:
-        font_path = FONT_DIR / file_name
-        pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+FONT_REGULAR = 'Helvetica'
+FONT_BOLD = 'Helvetica-Bold'
 
 
 def _ensure_custom_fonts() -> None:
-    """Ensure the fonts used in the invoice are available to ReportLab."""
-    _register_font(FONT_REGULAR, 'DejaVuSans.ttf')
-    _register_font(FONT_BOLD, 'DejaVuSans-Bold.ttf')
+    """Built-in fonts are always available; no setup required."""
+    return None
 
 
 def _build_image_flowable(image_field, width, height, **image_kwargs):
@@ -67,6 +53,27 @@ def _build_image_flowable(image_field, width, height, **image_kwargs):
 
     return ''
 
+
+def _resolve_currency_symbol(currency_code: str) -> str:
+    """Return a currency symbol for the provided ISO code."""
+
+    currency_symbols = {
+        'USD': '$',
+        'EUR': '€',
+        'KZT': '₸',
+        'TRY': '₺',
+    }
+    return currency_symbols.get((currency_code or '').upper(), '$')
+
+
+def _get_currency_code_for_party(party) -> str:
+    """Return the preferred currency code for the related party."""
+
+    if party and getattr(party, 'currency', None):
+        return party.currency or 'USD'
+    return 'USD'
+
+
 def generate_invoice_pdf(sale: Sale) -> IO[bytes]:
     """Generate a professional PDF invoice for the given ``Sale`` instance."""
 
@@ -90,18 +97,10 @@ def generate_invoice_pdf(sale: Sale) -> IO[bytes]:
     company = CompanyInfo.load()
 
     # --- Currency Handling ---
-    currency_code = 'USD'
-    if getattr(sale, 'customer', None) and getattr(sale.customer, 'currency', None):
-        currency_code = sale.customer.currency or 'USD'
-    elif getattr(sale, 'supplier', None) and getattr(sale.supplier, 'currency', None):
-        currency_code = sale.supplier.currency or 'USD'
-    currency_symbols = {
-        'USD': '$',
-        'EUR': '€',
-        'KZT': '₸',
-        'TRY': '₺',
-    }
-    currency_symbol = currency_symbols.get(currency_code, '$')
+    currency_code = _get_currency_code_for_party(getattr(sale, 'customer', None))
+    if currency_code == 'USD' and getattr(sale, 'supplier', None):
+        currency_code = _get_currency_code_for_party(sale.supplier)
+    currency_symbol = _resolve_currency_symbol(currency_code)
 
     # --- Styles ---
     styles = getSampleStyleSheet()
@@ -241,6 +240,161 @@ def generate_invoice_pdf(sale: Sale) -> IO[bytes]:
 
 
     # --- Build PDF ---
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_purchase_invoice_pdf(purchase: Purchase) -> IO[bytes]:
+    """Generate a PDF invoice for the provided ``Purchase`` instance."""
+
+    buffer = BytesIO()
+
+    _ensure_custom_fonts()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+        title=f"Purchase {purchase.bill_number or purchase.id}",
+        author="MyAccountingApp",
+    )
+
+    company = CompanyInfo.load()
+
+    currency_code = purchase.original_currency or None
+    if not currency_code:
+        currency_code = _get_currency_code_for_party(getattr(purchase, 'supplier', None))
+        if currency_code == 'USD':
+            currency_code = _get_currency_code_for_party(getattr(purchase, 'customer', None))
+    currency_symbol = _resolve_currency_symbol(currency_code)
+
+    styles = getSampleStyleSheet()
+    styles['Normal'].fontName = FONT_REGULAR
+    styles.add(ParagraphStyle(name='CompanyName', fontSize=18, fontName=FONT_BOLD))
+    styles.add(ParagraphStyle(name='CompanyInfo', fontSize=10, fontName=FONT_REGULAR))
+    styles.add(ParagraphStyle(name='InvoiceTitle', fontSize=14, fontName=FONT_BOLD, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='InvoiceInfo', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='BillTo', fontSize=10, fontName=FONT_BOLD))
+    styles.add(ParagraphStyle(name='TableHead', fontSize=10, fontName=FONT_BOLD, alignment=TA_CENTER, textColor=colors.whitesmoke))
+    styles.add(ParagraphStyle(name='TableCell', fontSize=10, fontName=FONT_REGULAR))
+    styles.add(ParagraphStyle(name='TableCellRight', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='TotalLabel', fontSize=10, fontName=FONT_BOLD, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='TotalValue', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='GrandTotalLabel', fontSize=12, fontName=FONT_BOLD, alignment=TA_RIGHT))
+
+    elements: list = []
+
+    company_logo = _build_image_flowable(getattr(company, 'logo', None), width=40 * mm, height=20 * mm, hAlign='LEFT')
+    if not company_logo:
+        company_logo = Paragraph("No Logo", styles['CompanyInfo'])
+
+    company_details_data = [
+        [company_logo],
+        [Paragraph(company.name, styles['CompanyName'])],
+        [Paragraph(company.address or '', styles['CompanyInfo'])],
+        [Paragraph(f"{company.phone or ''}", styles['CompanyInfo'])],
+        [Paragraph(f"{company.email or ''}", styles['CompanyInfo'])],
+        [Paragraph(company.website or '', styles['CompanyInfo'])],
+    ]
+    company_details_table = Table(company_details_data, colWidths=[80 * mm])
+    company_details_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+    ]))
+
+    invoice_info_data = [
+        [Paragraph('PURCHASE INVOICE', styles['InvoiceTitle'])],
+        [Paragraph(f"# {purchase.bill_number or purchase.id}", styles['InvoiceInfo'])],
+        [Paragraph(f"Date: {purchase.purchase_date.strftime('%d %b, %Y')}", styles['InvoiceInfo'])],
+    ]
+    invoice_info_table = Table(invoice_info_data, colWidths=[80 * mm])
+    invoice_info_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+
+    header_table = Table([[company_details_table, invoice_info_table]], colWidths=[90 * mm, 80 * mm])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+
+    elements.append(header_table)
+    elements.append(Spacer(1, 15 * mm))
+
+    counterparty = purchase.supplier or purchase.customer
+    counterparty_name = counterparty.name if counterparty else "N/A"
+    counterparty_address = getattr(counterparty, 'address', '') if counterparty else ''
+
+    bill_to_data = [
+        [Paragraph('SUPPLIER', styles['BillTo'])],
+        [Paragraph(counterparty_name, styles['Normal'])],
+        [Paragraph(counterparty_address or '', styles['Normal'])],
+    ]
+    bill_to_table = Table(bill_to_data, colWidths=[170 * mm])
+    bill_to_table.setStyle(TableStyle([('BOTTOMPADDING', (0, 0), (-1, -1), 1)]))
+
+    elements.append(bill_to_table)
+    elements.append(Spacer(1, 10 * mm))
+
+    table_header = [
+        Paragraph('Image', styles['TableHead']),
+        Paragraph('Item Description', styles['TableHead']),
+        Paragraph('Qty', styles['TableHead']),
+        Paragraph('Unit Cost', styles['TableHead']),
+        Paragraph('Total', styles['TableHead']),
+    ]
+    data = [table_header]
+
+    for item in purchase.items.all():
+        img_obj = _build_image_flowable(getattr(item.product, 'image', None), width=15 * mm, height=15 * mm)
+
+        data.append([
+            img_obj,
+            Paragraph(item.product.name, styles['TableCell']),
+            Paragraph(f"{item.quantity}", styles['TableCellRight']),
+            Paragraph(f"{currency_symbol}{item.unit_price:,.2f}", styles['TableCellRight']),
+            Paragraph(f"{currency_symbol}{item.line_total:,.2f}", styles['TableCellRight']),
+        ])
+
+    items_table = Table(data, colWidths=[20 * mm, 70 * mm, 20 * mm, 30 * mm, 30 * mm])
+    items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F4F4F')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
+        ('LINEBELOW', (0, -1), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+        ('TOPPADDING', (0, 0), (-1, 0), 3 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 3 * mm),
+        ('TOPPADDING', (0, 1), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 2 * mm),
+    ]))
+    elements.append(items_table)
+
+    totals_data = [
+        [Paragraph('Subtotal:', styles['TotalLabel']), Paragraph(f'{currency_symbol}{purchase.total_amount:,.2f}', styles['TotalValue'])],
+        [Paragraph('Amount Due:', styles['GrandTotalLabel']), Paragraph(f'{currency_symbol}{purchase.total_amount:,.2f}', styles['GrandTotalLabel'])],
+    ]
+
+    totals_table = Table(totals_data, colWidths=[40 * mm, 30 * mm])
+    totals_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+        ('LINEABOVE', (0, 1), (1, 1), 1, colors.black),
+        ('TOPPADDING', (0, 1), (1, 1), 3),
+    ]))
+
+    wrapper_table = Table([[totals_table]], colWidths=[170 * mm], style=[('ALIGN', (0, 0), (-1, -1), 'RIGHT')])
+    elements.append(wrapper_table)
+    elements.append(Spacer(1, 20 * mm))
+
+    elements.append(Paragraph('Please keep this invoice for your records.', styles['Normal']))
+    elements.append(Spacer(1, 5 * mm))
+    elements.append(Paragraph('Thank you for your partnership.', styles['Normal']))
+
     doc.build(elements)
     buffer.seek(0)
     return buffer
