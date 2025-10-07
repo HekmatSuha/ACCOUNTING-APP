@@ -288,7 +288,11 @@ function SaleFormPage({
         } else if (isEditMode) {
             url = `/sales/${saleId}/`;
             method = 'put';
-            payload.customer_id = entityId;
+            if (isSupplierSale) {
+                payload.supplier_id = entityId;
+            } else {
+                payload.customer_id = entityId;
+            }
             payload.sale_date = saleDate;
             payload.invoice_date = invoiceDate;
             if (invoiceNumber) {
@@ -303,7 +307,11 @@ function SaleFormPage({
         } else {
             url = '/sales/';
             method = 'post';
-            payload.customer_id = entityId;
+            if (isSupplierSale) {
+                payload.supplier_id = entityId;
+            } else {
+                payload.customer_id = entityId;
+            }
             payload.sale_date = saleDate;
         }
 
