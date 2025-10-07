@@ -63,6 +63,14 @@ function InventoryReportPage() {
         loadReport();
     }, []);
 
+    const getQuantityClasses = (value) => {
+        const numeric = Number(value);
+        if (Number.isNaN(numeric)) {
+            return '';
+        }
+        return numeric < 0 ? 'text-danger fw-semibold' : '';
+    };
+
     const summary = useMemo(() => {
         return reportData.reduce(
             (acc, product) => {
@@ -210,7 +218,9 @@ function InventoryReportPage() {
                                                     <td>{product.name}</td>
                                                     <td>{product.description || <span className="text-muted">No description</span>}</td>
                                                     <td>{product.sku || <span className="text-muted">—</span>}</td>
-                                                    <td className="text-end">{formatNumber(quantity)}</td>
+                                                    <td className={`text-end ${getQuantityClasses(quantity)}`}>
+                                                        {formatNumber(quantity)}
+                                                    </td>
                                                     <td className="text-end">{formatCurrency(buyingPrice)}</td>
                                                     <td className="text-end">{formatCurrency(sellingPrice)}</td>
                                                     <td className="text-end">{formatCurrency(totalCost)}</td>
