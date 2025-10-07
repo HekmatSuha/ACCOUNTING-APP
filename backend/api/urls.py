@@ -1,6 +1,7 @@
 """URL routing for the accounting API."""
 
 from django.urls import include, path
+from rest_framework.permissions import AllowAny
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -52,8 +53,16 @@ suppliers_router = routers.NestedSimpleRouter(router, r'suppliers', lookup='supp
 suppliers_router.register(r'payments', SupplierPaymentViewSet, basename='supplier-payments')
 
 urlpatterns = [
-    path('token/', TokenObtainPairView.as_view(), name='get_token'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
+    path(
+        'token/',
+        TokenObtainPairView.as_view(permission_classes=[AllowAny]),
+        name='get_token',
+    ),
+    path(
+        'token/refresh/',
+        TokenRefreshView.as_view(permission_classes=[AllowAny]),
+        name='refresh_token',
+    ),
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/register/', CreateUserView.as_view(), name='register'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),
