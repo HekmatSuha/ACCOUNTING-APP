@@ -1,6 +1,7 @@
 """Utilities to export accounting reports as Excel workbooks or PDFs."""
 
 from collections import Counter, defaultdict
+from datetime import date
 from decimal import Decimal
 from io import BytesIO
 from typing import Mapping, Sequence
@@ -24,6 +25,8 @@ __all__ = [
     "generate_profit_loss_pdf",
     "generate_customer_balance_workbook",
     "generate_customer_balance_pdf",
+    "generate_inventory_report_workbook",
+    "generate_inventory_report_pdf",
 ]
 
 
@@ -607,6 +610,218 @@ def generate_customer_balance_pdf(customers: Sequence[Mapping]) -> bytes:
         )
     )
     story.append(details_table)
+
+    document.build(story)
+    pdf = buffer.getvalue()
+    buffer.close()
+    return pdf
+
+
+def generate_inventory_report_workbook(products: Sequence) -> bytes:
+    """Return an Excel workbook representing the consolidated inventory."""
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Inventory Report"
+
+    worksheet["A1"] = "Inventory Report"
+    worksheet["A1"].font = Font(size=14, bold=True)
+    worksheet["A2"] = f"As of {date.today():%Y-%m-%d}"
+    worksheet["A2"].font = Font(italic=True)
+    worksheet.append([])
+
+    header = [
+        "#",
+        "Item Name",
+        "Description",
+        "Item Code",
+        "Quantity",
+        "Buying Price",
+        "Selling Price",
+        "Total Cost",
+        "Potential Revenue",
+    ]
+    worksheet.append(header)
+
+    for cell in worksheet[worksheet.max_row]:
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    total_quantity = Decimal("0")
+    total_cost = Decimal("0")
+    total_revenue = Decimal("0")
+
+    for index, product in enumerate(products, start=1):
+        quantity = _to_decimal(getattr(product, "stock_quantity", 0))
+        buying_price = _to_decimal(getattr(product, "purchase_price", 0))
+        selling_price = _to_decimal(getattr(product, "sale_price", 0))
+        total_quantity += quantity
+        cost_value = quantity * buying_price
+        revenue_value = quantity * selling_price
+        total_cost += cost_value
+        total_revenue += revenue_value
+
+        worksheet.append(
+            [
+                index,
+                getattr(product, "name", ""),
+                getattr(product, "description", "") or "",
+                getattr(product, "sku", "") or "",
+                float(quantity),
+                float(buying_price),
+                float(selling_price),
+                float(cost_value),
+                float(revenue_value),
+            ]
+        )
+
+        row = worksheet[worksheet.max_row]
+        row[0].alignment = Alignment(horizontal="center")
+        row[4].number_format = CURRENCY_NUMBER_FORMAT
+        row[5].number_format = CURRENCY_NUMBER_FORMAT
+        row[6].number_format = CURRENCY_NUMBER_FORMAT
+        row[7].number_format = CURRENCY_NUMBER_FORMAT
+        row[8].number_format = CURRENCY_NUMBER_FORMAT
+        row[4].alignment = Alignment(horizontal="right")
+        row[5].alignment = Alignment(horizontal="right")
+        row[6].alignment = Alignment(horizontal="right")
+        row[7].alignment = Alignment(horizontal="right")
+        row[8].alignment = Alignment(horizontal="right")
+
+    worksheet.append([])
+    worksheet.append(
+        [
+            "",
+            "",
+            "",
+            "Totals",
+            float(total_quantity),
+            "",
+            "",
+            float(total_cost),
+            float(total_revenue),
+        ]
+    )
+    totals_row = worksheet[worksheet.max_row]
+    for cell in totals_row[3:]:
+        cell.font = Font(bold=True)
+        cell.fill = TOTAL_FILL
+    totals_row[4].number_format = CURRENCY_NUMBER_FORMAT
+    totals_row[7].number_format = CURRENCY_NUMBER_FORMAT
+    totals_row[8].number_format = CURRENCY_NUMBER_FORMAT
+    totals_row[4].alignment = Alignment(horizontal="right")
+    totals_row[7].alignment = Alignment(horizontal="right")
+    totals_row[8].alignment = Alignment(horizontal="right")
+
+    _auto_size_columns(worksheet)
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def generate_inventory_report_pdf(products: Sequence) -> bytes:
+    """Return a PDF document representing the consolidated inventory."""
+
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+        title="Inventory Report",
+    )
+
+    styles = getSampleStyleSheet()
+
+    story = [
+        Paragraph("Inventory Report", styles["Title"]),
+        Spacer(1, 4 * mm),
+        Paragraph(f"As of {date.today():%Y-%m-%d}", styles["Normal"]),
+        Spacer(1, 6 * mm),
+    ]
+
+    table_data: list[list[str]] = [
+        [
+            "#",
+            "Item Name",
+            "Description",
+            "Item Code",
+            "Quantity",
+            "Buying Price",
+            "Selling Price",
+            "Total Cost",
+            "Potential Revenue",
+        ]
+    ]
+
+    total_quantity = Decimal("0")
+    total_cost = Decimal("0")
+    total_revenue = Decimal("0")
+
+    for index, product in enumerate(products, start=1):
+        quantity = _to_decimal(getattr(product, "stock_quantity", 0))
+        buying_price = _to_decimal(getattr(product, "purchase_price", 0))
+        selling_price = _to_decimal(getattr(product, "sale_price", 0))
+        total_quantity += quantity
+        cost_value = quantity * buying_price
+        revenue_value = quantity * selling_price
+        total_cost += cost_value
+        total_revenue += revenue_value
+
+        table_data.append(
+            [
+                str(index),
+                getattr(product, "name", ""),
+                getattr(product, "description", "") or "",
+                getattr(product, "sku", "") or "",
+                f"{quantity:,.2f}",
+                _format_currency(buying_price),
+                _format_currency(selling_price),
+                _format_currency(cost_value),
+                _format_currency(revenue_value),
+            ]
+        )
+
+    table_data.append(
+        [
+            "",
+            "",
+            "",
+            "Totals",
+            f"{total_quantity:,.2f}",
+            "",
+            "",
+            _format_currency(total_cost),
+            _format_currency(total_revenue),
+        ]
+    )
+
+    table = Table(table_data, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#305496")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                ("ALIGN", (4, 1), (-1, -2), "RIGHT"),
+                ("ALIGN", (4, -1), (-1, -1), "RIGHT"),
+                ("FONTNAME", (3, -1), (3, -1), "Helvetica-Bold"),
+                ("FONTNAME", (4, -1), (-1, -1), "Helvetica-Bold"),
+                ("BACKGROUND", (3, -1), (-1, -1), colors.HexColor("#F2F2F2")),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CCCCCC")),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 1), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 3),
+            ]
+        )
+    )
+    story.append(table)
 
     document.build(story)
     pdf = buffer.getvalue()
