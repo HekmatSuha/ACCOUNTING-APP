@@ -550,21 +550,6 @@ class SaleWriteSerializer(serializers.ModelSerializer):
                     ) from exc
                 quantity = Decimal(item_data['quantity'])
 
-                available = (
-                    WarehouseInventory.objects.filter(
-                        product=product, warehouse=warehouse
-                    )
-                    .values_list('quantity', flat=True)
-                    .first()
-                    or Decimal('0')
-                )
-                if available < quantity:
-                    raise serializers.ValidationError(
-                        {
-                            'items': f"Insufficient stock for product '{product.name}' in warehouse '{warehouse.name}'."
-                        }
-                    )
-
                 sale_item = SaleItem.objects.create(
                     sale=sale,
                     product=product,
@@ -636,21 +621,6 @@ class SaleWriteSerializer(serializers.ModelSerializer):
                     ) from exc
 
                 quantity = Decimal(item_data['quantity'])
-
-                available = (
-                    WarehouseInventory.objects.filter(
-                        product=product, warehouse=warehouse
-                    )
-                    .values_list('quantity', flat=True)
-                    .first()
-                    or Decimal('0')
-                )
-                if available < quantity:
-                    raise serializers.ValidationError(
-                        {
-                            'items': f"Insufficient stock for product '{product.name}' in warehouse '{warehouse.name}'."
-                        }
-                    )
 
                 sale_item = SaleItem.objects.create(
                     sale=instance,

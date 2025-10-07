@@ -45,6 +45,14 @@ function ProductListPage() {
         setSelectedImage(null);
     };
 
+    const getQuantityClasses = (value) => {
+        const numeric = Number(value);
+        if (Number.isNaN(numeric)) {
+            return '';
+        }
+        return numeric < 0 ? 'text-danger fw-semibold' : '';
+    };
+
     return (
         <Card>
             <Card.Header className="d-flex justify-content-between align-items-center">
@@ -95,13 +103,17 @@ function ProductListPage() {
                                         </td>
                                         <td>{product.sku || 'N/A'}</td>
                                         <td>{product.name}</td>
-                                        <td>{product.stock_quantity}</td>
+                                        <td className={getQuantityClasses(product.stock_quantity)}>
+                                            {product.stock_quantity}
+                                        </td>
                                         <td>
                                             {product.warehouse_quantities && product.warehouse_quantities.length > 0 ? (
                                                 product.warehouse_quantities.map((entry) => (
                                                     <div key={`${product.id}-${entry.warehouse_id}`}>
                                                         <strong>{entry.warehouse_name || 'Warehouse'}:</strong>{' '}
-                                                        {entry.quantity}
+                                                        <span className={getQuantityClasses(entry.quantity)}>
+                                                            {entry.quantity}
+                                                        </span>
                                                     </div>
                                                 ))
                                             ) : (
