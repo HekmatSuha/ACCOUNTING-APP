@@ -3,12 +3,57 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import {
+    FaCoins,
+    FaDollarSign,
+    FaEdit,
+    FaEuroSign,
+    FaPiggyBank,
+    FaPlusCircle,
+    FaTrash,
+    FaWallet,
+    FaLiraSign,
+} from 'react-icons/fa';
 import axiosInstance from '../utils/axiosInstance';
 import { ACCOUNT_CATEGORY_MAP, ACCOUNT_CATEGORY_OPTIONS, getCategoryConfig } from '../utils/bankAccountCategories';
 import ActionMenu from '../components/ActionMenu';
 
 const AVAILABLE_CURRENCIES = ['USD', 'EUR', 'KZT', 'TRY'];
+
+const currencyIconMap = {
+    USD: <FaDollarSign />,
+    EUR: <FaEuroSign />,
+    KZT: <FaCoins />,
+    TRY: <FaLiraSign />,
+};
+
+const CATEGORY_ACCENT_COLORS = {
+    primary: '#3b82f6',
+    success: '#22c55e',
+    info: '#0ea5e9',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    secondary: '#64748b',
+    dark: '#0f172a',
+};
+
+const hexToRgba = (hex, alpha) => {
+    if (!hex) {
+        return `rgba(99, 102, 241, ${alpha})`;
+    }
+    let sanitized = hex.replace('#', '');
+    if (sanitized.length === 3) {
+        sanitized = sanitized
+            .split('')
+            .map((char) => char + char)
+            .join('');
+    }
+    const bigint = parseInt(sanitized, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 const formatAmount = (value) => {
     const numericValue = Number(value);
@@ -133,17 +178,43 @@ function BankAccountListPage() {
 
     return (
         <>
-            <div className="d-flex flex-wrap justify-content-between align-items-start mb-4">
-                <div className="mb-3 mb-md-0">
-                    <h2 className="mb-1">Bank Accounts</h2>
-                    <p className="text-muted mb-0">
-                        Monitor balances across cash, bank, and card accounts in one place.
-                    </p>
-                </div>
-                <div>
-                    <Button variant="success" onClick={() => handleShowModal()}>
-                        + New Account
-                    </Button>
+            <div className="bank-accounts-hero gradient-card shadow-sm mb-4 p-4">
+                <div className="d-flex flex-column flex-md-row gap-4 align-items-start align-items-md-center">
+                    <div className="hero-icon rounded-circle d-flex align-items-center justify-content-center">
+                        <FaPiggyBank />
+                    </div>
+                    <div className="flex-grow-1 w-100">
+                        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+                            <div>
+                                <h1 className="hero-title mb-2">Bank Accounts</h1>
+                                <p className="hero-subtitle mb-0">
+                                    Monitor balances across cash, bank, and card accounts in one shimmering overview.
+                                </p>
+                            </div>
+                            <Button
+                                variant="success"
+                                className="btn-glow"
+                                onClick={() => handleShowModal()}
+                            >
+                                <FaPlusCircle className="me-2" /> New Account
+                            </Button>
+                        </div>
+                        {!loading && (
+                            <div className="hero-metrics mt-3 d-flex flex-wrap gap-3">
+                                <span className="metric-pill">
+                                    <FaWallet className="me-2" /> {accounts.length} total account
+                                    {accounts.length === 1 ? '' : 's'}
+                                </span>
+                                {accounts.length > 0 && (
+                                    <span className="metric-pill">
+                                        <FaCoins className="me-2" /> {Object.keys(totalsByCurrency).length} active
+                                        {' '}
+                                        {Object.keys(totalsByCurrency).length === 1 ? 'currency' : 'currencies'}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -160,7 +231,7 @@ function BankAccountListPage() {
                         <p className="text-muted mb-4">
                             Add cash tills, bank accounts, or credit cards to start tracking balances.
                         </p>
-                        <Button variant="success" onClick={() => handleShowModal()}>
+                        <Button variant="success" className="btn-glow" onClick={() => handleShowModal()}>
                             Add Account
                         </Button>
                     </Card.Body>
@@ -168,56 +239,80 @@ function BankAccountListPage() {
             ) : (
                 <>
                     <Row className="g-3 mb-4">
-                        {Object.entries(totalsByCurrency).map(([currency, total]) => (
-                            <Col md={6} lg={4} key={currency}>
-                                <Card className="shadow-sm h-100 border-0">
-                                    <Card.Body>
-                                        <div className="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 className="text-muted mb-1">Total Balance</h6>
-                                                <h3 className="mb-0">{formatAmount(total)}</h3>
+                        {Object.entries(totalsByCurrency).map(([currency, total]) => {
+                            const accountsInCurrency = accounts.filter(
+                                (account) => account.currency === currency,
+                            ).length;
+                            return (
+                                <Col md={6} lg={4} key={currency}>
+                                    <Card className="shadow-sm h-100 border-0 summary-card">
+                                        <Card.Body className="d-flex flex-column">
+                                            <div className="summary-icon">
+                                                {currencyIconMap[currency] || <FaCoins />}
                                             </div>
-                                            <Badge bg="primary" pill>
-                                                {currency}
-                                            </Badge>
-                                        </div>
-                                    </Card.Body>
-                                </Card>
-                            </Col>
-                        ))}
+                                            <div className="summary-content mt-3">
+                                                <p className="summary-label mb-1">Total Balance</p>
+                                                <h2 className="summary-amount mb-0">{formatAmount(total)}</h2>
+                                            </div>
+                                            <div className="summary-footer mt-auto d-flex justify-content-between align-items-center">
+                                                <Badge bg="light" text="dark" className="currency-badge">
+                                                    {currency}
+                                                </Badge>
+                                                <span className="text-muted small">
+                                                    {accountsInCurrency} account
+                                                    {accountsInCurrency === 1 ? '' : 's'}
+                                                </span>
+                                            </div>
+                                        </Card.Body>
+                                    </Card>
+                                </Col>
+                            );
+                        })}
                     </Row>
 
-                    {categoriesWithAccounts.map((categoryInfo) => (
-                        <Card className="mb-4 shadow-sm" key={categoryInfo.value}>
-                            <Card.Header className="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5 className="mb-1">{categoryInfo.label}</h5>
-                                    <small className="text-muted">
-                                        {categoryInfo.accounts.length} account{categoryInfo.accounts.length > 1 ? 's' : ''}
-                                    </small>
-                                </div>
-                                <Badge bg={categoryInfo.badge}>{categoryInfo.label}</Badge>
-                            </Card.Header>
-                            <Card.Body>
-                                <Row className="g-3">
-                                    {categoryInfo.accounts.map((account) => {
-                                        const categoryConfig = getCategoryConfig(account.category);
-                                        return (
-                                            <Col md={6} lg={4} key={account.id}>
-                                                <Card
-                                                    className="h-100 border-0 shadow-sm account-card"
-                                                    onClick={() => navigate(`/accounts/${account.id}`)}
-                                                >
-                                                    <Card.Body>
-                                                        <div className="d-flex justify-content-between align-items-start">
-                                                            <div>
-                                                                <h6 className="text-muted mb-1">{account.name}</h6>
-                                                                <h4 className="mb-0">
+                    {categoriesWithAccounts.map((categoryInfo) => {
+                        const categoryAccent =
+                            CATEGORY_ACCENT_COLORS[categoryInfo.badge] || CATEGORY_ACCENT_COLORS.primary;
+                        const categoryAccentSoft = hexToRgba(categoryAccent, 0.18);
+                        return (
+                            <Card
+                                className="mb-4 shadow-sm category-card"
+                                key={categoryInfo.value}
+                                style={{ '--category-accent': categoryAccent, '--category-accent-soft': categoryAccentSoft }}
+                            >
+                                <Card.Header className="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 className="mb-1">{categoryInfo.label}</h5>
+                                        <small className="text-muted">
+                                            {categoryInfo.accounts.length} account{categoryInfo.accounts.length > 1 ? 's' : ''}
+                                        </small>
+                                    </div>
+                                    <Badge bg={categoryInfo.badge}>{categoryInfo.label}</Badge>
+                                </Card.Header>
+                                <Card.Body>
+                                    <Row className="g-3">
+                                        {categoryInfo.accounts.map((account) => {
+                                            const categoryConfig = getCategoryConfig(account.category);
+                                            const accentColor =
+                                                CATEGORY_ACCENT_COLORS[categoryConfig.badge] || CATEGORY_ACCENT_COLORS.primary;
+                                            const accentSoft = hexToRgba(accentColor, 0.18);
+                                            return (
+                                                <Col md={6} lg={4} key={account.id}>
+                                                    <Card
+                                                        className="h-100 border-0 shadow-sm account-card"
+                                                        onClick={() => navigate(`/accounts/${account.id}`)}
+                                                        style={{ '--account-accent': accentColor, '--account-accent-soft': accentSoft }}
+                                                    >
+                                                        <Card.Body>
+                                                            <div className="d-flex justify-content-between align-items-start">
+                                                                <div>
+                                                                    <h6 className="text-muted mb-1">{account.name}</h6>
+                                                                <h4 className="mb-0 account-balance">
                                                                     {formatAmount(account.balance)}{' '}
                                                                     <small className="text-muted">{account.currency}</small>
                                                                 </h4>
                                                             </div>
-                                                            <Badge bg={categoryConfig.badge}>
+                                                            <Badge bg={categoryConfig.badge} className="category-badge">
                                                                 {account.category_label || ACCOUNT_CATEGORY_MAP[account.category]?.label}
                                                             </Badge>
                                                         </div>
@@ -239,6 +334,7 @@ function BankAccountListPage() {
                                                                 ]}
                                                             />
                                                         </div>
+                                                        <div className="text-muted small mt-3 subtle-note">Tap to view account activity</div>
                                                     </Card.Body>
                                                 </Card>
                                             </Col>
@@ -247,7 +343,8 @@ function BankAccountListPage() {
                                 </Row>
                             </Card.Body>
                         </Card>
-                    ))}
+                        );
+                    })}
                 </>
             )}
 
