@@ -1,4 +1,4 @@
-"""Service utilities for the accounting backend."""
+
 
 from .ledger import (
     apply_bank_account_movement,
@@ -17,3 +17,4 @@ __all__ = [
     "reverse_customer_movement",
     "reverse_supplier_movement",
 ]
+
