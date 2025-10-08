@@ -129,7 +129,9 @@ function CustomerDetailPage() {
     
     const formatCurrency = (amount, currency) => {
         const value = isNaN(Number(amount)) ? 0 : Number(amount);
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(value);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' })
+            .format(value)
+            .replace(/\u00A0/g, ' ');
     };
 
     // Format balances so debts (positive numbers) appear with a minus sign
@@ -146,7 +148,7 @@ function CustomerDetailPage() {
                 <div className="metric-card__icon">
                     <Icon size={28} />
                 </div>
-                <div>
+                <div className="metric-card__content">
                     <p className="metric-card__title mb-1">{title}</p>
                     <p className="metric-card__value">{amount}</p>
                 </div>
