@@ -6,6 +6,7 @@ import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table, Modal } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2, CartCheck, Printer } from 'react-bootstrap-icons';
 import './CustomerDetailPage.css';
+import '../styles/metric-cards.css';
 import ActionMenu from '../components/ActionMenu';
 import '../styles/datatable.css';
 import '../styles/transaction-history.css';
@@ -139,13 +140,15 @@ function CustomerDetailPage() {
         return formatCurrency(displayValue, currency);
     };
 
-    const renderSummaryCard = (bg, title, amount, Icon) => (
-        <Card bg={bg} text="white" className="summary-card">
-            <Card.Body className="d-flex align-items-center">
-                <Icon size={40} className="icon me-3" />
+    const renderSummaryCard = (variant, title, amount, Icon) => (
+        <Card className={`summary-card metric-card metric-card--${variant}`}>
+            <Card.Body className="metric-card__body">
+                <div className="metric-card__icon">
+                    <Icon size={28} />
+                </div>
                 <div>
-                    <h6 className="mb-0">{title}</h6>
-                    <div className="fs-4">{amount}</div>
+                    <p className="metric-card__title mb-1">{title}</p>
+                    <p className="metric-card__value">{amount}</p>
                 </div>
             </Card.Body>
         </Card>
