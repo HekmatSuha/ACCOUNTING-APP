@@ -7,7 +7,7 @@ from rest_framework_nested import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views.activities import ActivityViewSet
-from .views.auth import CreateUserView
+from .views.auth import ChangePasswordView, CreateUserView, CurrentUserView
 from .views.banking import BankAccountViewSet
 from .views.common import dashboard_summary
 from .views.company import CompanyInfoViewSet, CompanySettingsViewSet
@@ -65,6 +65,8 @@ urlpatterns = [
     ),
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/register/', CreateUserView.as_view(), name='register'),
+    path('user/profile/', CurrentUserView.as_view(), name='user-profile'),
+    path('user/change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('reports/profit-loss/', profit_and_loss_report, name='profit-loss-report'),
     path('reports/customer-balances/', customer_balance_report, name='customer-balance-report'),
     path('reports/sales/', sales_report, name='sales-report'),

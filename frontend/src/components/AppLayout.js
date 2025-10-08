@@ -202,6 +202,9 @@ function AppLayout({ children }) {
                             {username}
                         </Dropdown.Toggle>
                         <Dropdown.Menu>
+                            <Dropdown.Item as={NavLink} to="/settings/user">
+                                <PersonCircle className="me-2" /> User Settings
+                            </Dropdown.Item>
                             <Dropdown.Item as={NavLink} to="/settings/company-info">
                                 <Gear className="me-2" /> Company Settings
                             </Dropdown.Item>
