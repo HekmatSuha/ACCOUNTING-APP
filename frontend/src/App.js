@@ -39,6 +39,7 @@ import ActivityPage from './pages/ActivityPage';
 import CompanyInfoPage from './pages/CompanyInfoPage';
 import WarehouseListPage from './pages/WarehouseListPage';
 import WarehouseDetailPage from './pages/WarehouseDetailPage';
+import UserSettingsPage from './pages/UserSettingsPage';
 
 import { loadBaseCurrency } from './config/currency';
 
@@ -99,6 +100,7 @@ function App() {
                   <Route path="accounts/:id" element={<BankAccountDetailPage />} />
                   <Route path="activities" element={<ActivityPage />} />
                   <Route path="settings/company-info" element={<CompanyInfoPage />} />
+                  <Route path="settings/user" element={<UserSettingsPage />} />
 
                 </Routes>
 

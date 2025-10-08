@@ -2,6 +2,7 @@
 from django.db import transaction
 from django.db.models import F
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from decimal import Decimal
 from .exchange_rates import get_exchange_rate
@@ -124,6 +125,38 @@ class UserSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for viewing and updating the authenticated user's profile."""
+
+    username = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+        read_only_fields = ['id', 'username']
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer to validate password change requests."""
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+
+        if not user.check_password(attrs['current_password']):
+            raise serializers.ValidationError({'current_password': 'Current password is incorrect.'})
+
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+
+        validate_password(attrs['new_password'], user=user)
+
+        return attrs
     
 class CustomerSerializer(serializers.ModelSerializer):
     """Serializer for :class:`Customer` objects.

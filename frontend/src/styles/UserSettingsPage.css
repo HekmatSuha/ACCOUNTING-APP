@@ -1,0 +1,66 @@
+/* frontend/src/styles/UserSettingsPage.css */
+
+.user-settings-page {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.user-settings-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.user-settings-page .page-title {
+    font-weight: 600;
+}
+
+.settings-card {
+    border: none;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.settings-card .card-header {
+    background: linear-gradient(120deg, rgba(59, 130, 246, 0.12), rgba(16, 185, 129, 0.12));
+    border-bottom: none;
+    padding: 1.5rem;
+}
+
+.settings-card .card-body {
+    padding: 1.5rem;
+}
+
+.settings-form label {
+    font-weight: 500;
+}
+
+.settings-form .form-control,
+.settings-form .form-select {
+    border-radius: 12px;
+    border-color: rgba(148, 163, 184, 0.4);
+    padding: 0.65rem 0.85rem;
+}
+
+.settings-form .form-control:focus,
+.settings-form .form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.65);
+}
+
+.password-strength .badge {
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+}
+
+@media (max-width: 767.98px) {
+    .settings-card .card-header,
+    .settings-card .card-body {
+        padding: 1.25rem;
+    }
+}
