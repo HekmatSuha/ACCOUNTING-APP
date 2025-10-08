@@ -138,8 +138,21 @@ function CustomerDetailPage() {
     // and credits (negative numbers) appear as positive values
     const formatBalance = (amount, currency) => {
         const value = isNaN(Number(amount)) ? 0 : Number(amount);
-        const displayValue = value > 0 ? -value : Math.abs(value);
-        return formatCurrency(displayValue, currency);
+        if (value === 0) {
+            return formatCurrency(0, currency);
+        }
+
+        const formatted = formatCurrency(Math.abs(value), currency);
+
+        if (value > 0) {
+            if (/^[A-Z]{3} /.test(formatted)) {
+                return formatted.replace(/^([A-Z]{3})\s/, '$1 -');
+            }
+
+            return `-${formatted}`;
+        }
+
+        return formatted;
     };
 
     const renderSummaryCard = (variant, title, amount, Icon) => (
