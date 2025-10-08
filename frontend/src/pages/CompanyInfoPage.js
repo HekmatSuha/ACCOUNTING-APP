@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
-import { Alert, Button, Card, Col, Form, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Form, ListGroup, Row, Spinner, Table } from 'react-bootstrap';
 import { clearCachedCurrencies, loadBaseCurrency, loadCurrencyOptions } from '../config/currency';
 
 const DEFAULT_COMPANY_INFO = {
@@ -291,7 +291,11 @@ function CompanyInfoPage() {
     };
 
     if (loading) {
-        return <div className="text-center"><Spinner animation="border" /></div>;
+        return (
+            <div className="d-flex justify-content-center align-items-center py-5">
+                <Spinner animation="border" role="status" />
+            </div>
+        );
     }
 
     const baseCurrencyOptions = currencies.length
@@ -308,255 +312,369 @@ function CompanyInfoPage() {
 
     return (
         <div className="d-flex flex-column gap-4">
-            <Card>
-                <Card.Header><h4>Company Information</h4></Card.Header>
-                <Card.Body>
-                    {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
-                    {success && <Alert variant="success">{success}</Alert>}
-                    <Form onSubmit={handleSubmit}>
-                        <Row>
-                            <Col md={8}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Company Name</Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        name="name"
-                                        value={companyInfo.name}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Address</Form.Label>
-                                    <Form.Control
-                                        as="textarea"
-                                        rows={3}
-                                        name="address"
-                                        value={companyInfo.address || ''}
-                                        onChange={handleChange}
-                                    />
-                                </Form.Group>
-                                <Row>
-                                    <Col md={6}>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Phone</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                name="phone"
-                                                value={companyInfo.phone || ''}
-                                                onChange={handleChange}
-                                            />
-                                        </Form.Group>
-                                    </Col>
-                                    <Col md={6}>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Email</Form.Label>
-                                            <Form.Control
-                                                type="email"
-                                                name="email"
-                                                value={companyInfo.email || ''}
-                                                onChange={handleChange}
-                                            />
-                                        </Form.Group>
-                                    </Col>
-                                </Row>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Base Currency</Form.Label>
-                                    <Form.Select value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value)}>
-                                        {baseCurrencyOptions.map((currency) => (
-                                            <option key={currency.code} value={currency.code}>
-                                                {currency.name ? `${currency.name} (${currency.code})` : currency.code}
-                                            </option>
-                                        ))}
-                                    </Form.Select>
-                                </Form.Group>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Website</Form.Label>
-                                    <Form.Control
-                                        type="url"
-                                        name="website"
-                                        value={companyInfo.website || ''}
-                                        onChange={handleChange}
-                                    />
-                                </Form.Group>
-                            </Col>
-                            <Col md={4}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Company Logo</Form.Label>
-                                    {logoPreview && (
-                                        <div className="mb-2 text-center">
-                                            <img src={logoPreview} alt="Logo Preview" className="img-thumbnail" style={{ maxWidth: '200px', maxHeight: '200px' }} />
-                                        </div>
-                                    )}
-                                    <Form.Control
-                                        type="file"
-                                        name="logo"
-                                        onChange={handleFileChange}
-                                        accept="image/png, image/jpeg"
-                                    />
-                                </Form.Group>
-                            </Col>
-                        </Row>
-                        <hr />
-                        <Button variant="primary" type="submit" disabled={saving}>
-                            {saving ? <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> Saving...</> : 'Save Changes'}
-                        </Button>
-                    </Form>
-                </Card.Body>
-            </Card>
+            <Row className="g-4 align-items-start">
+                <Col xl={8}>
+                    <Card className="shadow-sm border-0 h-100">
+                        <Card.Header className="bg-white border-0 pb-0">
+                            <h4 className="mb-1">Company Profile</h4>
+                            <div className="text-muted small">Keep your brand details consistent across invoices and reports.</div>
+                        </Card.Header>
+                        <Card.Body className="pt-3">
+                            {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
+                            {success && <Alert variant="success">{success}</Alert>}
+                            <Form onSubmit={handleSubmit} className="d-flex flex-column gap-4">
+                                <section>
+                                    <header className="text-uppercase text-muted small fw-semibold mb-3">Brand identity</header>
+                                    <Row className="g-4 align-items-start">
+                                        <Col md={8}>
+                                            <Form.Group className="mb-3" controlId="company-name">
+                                                <Form.Label>Company Name</Form.Label>
+                                                <Form.Control
+                                                    type="text"
+                                                    name="name"
+                                                    value={companyInfo.name}
+                                                    onChange={handleChange}
+                                                    placeholder="Acme Accounting Ltd."
+                                                    required
+                                                />
+                                            </Form.Group>
+                                            <Form.Group controlId="company-address">
+                                                <Form.Label>Address</Form.Label>
+                                                <Form.Control
+                                                    as="textarea"
+                                                    rows={3}
+                                                    name="address"
+                                                    value={companyInfo.address || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="123 Market Street, Suite 200"
+                                                />
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={4}>
+                                            <div className="border rounded-3 p-3 bg-light-subtle h-100 d-flex flex-column align-items-center justify-content-between gap-3">
+                                                <div className="w-100 text-center">
+                                                    {logoPreview ? (
+                                                        <img
+                                                            src={logoPreview}
+                                                            alt="Logo preview"
+                                                            className="img-fluid rounded"
+                                                            style={{ maxHeight: '200px', objectFit: 'contain' }}
+                                                        />
+                                                    ) : (
+                                                    <div className="d-flex flex-column align-items-center justify-content-center border border-secondary-subtle rounded-3 bg-white py-5 px-3 text-muted">
+                                                            <div className="fw-semibold">Upload a logo</div>
+                                                            <div className="small">PNG or JPG, up to 2 MB</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <Form.Group controlId="company-logo" className="w-100">
+                                                    <Form.Label className="small text-muted fw-semibold">Company Logo</Form.Label>
+                                                    <Form.Control
+                                                        type="file"
+                                                        name="logo"
+                                                        onChange={handleFileChange}
+                                                        accept="image/png, image/jpeg"
+                                                    />
+                                                </Form.Group>
+                                            </div>
+                                        </Col>
+                                    </Row>
+                                </section>
 
-            <Card>
-                <Card.Header><h4>Currency Settings</h4></Card.Header>
-                <Card.Body>
+                                <section>
+                                    <header className="text-uppercase text-muted small fw-semibold mb-3">Contact details</header>
+                                    <Row className="g-3">
+                                        <Col md={6}>
+                                            <Form.Group controlId="company-phone">
+                                                <Form.Label>Phone</Form.Label>
+                                                <Form.Control
+                                                    type="text"
+                                                    name="phone"
+                                                    value={companyInfo.phone || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="(555) 123-4567"
+                                                />
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={6}>
+                                            <Form.Group controlId="company-email">
+                                                <Form.Label>Email</Form.Label>
+                                                <Form.Control
+                                                    type="email"
+                                                    name="email"
+                                                    value={companyInfo.email || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="hello@acme.com"
+                                                />
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={6}>
+                                            <Form.Group controlId="company-website">
+                                                <Form.Label>Website</Form.Label>
+                                                <Form.Control
+                                                    type="url"
+                                                    name="website"
+                                                    value={companyInfo.website || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="https://acme.com"
+                                                />
+                                            </Form.Group>
+                                        </Col>
+                                    </Row>
+                                </section>
+
+                                <section>
+                                    <header className="text-uppercase text-muted small fw-semibold mb-3">Financial defaults</header>
+                                    <Row className="g-3">
+                                        <Col md={6}>
+                                            <Form.Group controlId="company-base-currency">
+                                                <Form.Label>Base Currency</Form.Label>
+                                                <Form.Select value={baseCurrency} onChange={(e) => setBaseCurrency(e.target.value)}>
+                                                    {baseCurrencyOptions.map((currency) => (
+                                                        <option key={currency.code} value={currency.code}>
+                                                            {currency.name ? `${currency.name} (${currency.code})` : currency.code}
+                                                        </option>
+                                                    ))}
+                                                </Form.Select>
+                                                <Form.Text className="text-muted">This currency will be used for reports and defaults.</Form.Text>
+                                            </Form.Group>
+                                        </Col>
+                                    </Row>
+                                </section>
+
+                                <div className="d-flex justify-content-end pt-3 border-top">
+                                    <Button variant="primary" type="submit" disabled={saving}>
+                                        {saving ? (
+                                            <>
+                                                <Spinner
+                                                    as="span"
+                                                    animation="border"
+                                                    size="sm"
+                                                    role="status"
+                                                    aria-hidden="true"
+                                                    className="me-2"
+                                                />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save Changes'
+                                        )}
+                                    </Button>
+                                </div>
+                            </Form>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col xl={4}>
+                    <Card className="shadow-sm border-0 h-100">
+                        <Card.Header className="bg-white border-0 pb-0">
+                            <h5 className="mb-1">Live company preview</h5>
+                            <div className="text-muted small">Quickly confirm the details your clients will see.</div>
+                        </Card.Header>
+                        <Card.Body className="pt-3 d-flex flex-column gap-4">
+                            <div className="text-center">
+                                {logoPreview ? (
+                                    <img
+                                        src={logoPreview}
+                                        alt="Logo preview"
+                                        className="img-fluid rounded mb-3"
+                                        style={{ maxHeight: '160px', objectFit: 'contain' }}
+                                    />
+                                ) : (
+                                    <div className="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style={{ width: '96px', height: '96px' }}>
+                                        <span className="fw-semibold text-muted">{(companyInfo.name || 'Logo').slice(0, 2).toUpperCase()}</span>
+                                    </div>
+                                )}
+                                <h5 className="mb-1">{companyInfo.name || 'Your company name'}</h5>
+                                <div className="text-muted small">{companyInfo.website || 'Add a website to share with clients.'}</div>
+                            </div>
+                            <ListGroup variant="flush" className="small">
+                                <ListGroup.Item className="px-0 pb-3">
+                                    <div className="text-uppercase text-muted fw-semibold mb-1">Base currency</div>
+                                    <Badge bg="primary" className="text-uppercase">{baseCurrency || 'USD'}</Badge>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="px-0 pb-3">
+                                    <div className="text-uppercase text-muted fw-semibold mb-1">Address</div>
+                                    <div className="text-body-secondary">
+                                        {companyInfo.address ? companyInfo.address : 'No address provided yet.'}
+                                    </div>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="px-0 pb-3">
+                                    <div className="text-uppercase text-muted fw-semibold mb-1">Contact</div>
+                                    <div className="d-flex flex-column text-body-secondary">
+                                        <span>{companyInfo.phone || 'Add a phone number'}</span>
+                                        <span>{companyInfo.email || 'Add a contact email'}</span>
+                                    </div>
+                                </ListGroup.Item>
+                            </ListGroup>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            <Card className="shadow-sm border-0">
+                <Card.Header className="bg-white border-0 pb-0">
+                    <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h4 className="mb-1">Currency Settings</h4>
+                            <div className="text-muted small">Manage the currencies available when issuing invoices.</div>
+                        </div>
+                        <Badge bg="light" text="dark" className="fw-semibold">{currencies.length} configured</Badge>
+                    </div>
+                </Card.Header>
+                <Card.Body className="pt-3 d-flex flex-column gap-4">
                     {currencyError && <Alert variant="danger" onClose={() => setCurrencyError('')} dismissible>{currencyError}</Alert>}
                     {currencyMessage && <Alert variant="success" onClose={() => setCurrencyMessage('')} dismissible>{currencyMessage}</Alert>}
 
-                    <div className="table-responsive">
-                        <Table bordered hover size="sm" className="align-middle">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '10%' }}>Code</th>
-                                    <th style={{ width: '30%' }}>Name</th>
-                                    <th style={{ width: '20%' }}>Exchange Rate</th>
-                                    <th style={{ width: '10%' }}>Type</th>
-                                    <th style={{ width: '30%' }} className="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currencies.length === 0 && (
+                    <div>
+                        <div className="table-responsive">
+                            <Table hover size="sm" className="align-middle">
+                                <thead className="text-muted text-uppercase small">
                                     <tr>
-                                        <td colSpan={5} className="text-center text-muted">No currencies configured yet.</td>
+                                        <th style={{ width: '12%' }}>Code</th>
+                                        <th style={{ width: '28%' }}>Name</th>
+                                        <th style={{ width: '20%' }}>Exchange Rate</th>
+                                        <th style={{ width: '12%' }}>Type</th>
+                                        <th className="text-end" style={{ width: '28%' }}>Actions</th>
                                     </tr>
-                                )}
-                                {currencies.map((currency) => {
-                                    const isEditing = editingCurrencyId === currency.id;
-                                    return (
-                                        <tr key={currency.id}>
-                                            <td className="text-uppercase fw-semibold">{currency.code}</td>
-                                            <td>
-                                                {isEditing ? (
-                                                    <Form.Control
-                                                        name="name"
-                                                        value={editCurrencyForm.name}
-                                                        onChange={handleEditCurrencyChange}
-                                                    />
-                                                ) : (
-                                                    currency.name || currency.code
-                                                )}
-                                            </td>
-                                            <td>
-                                                {currency.is_base_currency ? (
-                                                    <span className="text-muted">1.000000</span>
-                                                ) : isEditing ? (
-                                                    <Form.Control
-                                                        type="number"
-                                                        step="0.000001"
-                                                        name="exchange_rate"
-                                                        value={editCurrencyForm.exchange_rate}
-                                                        onChange={handleEditCurrencyChange}
-                                                    />
-                                                ) : (
-                                                    renderExchangeRate(currency)
-                                                )}
-                                            </td>
-                                            <td>
-                                                {currency.is_base_currency ? <span className="badge bg-primary">Base</span> : <span className="badge bg-secondary">Additional</span>}
-                                            </td>
-                                            <td className="text-end">
-                                                {isEditing ? (
-                                                    <>
-                                                        <Button
-                                                            variant="success"
-                                                            size="sm"
-                                                            className="me-2"
-                                                            onClick={handleSaveCurrency}
-                                                            disabled={currencySaving}
-                                                        >
-                                                            Save
-                                                        </Button>
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="sm"
-                                                            onClick={handleCancelEdit}
-                                                            disabled={currencySaving}
-                                                        >
-                                                            Cancel
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Button
-                                                            variant="outline-primary"
-                                                            size="sm"
-                                                            className="me-2"
-                                                            onClick={() => startEditingCurrency(currency)}
-                                                        >
-                                                            Edit
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline-danger"
-                                                            size="sm"
-                                                            onClick={() => handleDeleteCurrency(currency)}
-                                                            disabled={currency.is_base_currency}
-                                                        >
-                                                            Delete
-                                                        </Button>
-                                                    </>
-                                                )}
-                                            </td>
+                                </thead>
+                                <tbody>
+                                    {currencies.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="text-center text-muted py-4">No currencies configured yet.</td>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </Table>
+                                    )}
+                                    {currencies.map((currency) => {
+                                        const isEditing = editingCurrencyId === currency.id;
+                                        return (
+                                            <tr key={currency.id}>
+                                                <td className="text-uppercase fw-semibold">{currency.code}</td>
+                                                <td>
+                                                    {isEditing ? (
+                                                        <Form.Control
+                                                            name="name"
+                                                            value={editCurrencyForm.name}
+                                                            onChange={handleEditCurrencyChange}
+                                                        />
+                                                    ) : (
+                                                        currency.name || currency.code
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {currency.is_base_currency ? (
+                                                        <span className="text-muted">1.000000</span>
+                                                    ) : isEditing ? (
+                                                        <Form.Control
+                                                            type="number"
+                                                            step="0.000001"
+                                                            name="exchange_rate"
+                                                            value={editCurrencyForm.exchange_rate}
+                                                            onChange={handleEditCurrencyChange}
+                                                        />
+                                                    ) : (
+                                                        renderExchangeRate(currency)
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {currency.is_base_currency ? <span className="badge bg-primary">Base</span> : <span className="badge bg-secondary">Additional</span>}
+                                                </td>
+                                                <td className="text-end">
+                                                    {isEditing ? (
+                                                        <div className="d-inline-flex gap-2">
+                                                            <Button
+                                                                variant="success"
+                                                                size="sm"
+                                                                onClick={handleSaveCurrency}
+                                                                disabled={currencySaving}
+                                                            >
+                                                                Save
+                                                            </Button>
+                                                            <Button
+                                                                variant="secondary"
+                                                                size="sm"
+                                                                onClick={handleCancelEdit}
+                                                                disabled={currencySaving}
+                                                            >
+                                                                Cancel
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="d-inline-flex gap-2">
+                                                            <Button
+                                                                variant="outline-primary"
+                                                                size="sm"
+                                                                onClick={() => startEditingCurrency(currency)}
+                                                            >
+                                                                Edit
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline-danger"
+                                                                size="sm"
+                                                                onClick={() => handleDeleteCurrency(currency)}
+                                                                disabled={currency.is_base_currency}
+                                                            >
+                                                                Delete
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </Table>
+                        </div>
                     </div>
 
-                    <Form onSubmit={handleAddCurrency} className="mt-4">
+                    <Form onSubmit={handleAddCurrency} className="bg-light-subtle rounded-3 p-3">
+                        <div className="text-uppercase text-muted small fw-semibold mb-3">Add a currency</div>
                         <Row className="g-3 align-items-end">
                             <Col md={3}>
-                                <Form.Label>Code</Form.Label>
-                                <Form.Control
-                                    name="code"
-                                    value={currencyForm.code}
-                                    onChange={handleCurrencyFormChange}
-                                    placeholder="e.g. USD"
-                                    maxLength={3}
-                                    required
-                                />
+                                <Form.Group controlId="currency-code">
+                                    <Form.Label>Code</Form.Label>
+                                    <Form.Control
+                                        name="code"
+                                        value={currencyForm.code}
+                                        onChange={handleCurrencyFormChange}
+                                        placeholder="e.g. EUR"
+                                        maxLength={3}
+                                        required
+                                    />
+                                </Form.Group>
                             </Col>
                             <Col md={4}>
-                                <Form.Label>Name</Form.Label>
-                                <Form.Control
-                                    name="name"
-                                    value={currencyForm.name}
-                                    onChange={handleCurrencyFormChange}
-                                    placeholder="Currency name"
-                                    required
-                                />
+                                <Form.Group controlId="currency-name">
+                                    <Form.Label>Name</Form.Label>
+                                    <Form.Control
+                                        name="name"
+                                        value={currencyForm.name}
+                                        onChange={handleCurrencyFormChange}
+                                        placeholder="Euro"
+                                        required
+                                    />
+                                </Form.Group>
                             </Col>
                             <Col md={3}>
-                                <Form.Label>Exchange Rate</Form.Label>
-                                <Form.Control
-                                    type="number"
-                                    step="0.000001"
-                                    name="exchange_rate"
-                                    value={currencyForm.exchange_rate}
-                                    onChange={handleCurrencyFormChange}
-                                    required
-                                />
-                                <Form.Text className="text-muted">Relative to the base currency.</Form.Text>
+                                <Form.Group controlId="currency-rate">
+                                    <Form.Label>Exchange Rate</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        step="0.000001"
+                                        name="exchange_rate"
+                                        value={currencyForm.exchange_rate}
+                                        onChange={handleCurrencyFormChange}
+                                        min="0"
+                                        required
+                                    />
+                                </Form.Group>
                             </Col>
-                            <Col md={2}>
-                                <Button
-                                    type="submit"
-                                    variant="primary"
-                                    className="w-100"
-                                    disabled={currencySaving}
-                                >
-                                    {currencySaving ? 'Saving...' : 'Add Currency'}
+                            <Col md={2} className="d-grid">
+                                <Button type="submit" variant="primary" disabled={currencySaving}>
+                                    {currencySaving ? 'Adding…' : 'Add'}
                                 </Button>
                             </Col>
                         </Row>
+                        <Form.Text className="text-muted">Use the exchange rate relative to your base currency.</Form.Text>
                     </Form>
                 </Card.Body>
             </Card>
