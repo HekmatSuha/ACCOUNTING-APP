@@ -7,9 +7,15 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from .exchange_rates import get_exchange_rate
+from .services import ledger
+
 from decimal import Decimal, ROUND_HALF_UP
 
 from .services.currency import convert_amount, normalise_currency, to_decimal
+
 
 
 class Currency(models.Model):
@@ -148,12 +154,12 @@ class Sale(models.Model):
         with transaction.atomic():
             # If the object is already in the database, get its old state
             if self.pk:
-                old_sale = Sale.objects.get(pk=self.pk)
+                old_sale = Sale.objects.select_for_update().get(pk=self.pk)
                 # Revert the old balance change before applying the new one
-                if old_sale.customer:
-                    Customer.objects.filter(pk=old_sale.customer.pk).update(open_balance=F('open_balance') - old_sale.total_amount)
-                elif old_sale.supplier:
-                    Supplier.objects.filter(pk=old_sale.supplier.pk).update(open_balance=F('open_balance') + old_sale.total_amount)
+                if old_sale.customer_id:
+                    ledger.reverse_customer_movement(old_sale.customer_id, old_sale.total_amount)
+                elif old_sale.supplier_id:
+                    ledger.reverse_supplier_movement(old_sale.supplier_id, -old_sale.total_amount)
 
             # Compute converted amount from original amount
             self.converted_amount = (
@@ -164,10 +170,10 @@ class Sale(models.Model):
             super().save(*args, **kwargs)
 
             # Apply the new balance change
-            if self.customer:
-                Customer.objects.filter(pk=self.customer.pk).update(open_balance=F('open_balance') + self.total_amount)
-            elif self.supplier:
-                Supplier.objects.filter(pk=self.supplier.pk).update(open_balance=F('open_balance') - self.total_amount)
+            if self.customer_id:
+                ledger.apply_customer_movement(self.customer_id, self.total_amount)
+            elif self.supplier_id:
+                ledger.apply_supplier_movement(self.supplier_id, -self.total_amount)
 
 
 class Offer(models.Model):
@@ -337,32 +343,48 @@ class Payment(models.Model):
 
                 # Update customer balance using converted amounts
                 if old.customer_id != self.customer_id:
-                    Customer.objects.filter(pk=old.customer_id).update(open_balance=F('open_balance') + old.converted_amount)
-                    Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.converted_amount)
+                    ledger.apply_customer_movement(
+                        old.customer_id, old.converted_amount
+                    )
+                    ledger.apply_customer_movement(
+                        self.customer_id, -self.converted_amount
+                    )
                 else:
                     delta = self.converted_amount - old.converted_amount
-                    Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - delta)
+                    ledger.apply_customer_movement(self.customer_id, -delta)
 
                 # Update bank account balance using converted amounts
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') - old.account_converted_amount)
+                        ledger.apply_bank_account_movement(
+                            old.account_id, -old.account_converted_amount
+                        )
                     if self.account_id:
-                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.account_converted_amount)
+                        ledger.apply_bank_account_movement(
+                            self.account_id, self.account_converted_amount
+                        )
                 elif self.account_id:
                     delta = self.account_converted_amount - old.account_converted_amount
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + delta)
+                    ledger.apply_bank_account_movement(self.account_id, delta)
             else:
-                Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') - self.converted_amount)
+                ledger.apply_customer_movement(
+                    self.customer_id, -self.converted_amount
+                )
                 if self.account_id:
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + self.account_converted_amount)
+                    ledger.apply_bank_account_movement(
+                        self.account_id, self.account_converted_amount
+                    )
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
-            Customer.objects.filter(pk=self.customer_id).update(open_balance=F('open_balance') + self.converted_amount)
+            ledger.apply_customer_movement(
+                self.customer_id, self.converted_amount
+            )
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - self.account_converted_amount)
+                ledger.apply_bank_account_movement(
+                    self.account_id, -self.account_converted_amount
+                )
             super().delete(*args, **kwargs)
 
 
@@ -528,9 +550,9 @@ class SaleReturn(models.Model):
                     total += item.line_total
                 self.total_amount = total
                 if self.sale.customer_id:
-                    Customer.objects.filter(pk=self.sale.customer_id).update(open_balance=F('open_balance') - total)
+                    ledger.apply_customer_movement(self.sale.customer_id, -total)
                 elif self.sale.supplier_id:
-                    Supplier.objects.filter(pk=self.sale.supplier_id).update(open_balance=F('open_balance') + total)
+                    ledger.apply_supplier_movement(self.sale.supplier_id, total)
                 super().save(update_fields=['total_amount'])
 
     def delete(self, *args, **kwargs):
@@ -543,9 +565,9 @@ class SaleReturn(models.Model):
                     item.product, item.warehouse, Decimal(item.quantity) * Decimal('-1')
                 )
             if self.sale.customer_id:
-                Customer.objects.filter(pk=self.sale.customer_id).update(open_balance=F('open_balance') + self.total_amount)
+                ledger.reverse_customer_movement(self.sale.customer_id, -self.total_amount)
             elif self.sale.supplier_id:
-                Supplier.objects.filter(pk=self.sale.supplier_id).update(open_balance=F('open_balance') - self.total_amount)
+                ledger.reverse_supplier_movement(self.sale.supplier_id, self.total_amount)
             super().delete(*args, **kwargs)
 
 
@@ -703,38 +725,38 @@ class Expense(models.Model):
 
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        BankAccount.objects.filter(pk=old.account_id).update(
-                            balance=F('balance') + old.account_converted_amount
+                        ledger.apply_bank_account_movement(
+                            old.account_id, old.account_converted_amount
                         )
                     if self.account_id:
-                        BankAccount.objects.filter(pk=self.account_id).update(
-                            balance=F('balance') - self.account_converted_amount
+                        ledger.apply_bank_account_movement(
+                            self.account_id, -self.account_converted_amount
                         )
                 elif self.account_id:
                     delta = self.account_converted_amount - old.account_converted_amount
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - delta)
+                    ledger.apply_bank_account_movement(self.account_id, -delta)
 
                 if old.supplier_id != self.supplier_id:
                     if old.supplier_id:
-                        Supplier.objects.filter(pk=old.supplier_id).update(
-                            open_balance=F('open_balance') + old.converted_amount
+                        ledger.apply_supplier_movement(
+                            old.supplier_id, old.converted_amount
                         )
                     if self.supplier_id:
-                        Supplier.objects.filter(pk=self.supplier_id).update(
-                            open_balance=F('open_balance') - self.converted_amount
+                        ledger.apply_supplier_movement(
+                            self.supplier_id, -self.converted_amount
                         )
                 elif self.supplier_id:
                     delta = self.converted_amount - old.converted_amount
-                    Supplier.objects.filter(pk=self.supplier_id).update(open_balance=F('open_balance') - delta)
+                    ledger.apply_supplier_movement(self.supplier_id, -delta)
 
             else:
                 if self.account_id:
-                    BankAccount.objects.filter(pk=self.account_id).update(
-                        balance=F('balance') - self.account_converted_amount
+                    ledger.apply_bank_account_movement(
+                        self.account_id, -self.account_converted_amount
                     )
                 if self.supplier_id:
-                    Supplier.objects.filter(pk=self.supplier_id).update(
-                        open_balance=F('open_balance') - self.converted_amount
+                    ledger.apply_supplier_movement(
+                        self.supplier_id, -self.converted_amount
                     )
 
             super().save(*args, **kwargs)
@@ -742,12 +764,12 @@ class Expense(models.Model):
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(
-                    balance=F('balance') + self.account_converted_amount
+                ledger.apply_bank_account_movement(
+                    self.account_id, self.account_converted_amount
                 )
             if self.supplier_id:
-                Supplier.objects.filter(pk=self.supplier_id).update(
-                    open_balance=F('open_balance') + self.converted_amount
+                ledger.apply_supplier_movement(
+                    self.supplier_id, self.converted_amount
                 )
             super().delete(*args, **kwargs)
     
@@ -780,24 +802,28 @@ class Purchase(models.Model):
             self.total_amount = self.converted_amount
             current_total = Decimal(self.converted_amount)
             if self.pk:
-                old = Purchase.objects.get(pk=self.pk)
+                old = Purchase.objects.select_for_update().get(pk=self.pk)
                 old_total = Decimal(old.converted_amount)
                 if old.account_id != self.account_id:
                     if old.account_id:
-                        BankAccount.objects.filter(pk=old.account_id).update(balance=F('balance') + old_total)
+                        ledger.apply_bank_account_movement(old.account_id, old_total)
                     if self.account_id:
-                        BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - current_total)
+                        ledger.apply_bank_account_movement(
+                            self.account_id, -current_total
+                        )
                 elif self.account_id:
                     delta = current_total - old_total
-                    BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - delta)
+                    ledger.apply_bank_account_movement(self.account_id, -delta)
             elif self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') - current_total)
+                ledger.apply_bank_account_movement(self.account_id, -current_total)
             super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         with transaction.atomic():
             if self.account_id:
-                BankAccount.objects.filter(pk=self.account_id).update(balance=F('balance') + Decimal(self.converted_amount))
+                ledger.apply_bank_account_movement(
+                    self.account_id, Decimal(self.converted_amount)
+                )
             super().delete(*args, **kwargs)
 
 class PurchaseItem(models.Model):
@@ -845,9 +871,13 @@ class PurchaseReturn(models.Model):
                 self.total_amount = total
                 if not self.purchase.account_id:
                     if self.purchase.supplier_id:
-                        Supplier.objects.filter(pk=self.purchase.supplier_id).update(open_balance=F('open_balance') - total)
+                        ledger.apply_supplier_movement(
+                            self.purchase.supplier_id, -total
+                        )
                     elif self.purchase.customer_id:
-                        Customer.objects.filter(pk=self.purchase.customer_id).update(open_balance=F('open_balance') + total)
+                        ledger.apply_customer_movement(
+                            self.purchase.customer_id, total
+                        )
                 super().save(update_fields=['total_amount'])
 
     def delete(self, *args, **kwargs):
@@ -861,9 +891,13 @@ class PurchaseReturn(models.Model):
                 )
             if not self.purchase.account_id:
                 if self.purchase.supplier_id:
-                    Supplier.objects.filter(pk=self.purchase.supplier_id).update(open_balance=F('open_balance') + self.total_amount)
+                    ledger.reverse_supplier_movement(
+                        self.purchase.supplier_id, -self.total_amount
+                    )
                 elif self.purchase.customer_id:
-                    Customer.objects.filter(pk=self.purchase.customer_id).update(open_balance=F('open_balance') - self.total_amount)
+                    ledger.reverse_customer_movement(
+                        self.purchase.customer_id, self.total_amount
+                    )
             super().delete(*args, **kwargs)
 
 
