@@ -7,6 +7,7 @@ jest.mock('../utils/axiosInstance', () => ({
   get: jest.fn(),
   post: jest.fn(),
   put: jest.fn(),
+  defaults: { baseURL: '' },
 }));
 
 describe('CustomerPaymentModal', () => {
@@ -47,14 +48,14 @@ describe('CustomerPaymentModal', () => {
 
   test('renders correctly for a new payment', async () => {
     render(<CustomerPaymentModal {...defaultProps} />);
-    await screen.findByText('Add New Payment');
+    await screen.findByText('Record Payment');
     expect(screen.getByLabelText(/^Amount$/)).toHaveValue(null);
   });
 
   test('shows exchange rate fields when payment currency and account currency differ', async () => {
     render(<CustomerPaymentModal {...defaultProps} />);
 
-    await screen.findByText('Add New Payment');
+    await screen.findByText('Record Payment');
 
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } });
 
@@ -82,7 +83,7 @@ describe('CustomerPaymentModal', () => {
 
   test('hides exchange rate fields when payment and account currencies are the same', async () => {
     render(<CustomerPaymentModal {...defaultProps} />);
-    await screen.findByText('Add New Payment');
+    await screen.findByText('Record Payment');
 
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: '1' } });
 
@@ -93,7 +94,7 @@ describe('CustomerPaymentModal', () => {
 
   test('submits correct data when creating a new payment with currency conversion', async () => {
     render(<CustomerPaymentModal {...defaultProps} />);
-    await screen.findByText('Add New Payment');
+    await screen.findByText('Record Payment');
 
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'USD' } });
