@@ -26,6 +26,10 @@
     padding: 1.5rem;
 }
 
+.summary-card.metric-card .metric-card__content {
+    min-width: 0;
+}
+
 .summary-card.metric-card .metric-card__icon {
     display: inline-flex;
     align-items: center;
@@ -49,10 +53,11 @@
 }
 
 .summary-card.metric-card .metric-card__value {
-    font-size: 1.5rem;
+    font-size: clamp(1.125rem, 1.1vw + 1rem, 1.5rem);
     font-weight: 700;
     color: var(--metric-card-color);
     margin: 0;
+    word-break: break-word;
 }
 
 .summary-card.metric-card--success {
