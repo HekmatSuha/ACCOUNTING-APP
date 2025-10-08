@@ -7,8 +7,9 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-from .exchange_rates import get_exchange_rate
+from decimal import Decimal, ROUND_HALF_UP
+
+from .services.currency import convert_amount, normalise_currency, to_decimal
 
 
 class Currency(models.Model):
@@ -284,30 +285,51 @@ class Payment(models.Model):
         return f"Payment of {self.original_amount} from {self.customer.name}"
 
     def save(self, *args, **kwargs):
-        # If original_currency is not set, default it.
-        if not self.original_currency:
-            if self.account:
-                self.original_currency = self.account.currency
-            else:
-                self.original_currency = self.customer.currency
+        original_amount = to_decimal(self.original_amount)
+        self.original_amount = original_amount
 
-        # Determine exchange rate for customer's balance.
-        if self.original_currency == self.customer.currency:
-            self.exchange_rate = Decimal('1')
-        elif not self.exchange_rate or self.exchange_rate <= 0:
-            self.exchange_rate = get_exchange_rate(self.original_currency, self.customer.currency)
-        self.converted_amount = (Decimal(self.original_amount) * self.exchange_rate).quantize(Decimal('0.01'))
-
-        # Determine exchange rate for account's balance.
+        customer_currency = normalise_currency(self.customer.currency)
+        account_currency = None
         if self.account_id:
-            if self.original_currency == self.account.currency:
-                self.account_exchange_rate = Decimal('1')
-            elif not self.account_exchange_rate or self.account_exchange_rate <= 0:
-                self.account_exchange_rate = get_exchange_rate(self.original_currency, self.account.currency)
-            self.account_converted_amount = (Decimal(self.original_amount) * self.account_exchange_rate).quantize(Decimal('0.01'))
+            account_currency = getattr(self.account, "currency", None)
+            if not account_currency:
+                account_currency = (
+                    BankAccount.objects.filter(pk=self.account_id)
+                    .values_list("currency", flat=True)
+                    .first()
+                )
+
+        self.original_currency = normalise_currency(
+            self.original_currency,
+            account_currency,
+            customer_currency,
+        )
+
+        self.exchange_rate, self.converted_amount = convert_amount(
+            original_amount,
+            self.original_currency,
+            customer_currency,
+            manual_rate=self.exchange_rate,
+        )
+
+        if self.account_id:
+            resolved_account_currency = normalise_currency(
+                account_currency,
+                customer_currency,
+                self.original_currency,
+            )
+            (
+                self.account_exchange_rate,
+                self.account_converted_amount,
+            ) = convert_amount(
+                original_amount,
+                self.original_currency,
+                resolved_account_currency,
+                manual_rate=self.account_exchange_rate,
+            )
         else:
-            self.account_exchange_rate = Decimal('1')
-            self.account_converted_amount = Decimal('0')
+            self.account_exchange_rate = Decimal("1")
+            self.account_converted_amount = Decimal("0")
 
         with transaction.atomic():
             if self.pk:
@@ -613,25 +635,19 @@ class Expense(models.Model):
 
     def save(self, *args, **kwargs):
         with transaction.atomic():
-            def _to_decimal(value, default='0'):
-                try:
-                    return Decimal(value)
-                except (InvalidOperation, TypeError):
-                    return Decimal(default)
-
-            def _normalise_currency(value, fallback='USD'):
-                value = (value or '').strip()
-                return (value or fallback).upper()
-
-            original_amount = self.original_amount if self.original_amount not in (None, '') else self.amount
-            original_amount = _to_decimal(original_amount)
+            original_amount_value = (
+                self.original_amount
+                if self.original_amount not in (None, "")
+                else self.amount
+            )
+            original_amount = to_decimal(original_amount_value)
             self.original_amount = original_amount
 
             supplier_currency = None
             if self.supplier_id:
                 supplier_currency = (
                     Supplier.objects.filter(pk=self.supplier_id)
-                    .values_list('currency', flat=True)
+                    .values_list("currency", flat=True)
                     .first()
                 )
 
@@ -639,48 +655,48 @@ class Expense(models.Model):
             if self.account_id:
                 account_currency = (
                     BankAccount.objects.filter(pk=self.account_id)
-                    .values_list('currency', flat=True)
+                    .values_list("currency", flat=True)
                     .first()
                 )
 
-            original_currency = _normalise_currency(
+            self.original_currency = normalise_currency(
                 self.original_currency,
-                supplier_currency or account_currency or 'USD',
+                supplier_currency,
+                account_currency,
             )
-            self.original_currency = original_currency
 
-            if self.supplier_id:
-                target_currency = _normalise_currency(supplier_currency, original_currency)
-                rate = _to_decimal(self.exchange_rate or '0')
-                if rate <= 0:
-                    try:
-                        rate = get_exchange_rate(original_currency, target_currency)
-                    except Exception:
-                        rate = Decimal('1')
-                self.exchange_rate = rate
-                converted_amount = (original_amount * rate).quantize(Decimal('0.01'))
-            else:
-                self.exchange_rate = Decimal('1')
-                converted_amount = original_amount.quantize(Decimal('0.01')) if original_amount else Decimal('0')
-            self.converted_amount = converted_amount
+            supplier_target_currency = normalise_currency(
+                supplier_currency,
+                self.original_currency,
+            )
+            self.exchange_rate, self.converted_amount = convert_amount(
+                original_amount,
+                self.original_currency,
+                supplier_target_currency,
+                manual_rate=self.exchange_rate,
+                default_rate=Decimal("1"),
+            )
 
             if self.account_id:
-                target_currency = _normalise_currency(account_currency, original_currency)
-                rate = _to_decimal(self.account_exchange_rate or '0')
-                if original_currency == target_currency:
-                    rate = Decimal('1')
-                elif rate <= 0:
-                    try:
-                        rate = get_exchange_rate(original_currency, target_currency)
-                    except Exception:
-                        rate = Decimal('1')
-                self.account_exchange_rate = rate
-                account_amount = (original_amount * rate).quantize(Decimal('0.01'))
+                account_target_currency = normalise_currency(
+                    account_currency,
+                    supplier_target_currency,
+                    self.original_currency,
+                )
+                (
+                    self.account_exchange_rate,
+                    self.account_converted_amount,
+                ) = convert_amount(
+                    original_amount,
+                    self.original_currency,
+                    account_target_currency,
+                    manual_rate=self.account_exchange_rate,
+                    default_rate=Decimal("1"),
+                )
             else:
-                self.account_exchange_rate = Decimal('1')
-                account_amount = converted_amount
-            self.account_converted_amount = account_amount
-            self.amount = account_amount
+                self.account_exchange_rate = Decimal("1")
+                self.account_converted_amount = self.converted_amount
+            self.amount = self.account_converted_amount
 
             if self.pk:
                 old = Expense.objects.select_for_update().get(pk=self.pk)
