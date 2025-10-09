@@ -1,0 +1,67 @@
+{
+  "navigation": {
+    "brand": "MyAccountingApp",
+    "dashboard": "Kontrol Paneli",
+    "customers": "Müşteriler",
+    "suppliers": "Tedarikçiler",
+    "sales": "Satışlar",
+    "offers": "Teklifler",
+    "purchases": "Satın Almalar",
+    "expenses": "Giderler",
+    "inventory": "Stoklar",
+    "warehouses": "Depolar",
+    "reports": {
+      "title": "Raporlar",
+      "profitLoss": "Gelir Gider",
+      "sales": "Satış Raporu",
+      "customerBalances": "Müşteri Bakiyeleri",
+      "inventory": "Stok Raporu"
+    },
+    "bankAccounts": "Banka Hesapları"
+  },
+  "userMenu": {
+    "userSettings": "Kullanıcı Ayarları",
+    "companySettings": "Şirket Ayarları",
+    "logout": "Çıkış Yap"
+  },
+  "login": {
+    "hero": {
+      "kicker": "Accounting OS",
+      "title": "Finansınızı netlikle yönetin.",
+      "text": "Faturalamayı kolaylaştırın, hesapları uzlaştırın ve modern ekipler için tasarlanan gerçek zamanlı içgörülerle nakit akışını izleyin."
+    },
+    "title": "Çalışma alanınıza giriş yapın",
+    "subtitle": "Tekrar hoş geldiniz! Devam etmek için bilgilerinizi girin.",
+    "fields": {
+      "username": "Kullanıcı adı",
+      "usernamePlaceholder": "Kullanıcı adınızı girin",
+      "password": "Parola",
+      "passwordPlaceholder": "••••••••"
+    },
+    "passwordHint": "En az bir rakam ve sembol içeren 8 karakter kullanın.",
+    "rememberMe": "Beni hatırla",
+    "helpText": "Giriş yapmakta zorlanıyor musunuz?",
+    "contactSupport": "Destek ile iletişime geçin",
+    "submit": "Giriş Yap",
+    "error": "Giriş başarısız. Lütfen kullanıcı adı ve parolanızı kontrol edin.",
+    "footer": "Platforma yeni misiniz? <registerLink>Hesap oluşturun</registerLink>"
+  },
+  "register": {
+    "title": "Kayıt Ol",
+    "fields": {
+      "username": "Kullanıcı adı",
+      "password": "Parola"
+    },
+    "submit": "Kayıt Ol",
+    "error": "Kayıt başarısız. Bu kullanıcı adı zaten alınmış olabilir.",
+    "footer": "Zaten bir hesabınız var mı? <loginLink>Giriş Yapın</loginLink>"
+  },
+  "languageSwitcher": {
+    "label": "Dil",
+    "options": {
+      "en": "İngilizce",
+      "ru": "Rusça",
+      "tr": "Türkçe"
+    }
+  }
+}
