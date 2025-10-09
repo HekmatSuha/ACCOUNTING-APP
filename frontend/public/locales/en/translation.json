@@ -1,0 +1,67 @@
+{
+  "navigation": {
+    "brand": "MyAccountingApp",
+    "dashboard": "Dashboard",
+    "customers": "Customers",
+    "suppliers": "Suppliers",
+    "sales": "Sales",
+    "offers": "Offers",
+    "purchases": "Purchases",
+    "expenses": "Expenses",
+    "inventory": "Inventory",
+    "warehouses": "Warehouses",
+    "reports": {
+      "title": "Reports",
+      "profitLoss": "Profit & Loss",
+      "sales": "Sales Report",
+      "customerBalances": "Customer Balances",
+      "inventory": "Inventory"
+    },
+    "bankAccounts": "Bank Accounts"
+  },
+  "userMenu": {
+    "userSettings": "User Settings",
+    "companySettings": "Company Settings",
+    "logout": "Logout"
+  },
+  "login": {
+    "hero": {
+      "kicker": "Accounting OS",
+      "title": "Run your finances with clarity.",
+      "text": "Streamline invoicing, reconcile accounts, and monitor cash flow with real-time insights designed for modern teams."
+    },
+    "title": "Sign in to your workspace",
+    "subtitle": "Welcome back! Please enter your details to continue.",
+    "fields": {
+      "username": "Username",
+      "usernamePlaceholder": "Enter your username",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••"
+    },
+    "passwordHint": "Use at least 8 characters, including a number and a symbol.",
+    "rememberMe": "Remember me",
+    "helpText": "Trouble signing in?",
+    "contactSupport": "Contact support",
+    "submit": "Log In",
+    "error": "Login failed. Please check your username and password.",
+    "footer": "New to the platform? <registerLink>Create an account</registerLink>"
+  },
+  "register": {
+    "title": "Register",
+    "fields": {
+      "username": "Username",
+      "password": "Password"
+    },
+    "submit": "Register",
+    "error": "Registration failed. This username may already be taken.",
+    "footer": "Already have an account? <loginLink>Log In</loginLink>"
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "options": {
+      "en": "English",
+      "ru": "Русский",
+      "tr": "Türkçe"
+    }
+  }
+}
