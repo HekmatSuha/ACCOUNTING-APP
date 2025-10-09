@@ -22,10 +22,13 @@ import {
     PersonCircle,
     Gear
 } from 'react-bootstrap-icons';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 
 function AppLayout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { t } = useTranslation();
     const [collapsed, setCollapsed] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
     const [reportsOpen, setReportsOpen] = useState(false);
@@ -61,34 +64,34 @@ function AppLayout({ children }) {
 
     const SidebarContent = (
         <>
-            {!collapsed && !isMobile && <h4 className="mb-4">MyAccountingApp</h4>}
+            {!collapsed && !isMobile && <h4 className="mb-4">{t('navigation.brand')}</h4>}
             <Nav className="flex-column mb-auto">
                 <Nav.Link as={NavLink} to="/dashboard" className={linkClass}>
-                    <Speedometer2 className={iconClass} /> {!collapsed && 'Dashboard'}
+                    <Speedometer2 className={iconClass} /> {!collapsed && t('navigation.dashboard')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/customers" className={linkClass}>
-                    <People className={iconClass} /> {!collapsed && 'Customers'}
+                    <People className={iconClass} /> {!collapsed && t('navigation.customers')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/suppliers" className={linkClass}>
-                    <Truck className={iconClass} /> {!collapsed && 'Suppliers'}
+                    <Truck className={iconClass} /> {!collapsed && t('navigation.suppliers')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/sales" className={linkClass}>
-                    <Receipt className={iconClass} /> {!collapsed && 'Sales'}
+                    <Receipt className={iconClass} /> {!collapsed && t('navigation.sales')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/offers" className={linkClass}>
-                    <FileText className={iconClass} /> {!collapsed && 'Offers'}
+                    <FileText className={iconClass} /> {!collapsed && t('navigation.offers')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/purchases" className={linkClass}>
-                    <Cart className={iconClass} /> {!collapsed && 'Purchases'}
+                    <Cart className={iconClass} /> {!collapsed && t('navigation.purchases')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/expenses" className={linkClass}>
-                    <CreditCard className={iconClass} /> {!collapsed && 'Expenses'}
+                    <CreditCard className={iconClass} /> {!collapsed && t('navigation.expenses')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/inventory" className={linkClass}>
-                    <BoxSeam className={iconClass} /> {!collapsed && 'Inventory'}
+                    <BoxSeam className={iconClass} /> {!collapsed && t('navigation.inventory')}
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/warehouses" className={linkClass}>
-                    <HouseDoor className={iconClass} /> {!collapsed && 'Warehouses'}
+                    <HouseDoor className={iconClass} /> {!collapsed && t('navigation.warehouses')}
                 </Nav.Link>
                 <div className="position-relative">
                     <button
@@ -98,7 +101,7 @@ function AppLayout({ children }) {
                         aria-expanded={reportsOpen}
                     >
                         <span className="d-flex align-items-center gap-2">
-                            <BarChart className={iconClass} /> {!collapsed && 'Reports'}
+                            <BarChart className={iconClass} /> {!collapsed && t('navigation.reports.title')}
                         </span>
                         {!collapsed && (reportsOpen ? <DashLg size={18} /> : <PlusLg size={18} />)}
                     </button>
@@ -117,7 +120,7 @@ function AppLayout({ children }) {
                                     `sidebar-submenu-link ${isActive ? 'active' : ''}`
                                 }
                             >
-                                Profit &amp; Loss
+                                {t('navigation.reports.profitLoss')}
                             </NavLink>
                             <NavLink
                                 to="/reports/sales"
@@ -125,7 +128,7 @@ function AppLayout({ children }) {
                                     `sidebar-submenu-link ${isActive ? 'active' : ''}`
                                 }
                             >
-                                Sales Report
+                                {t('navigation.reports.sales')}
                             </NavLink>
                             <NavLink
                                 to="/reports/customer-balances"
@@ -133,7 +136,7 @@ function AppLayout({ children }) {
                                     `sidebar-submenu-link ${isActive ? 'active' : ''}`
                                 }
                             >
-                                Customer Balances
+                                {t('navigation.reports.customerBalances')}
                             </NavLink>
                             <NavLink
                                 to="/reports/inventory"
@@ -141,13 +144,13 @@ function AppLayout({ children }) {
                                     `sidebar-submenu-link ${isActive ? 'active' : ''}`
                                 }
                             >
-                                Inventory
+                                {t('navigation.reports.inventory')}
                             </NavLink>
                         </div>
                     )}
                 </div>
                 <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
-                    <Bank className={iconClass} /> {!collapsed && 'Bank Accounts'}
+                    <Bank className={iconClass} /> {!collapsed && t('navigation.bankAccounts')}
                 </Nav.Link>
             </Nav>
         </>
@@ -158,7 +161,7 @@ function AppLayout({ children }) {
             {isMobile ? (
                 <Offcanvas show={showSidebar} onHide={() => setShowSidebar(false)} className="app-sidebar">
                     <Offcanvas.Header closeButton closeVariant="white">
-                        <Offcanvas.Title>MyAccountingApp</Offcanvas.Title>
+                        <Offcanvas.Title>{t('navigation.brand')}</Offcanvas.Title>
                     </Offcanvas.Header>
                     <Offcanvas.Body>{SidebarContent}</Offcanvas.Body>
                 </Offcanvas>
@@ -192,28 +195,31 @@ function AppLayout({ children }) {
                     >
                         <List />
                     </Button>
-                    <Dropdown align="end">
-                        <Dropdown.Toggle
-                            variant="ghost"
-                            id="user-dropdown"
-                            className="d-flex align-items-center gap-2"
-                        >
-                            <PersonCircle size={32} className="flex-shrink-0" />
-                            {username}
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu>
-                            <Dropdown.Item as={NavLink} to="/settings/user">
-                                <PersonCircle className="me-2" /> User Settings
-                            </Dropdown.Item>
-                            <Dropdown.Item as={NavLink} to="/settings/company-info">
-                                <Gear className="me-2" /> Company Settings
-                            </Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item onClick={handleLogout}>
-                                <BoxArrowRight className="me-2" /> Logout
-                            </Dropdown.Item>
-                        </Dropdown.Menu>
-                    </Dropdown>
+                    <div className="d-flex align-items-center gap-3">
+                        <LanguageSwitcher />
+                        <Dropdown align="end">
+                            <Dropdown.Toggle
+                                variant="ghost"
+                                id="user-dropdown"
+                                className="d-flex align-items-center gap-2"
+                            >
+                                <PersonCircle size={32} className="flex-shrink-0" />
+                                {username}
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu>
+                                <Dropdown.Item as={NavLink} to="/settings/user">
+                                    <PersonCircle className="me-2" /> {t('userMenu.userSettings')}
+                                </Dropdown.Item>
+                                <Dropdown.Item as={NavLink} to="/settings/company-info">
+                                    <Gear className="me-2" /> {t('userMenu.companySettings')}
+                                </Dropdown.Item>
+                                <Dropdown.Divider />
+                                <Dropdown.Item onClick={handleLogout}>
+                                    <BoxArrowRight className="me-2" /> {t('userMenu.logout')}
+                                </Dropdown.Item>
+                            </Dropdown.Menu>
+                        </Dropdown>
+                    </div>
                 </div>
                 <div className="p-4 flex-grow-1">{children}</div>
             </div>
