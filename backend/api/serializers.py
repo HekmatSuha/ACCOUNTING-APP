@@ -823,12 +823,26 @@ class ExpenseSerializer(serializers.ModelSerializer):
         return value.upper() if value else value
 
     def validate(self, attrs):
+        attrs = super().validate(attrs)
+
         if self.instance is None:
             amount = attrs.get('amount')
             original_amount = attrs.get('original_amount')
             if amount in (None, '') and original_amount in (None, ''):
                 raise serializers.ValidationError('Either amount or original_amount must be provided.')
-        return super().validate(attrs)
+
+        original_amount_supplied = 'original_amount' in getattr(self, 'initial_data', {})
+        original_amount_input = None
+        if original_amount_supplied:
+            original_amount_input = self.initial_data.get('original_amount')
+
+        if (
+            (not original_amount_supplied or original_amount_input in (None, ''))
+            and attrs.get('amount') not in (None, '')
+        ):
+            attrs['original_amount'] = attrs['amount']
+
+        return attrs
 
 class PurchaseItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
