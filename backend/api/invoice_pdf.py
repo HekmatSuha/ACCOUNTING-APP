@@ -2,6 +2,7 @@
 
 import logging
 from io import BytesIO
+from pathlib import Path
 from typing import IO
 
 from reportlab.lib import colors
@@ -10,18 +11,35 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate, Spacer,
                                 Table, TableStyle)
 
 from .models import CompanyInfo, Purchase, Sale
 
-FONT_REGULAR = 'Helvetica'
-FONT_BOLD = 'Helvetica-Bold'
+FONT_REGULAR = 'DejaVuSans'
+FONT_BOLD = 'DejaVuSans-Bold'
+
+_FONTS_REGISTERED = False
 
 
 def _ensure_custom_fonts() -> None:
-    """Built-in fonts are always available; no setup required."""
-    return None
+    """Register fonts that include extended currency symbols."""
+
+    global _FONTS_REGISTERED
+
+    if _FONTS_REGISTERED:
+        return
+
+    fonts_path = Path(__file__).resolve().parent / 'fonts'
+    try:
+        pdfmetrics.registerFont(TTFont(FONT_REGULAR, fonts_path / 'DejaVuSans.ttf'))
+        pdfmetrics.registerFont(TTFont(FONT_BOLD, fonts_path / 'DejaVuSans-Bold.ttf'))
+    except Exception:  # pragma: no cover - defensive logging
+        logging.exception('Unable to register custom fonts for invoice PDFs')
+    else:
+        _FONTS_REGISTERED = True
 
 
 def _build_image_flowable(image_field, width, height, **image_kwargs):
@@ -62,6 +80,7 @@ def _resolve_currency_symbol(currency_code: str) -> str:
         'EUR': '€',
         'KZT': '₸',
         'TRY': '₺',
+        'NGN': '₦',
     }
     return currency_symbols.get((currency_code or '').upper(), '$')
 
