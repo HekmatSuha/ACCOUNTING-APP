@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { getCurrencyOptions, loadCurrencyOptions } from '../config/currency';
+import { formatCurrency } from '../utils/format';
 
 // Helper function to get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
@@ -177,9 +178,17 @@ function AddPaymentModal({ show, handleClose, saleId, onPaymentAdded }) {
                             onChange={(e) => setAccount(e.target.value)}
                         >
                             <option value="">No Account</option>
-                            {accounts.map((acc) => (
-                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
-                            ))}
+                            {accounts.map((acc) => {
+                                const formattedBalance = formatCurrency(
+                                    acc.balance ?? 0,
+                                    acc.currency || customerCurrency || 'USD',
+                                );
+                                return (
+                                    <option key={acc.id} value={acc.id}>
+                                        {acc.name} ({formattedBalance})
+                                    </option>
+                                );
+                            })}
                         </Form.Select>
                     </Form.Group>
                     <Form.Group className="mb-3" controlId="paymentCurrency">

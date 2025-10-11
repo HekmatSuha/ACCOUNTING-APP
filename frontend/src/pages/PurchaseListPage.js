@@ -232,7 +232,17 @@ function PurchaseListPage() {
                                     <Form.Label>Account</Form.Label>
                                     <Form.Select name="account" value={formData.account} onChange={handleInputChange}>
                                         <option value="">No Account</option>
-                                        {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                        {accounts.map((a) => {
+                                            const formattedBalance = formatCurrency(
+                                                a.balance ?? 0,
+                                                a.currency || 'USD',
+                                            );
+                                            return (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.name} ({formattedBalance})
+                                                </option>
+                                            );
+                                        })}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>

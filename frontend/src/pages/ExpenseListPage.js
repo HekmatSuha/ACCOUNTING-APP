@@ -292,9 +292,17 @@ function ExpenseListPage() {
                             <Form.Label>Account</Form.Label>
                             <Form.Select name="account" value={formData.account} onChange={handleInputChange}>
                                 <option value="">No Account</option>
-                                {accounts.map(acc => (
-                                    <option key={acc.id} value={acc.id}>{acc.name}</option>
-                                ))}
+                                {accounts.map((acc) => {
+                                    const formattedBalance = formatCurrency(
+                                        acc.balance ?? 0,
+                                        acc.currency || baseCurrency || 'USD',
+                                    );
+                                    return (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.name} ({formattedBalance})
+                                        </option>
+                                    );
+                                })}
                             </Form.Select>
                         </Form.Group>
                         <Form.Group className="mb-3">

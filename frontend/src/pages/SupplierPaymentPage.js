@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
+import { formatCurrency } from '../utils/format';
 import '../styles/payment-page.css';
 
 const getTodayDate = () => {
@@ -11,18 +12,6 @@ const getTodayDate = () => {
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
-};
-
-const formatCurrency = (value, currency) => {
-    const amount = Number(value) || 0;
-    try {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currency || 'USD',
-        }).format(amount);
-    } catch (error) {
-        return `${amount.toFixed(2)} ${currency || ''}`.trim();
-    }
 };
 
 const buildErrorMessage = (error) => {
@@ -527,11 +516,17 @@ function SupplierPaymentPage() {
                                                     disabled={fieldDisabled}
                                                 >
                                                     <option value="">Hesap seçin</option>
-                                                    {accounts.map((acc) => (
-                                                        <option key={acc.id} value={acc.id}>
-                                                            {acc.name} ({acc.currency})
-                                                        </option>
-                                                    ))}
+                                                    {accounts.map((acc) => {
+                                                        const formattedBalance = formatCurrency(
+                                                            acc.balance ?? 0,
+                                                            acc.currency || baseCurrency || 'USD',
+                                                        );
+                                                        return (
+                                                            <option key={acc.id} value={acc.id}>
+                                                                {acc.name} ({formattedBalance})
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </Form.Select>
                                             </Form.Group>
                                         </Col>
