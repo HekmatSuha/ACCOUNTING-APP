@@ -259,9 +259,17 @@ function CustomerPaymentModal({ show, handleClose, customerId, onPaymentAdded, p
                                 }}
                             >
                                 <option value="">No Account</option>
-                                {accounts.map((acc) => (
-                                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
-                                ))}
+                                {accounts.map((acc) => {
+                                    const formattedBalance = formatCurrency(
+                                        acc.balance ?? 0,
+                                        acc.currency || resolvedAccountCurrency || 'USD',
+                                    );
+                                    return (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.name} ({formattedBalance})
+                                        </option>
+                                    );
+                                })}
                             </Form.Select>
                         </Form.Group>
                         <Form.Group controlId="paymentCurrency" className="payment-modal__field">

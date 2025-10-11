@@ -210,9 +210,17 @@ function SupplierPaymentModal({ show, handleClose, supplierId, onPaymentAdded, p
                             <Form.Label>Account</Form.Label>
                             <Form.Select value={account} onChange={(event) => setAccount(event.target.value)}>
                                 <option value="">No Account</option>
-                                {accounts.map((a) => (
-                                    <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
-                                ))}
+                                {accounts.map((a) => {
+                                    const formattedBalance = formatCurrency(
+                                        a.balance ?? 0,
+                                        a.currency || resolvedAccountCurrency || 'USD',
+                                    );
+                                    return (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name} ({formattedBalance})
+                                        </option>
+                                    );
+                                })}
                             </Form.Select>
                         </Form.Group>
                         <Form.Group controlId="paymentCurrency" className="payment-modal__field">
