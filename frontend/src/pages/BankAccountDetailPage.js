@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
 import axiosInstance from '../utils/axiosInstance';
 import { ACCOUNT_CATEGORY_MAP, getCategoryConfig } from '../utils/bankAccountCategories';
+import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
 
 const TRANSACTION_TYPE_META = {
@@ -357,11 +358,17 @@ function BankAccountDetailPage() {
                                     disabled={availableTransferAccounts.length === 0}
                                 >
                                     <option value="">Select account</option>
-                                    {availableTransferAccounts.map((item) => (
-                                        <option key={item.id} value={item.id}>
-                                            {item.name}
-                                        </option>
-                                    ))}
+                                    {availableTransferAccounts.map((item) => {
+                                        const formattedBalance = formatCurrency(
+                                            item.balance ?? 0,
+                                            item.currency || account.currency || 'USD',
+                                        );
+                                        return (
+                                            <option key={item.id} value={item.id}>
+                                                {item.name} ({formattedBalance})
+                                            </option>
+                                        );
+                                    })}
                                 </Form.Select>
                                 {availableTransferAccounts.length === 0 && (
                                     <Form.Text className="text-muted">

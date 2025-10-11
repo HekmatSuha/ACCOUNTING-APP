@@ -241,9 +241,17 @@ function EditPurchasePage() {
                                                 onChange={handleInputChange}
                                             >
                                                 <option value="">No Account</option>
-                                                {accounts.map((account) => (
-                                                    <option key={account.id} value={account.id}>{account.name}</option>
-                                                ))}
+                                                {accounts.map((account) => {
+                                                    const formattedBalance = formatCurrency(
+                                                        account.balance ?? 0,
+                                                        account.currency || selectedSupplier?.currency || 'USD',
+                                                    );
+                                                    return (
+                                                        <option key={account.id} value={account.id}>
+                                                            {account.name} ({formattedBalance})
+                                                        </option>
+                                                    );
+                                                })}
                                             </Form.Select>
                                         </Form.Group>
                                     </Col>
