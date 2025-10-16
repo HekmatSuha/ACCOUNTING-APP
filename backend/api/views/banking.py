@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from ..activity_logger import log_activity
 from ..models import BankAccount, BankAccountTransaction
 from ..serializers import BankAccountSerializer, BankAccountTransactionSerializer
+from .utils import get_request_account
 
 
 class BankAccountViewSet(viewsets.ModelViewSet):
@@ -21,14 +22,17 @@ class BankAccountViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.bank_accounts.all().order_by('name')
+        account = get_request_account(self.request)
+        return BankAccount.objects.filter(account=account).order_by('name')
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -58,21 +62,33 @@ class BankAccountViewSet(viewsets.ModelViewSet):
             raise ValueError('Amount must be greater than zero.')
         return value.quantize(Decimal('0.01'))
 
-    def _create_transaction(self, *, account, transaction_type, amount, description='', related_account=None):
+    def _create_transaction(
+        self,
+        *,
+        bank_account,
+        transaction_type,
+        amount,
+        description='',
+        related_account=None,
+        account=None,
+    ):
+        owning_account = account or bank_account.account
         transaction = BankAccountTransaction.objects.create(
-            account=account,
+            bank_account=bank_account,
             related_account=related_account,
             transaction_type=transaction_type,
             amount=amount,
-            currency=account.currency,
+            currency=bank_account.currency,
             description=description or '',
             created_by=self.request.user,
+            account=owning_account,
         )
         return transaction
 
     @action(detail=True, methods=['post'])
     def deposit(self, request, pk=None):
-        account = self.get_object()
+        bank_account = self.get_object()
+        account = get_request_account(request)
         description = request.data.get('description', '')
         try:
             amount = self._parse_amount(request.data.get('amount'))
@@ -80,24 +96,25 @@ class BankAccountViewSet(viewsets.ModelViewSet):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         with db_transaction.atomic():
-            BankAccount.objects.filter(pk=account.pk).update(balance=F('balance') + amount)
-            account.refresh_from_db()
+            BankAccount.objects.filter(pk=bank_account.pk).update(balance=F('balance') + amount)
+            bank_account.refresh_from_db()
             transaction = self._create_transaction(
-                account=account,
+                bank_account=bank_account,
                 transaction_type=BankAccountTransaction.DEPOSIT,
                 amount=amount,
                 description=description,
+                account=account,
             )
 
         log_activity(
             request.user,
             'updated',
-            account,
-            description=f'Deposited {amount} {account.currency} into {account.name}.',
+            bank_account,
+            description=f'Deposited {amount} {bank_account.currency} into {bank_account.name}.',
         )
 
         serializer = BankAccountTransactionSerializer(transaction)
-        account_serializer = BankAccountSerializer(account)
+        account_serializer = BankAccountSerializer(bank_account)
         return Response(
             {
                 'account': account_serializer.data,
@@ -108,7 +125,8 @@ class BankAccountViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def withdraw(self, request, pk=None):
-        account = self.get_object()
+        bank_account = self.get_object()
+        account = get_request_account(request)
         description = request.data.get('description', '')
         try:
             amount = self._parse_amount(request.data.get('amount'))
@@ -116,24 +134,25 @@ class BankAccountViewSet(viewsets.ModelViewSet):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         with db_transaction.atomic():
-            BankAccount.objects.filter(pk=account.pk).update(balance=F('balance') - amount)
-            account.refresh_from_db()
+            BankAccount.objects.filter(pk=bank_account.pk).update(balance=F('balance') - amount)
+            bank_account.refresh_from_db()
             transaction = self._create_transaction(
-                account=account,
+                bank_account=bank_account,
                 transaction_type=BankAccountTransaction.WITHDRAWAL,
                 amount=amount,
                 description=description,
+                account=account,
             )
 
         log_activity(
             request.user,
             'updated',
-            account,
-            description=f'Withdrew {amount} {account.currency} from {account.name}.',
+            bank_account,
+            description=f'Withdrew {amount} {bank_account.currency} from {bank_account.name}.',
         )
 
         serializer = BankAccountTransactionSerializer(transaction)
-        account_serializer = BankAccountSerializer(account)
+        account_serializer = BankAccountSerializer(bank_account)
         return Response(
             {
                 'account': account_serializer.data,
@@ -145,6 +164,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def transfer(self, request, pk=None):
         source_account = self.get_object()
+        account = get_request_account(request)
         target_id = request.data.get('target_account')
         description = request.data.get('description', '')
 
@@ -157,7 +177,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'A different target_account is required for transfers.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            target_account = self.request.user.bank_accounts.get(pk=target_id_int)
+            target_account = BankAccount.objects.get(pk=target_id_int, account=account)
         except BankAccount.DoesNotExist:
             return Response({'detail': 'Target account not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -180,18 +200,20 @@ class BankAccountViewSet(viewsets.ModelViewSet):
             target_account.refresh_from_db()
 
             out_transaction = self._create_transaction(
-                account=source_account,
+                bank_account=source_account,
                 transaction_type=BankAccountTransaction.TRANSFER_OUT,
                 amount=amount,
                 description=description,
                 related_account=target_account,
+                account=account,
             )
             in_transaction = self._create_transaction(
-                account=target_account,
+                bank_account=target_account,
                 transaction_type=BankAccountTransaction.TRANSFER_IN,
                 amount=amount,
                 description=description,
                 related_account=source_account,
+                account=account,
             )
 
         log_activity(

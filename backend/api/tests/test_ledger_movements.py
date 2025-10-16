@@ -1,7 +1,6 @@
 from decimal import Decimal
 from datetime import date
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 
 from ..models import (
@@ -14,16 +13,18 @@ from ..models import (
     SaleReturnItem,
     Warehouse,
 )
+from . import create_user_with_account
 
 
 class LedgerMovementIntegrationTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="ledger", password="pw")
+        self.user, self.account = create_user_with_account("ledger")
         self.customer = Customer.objects.create(
             name="Alice",
             currency="USD",
             open_balance=Decimal("0"),
             created_by=self.user,
+            account=self.account,
         )
         self.bank_account = BankAccount.objects.create(
             name="Operating",
@@ -31,11 +32,13 @@ class LedgerMovementIntegrationTests(TestCase):
             currency="USD",
             category=BankAccount.BANK,
             created_by=self.user,
+            account=self.account,
         )
         self.product = Product.objects.create(
             name="Widget",
             sale_price=Decimal("50.00"),
             created_by=self.user,
+            account=self.account,
         )
         self.warehouse = Warehouse.get_default(self.user)
 
@@ -47,6 +50,7 @@ class LedgerMovementIntegrationTests(TestCase):
             original_amount=Decimal("100.00"),
             exchange_rate=Decimal("1"),
             created_by=self.user,
+            account=self.account,
         )
 
         self.customer.refresh_from_db()
@@ -66,6 +70,7 @@ class LedgerMovementIntegrationTests(TestCase):
             original_amount=Decimal("100.00"),
             exchange_rate=Decimal("1"),
             created_by=self.user,
+            account=self.account,
         )
         sale.refresh_from_db()
 
@@ -73,6 +78,7 @@ class LedgerMovementIntegrationTests(TestCase):
             sale=sale,
             return_date=date.today(),
             created_by=self.user,
+            account=self.account,
         )
         SaleReturnItem.objects.create(
             sale_return=sale_return,
@@ -101,7 +107,8 @@ class LedgerMovementIntegrationTests(TestCase):
             original_amount=Decimal("50.00"),
             original_currency="USD",
             method="Cash",
-            account=self.bank_account,
+            bank_account=self.bank_account,
+            account=self.account,
             created_by=self.user,
         )
 
@@ -124,9 +131,10 @@ class LedgerMovementIntegrationTests(TestCase):
             currency="USD",
             category=BankAccount.BANK,
             created_by=self.user,
+            account=self.account,
         )
 
-        payment.account = second_account
+        payment.bank_account = second_account
         payment.save()
 
         self.customer.refresh_from_db()

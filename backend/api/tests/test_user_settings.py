@@ -1,19 +1,17 @@
 """Tests for authenticated user settings endpoints."""
 
-from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+
+from . import create_user_with_account
 
 
 class UserSettingsTests(APITestCase):
     """Ensure the user settings endpoints behave as expected."""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username='jane',
-            password='StrongPass123!'
-        )
+        self.user, self.account = create_user_with_account('jane', password='StrongPass123!')
         self.profile_url = reverse('user-profile')
         self.password_url = reverse('change-password')
         self.client.force_authenticate(self.user)

@@ -7,6 +7,7 @@ from rest_framework import serializers
 from decimal import Decimal
 from .exchange_rates import get_exchange_rate
 from .models import (
+    Account,
     Activity,
     BankAccount,
     BankAccountTransaction,
@@ -33,6 +34,16 @@ from .models import (
     WarehouseInventory,
 )
 from rest_framework.validators import UniqueValidator
+
+
+class AccountScopedSerializerMixin:
+    """Mixin that provides access to the request-scoped account."""
+
+    def get_account(self):
+        request = self.context.get('request')
+        if not request:
+            return None
+        return Account.for_user(getattr(request, 'user', None))
 
 
 class CompanyInfoSerializer(serializers.ModelSerializer):
@@ -237,7 +248,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_by', 'customer', 'account_name', 'converted_amount', 'account_converted_amount', 'account_exchange_rate']
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     sku = serializers.CharField(
         max_length=100,
         required=False,
@@ -265,8 +276,10 @@ class ProductSerializer(serializers.ModelSerializer):
     def validate_sku(self, value):
         if not value:
             return None
-        user = self.context['request'].user
-        qs = Product.objects.filter(created_by=user, sku=value)
+        account = self.get_account()
+        if not account:
+            return value
+        qs = Product.objects.filter(account=account, sku=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
@@ -331,7 +344,7 @@ class WarehouseDetailSerializer(WarehouseSerializer):
         read_only_fields = WarehouseSerializer.Meta.read_only_fields + ['stocks']
 
 
-class WarehouseTransferSerializer(serializers.Serializer):
+class WarehouseTransferSerializer(AccountScopedSerializerMixin, serializers.Serializer):
     """Validate and perform inventory transfers between warehouses."""
 
     product_id = serializers.IntegerField()
@@ -355,11 +368,11 @@ class WarehouseTransferSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         request = self.context['request']
-        user = request.user
+        account = self.get_account()
 
         try:
             product = Product.objects.get(
-                id=attrs['product_id'], created_by=user
+                id=attrs['product_id'], account=account
             )
         except Product.DoesNotExist as exc:
             raise serializers.ValidationError(
@@ -368,7 +381,7 @@ class WarehouseTransferSerializer(serializers.Serializer):
 
         try:
             source = Warehouse.objects.get(
-                id=attrs['source_warehouse_id'], created_by=user
+                id=attrs['source_warehouse_id'], account=account
             )
         except Warehouse.DoesNotExist as exc:
             raise serializers.ValidationError(
@@ -377,7 +390,7 @@ class WarehouseTransferSerializer(serializers.Serializer):
 
         try:
             destination = Warehouse.objects.get(
-                id=attrs['destination_warehouse_id'], created_by=user
+                id=attrs['destination_warehouse_id'], account=account
             )
         except Warehouse.DoesNotExist as exc:
             raise serializers.ValidationError(
@@ -521,7 +534,7 @@ class SaleReadSerializer(serializers.ModelSerializer):
         ]
 
 # This serializer is for CREATING a full sale
-class SaleWriteSerializer(serializers.ModelSerializer):
+class SaleWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     items = SaleItemWriteSerializer(many=True)  # Nested items
     customer_id = serializers.IntegerField(required=False)
     supplier_id = serializers.IntegerField(required=False)
@@ -539,11 +552,12 @@ class SaleWriteSerializer(serializers.ModelSerializer):
         if customer_id and supplier_id:
             raise serializers.ValidationError('Only one of customer_id or supplier_id may be provided.')
         created_by = self.context['request'].user
+        account = self.get_account()
 
         with transaction.atomic():
             if not validated_data.get('invoice_number'):
                 last_sale = (
-                    Sale.objects.filter(created_by=created_by, invoice_number__isnull=False)
+                    Sale.objects.filter(account=account, invoice_number__isnull=False)
                     .order_by('-id')
                     .first()
                 )
@@ -562,20 +576,20 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             original_currency = validated_data.pop('original_currency', None)
 
             if customer_id:
-                customer = Customer.objects.get(id=customer_id, created_by=created_by)
-                sale = Sale.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, **validated_data)
+                customer = Customer.objects.get(id=customer_id, account=account)
+                sale = Sale.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, account=account, **validated_data)
             else:
-                supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-                sale = Sale.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or supplier.currency, **validated_data)
+                supplier = Supplier.objects.get(id=supplier_id, account=account)
+                sale = Sale.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or supplier.currency, account=account, **validated_data)
 
             total_sale_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
                 warehouse_id = item_data.pop('warehouse_id')
-                product = Product.objects.get(id=product_id, created_by=created_by)
+                product = Product.objects.get(id=product_id, account=account)
                 try:
                     warehouse = Warehouse.objects.get(
-                        id=warehouse_id, created_by=created_by
+                        id=warehouse_id, account=account
                     )
                 except Warehouse.DoesNotExist as exc:
                     raise serializers.ValidationError(
@@ -608,6 +622,8 @@ class SaleWriteSerializer(serializers.ModelSerializer):
         if customer_id and supplier_id:
             raise serializers.ValidationError('Only one of customer_id or supplier_id may be provided.')
 
+        account = self.get_account()
+
         with transaction.atomic():
             # Revert old transaction data
             for item in instance.items.select_related('product', 'warehouse'):
@@ -624,11 +640,11 @@ class SaleWriteSerializer(serializers.ModelSerializer):
             # Handle partner switch
             if customer_id != instance.customer_id or supplier_id != instance.supplier_id:
                 if customer_id:
-                    customer = Customer.objects.get(id=customer_id, created_by=self.context['request'].user)
+                    customer = Customer.objects.get(id=customer_id, account=account)
                     instance.customer = customer
                     instance.supplier = None
                 else:
-                    supplier = Supplier.objects.get(id=supplier_id, created_by=self.context['request'].user)
+                    supplier = Supplier.objects.get(id=supplier_id, account=account)
                     instance.supplier = supplier
                     instance.customer = None
 
@@ -642,11 +658,11 @@ class SaleWriteSerializer(serializers.ModelSerializer):
                 product_id = item_data.pop('product_id')
                 warehouse_id = item_data.pop('warehouse_id')
                 product = Product.objects.get(
-                    id=product_id, created_by=self.context['request'].user
+                    id=product_id, account=account
                 )
                 try:
                     warehouse = Warehouse.objects.get(
-                        id=warehouse_id, created_by=self.context['request'].user
+                        id=warehouse_id, account=account
                     )
                 except Warehouse.DoesNotExist as exc:
                     raise serializers.ValidationError(
@@ -694,7 +710,7 @@ class OfferReadSerializer(serializers.ModelSerializer):
         model = Offer
         fields = ['id', 'customer', 'customer_name', 'offer_date', 'status', 'total_amount', 'items']
 
-class OfferWriteSerializer(serializers.ModelSerializer):
+class OfferWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     items = OfferItemWriteSerializer(many=True)
     # ``customer_id`` can be provided explicitly or inferred from the view context
     # when using nested routes like /customers/<id>/offers/.
@@ -715,20 +731,22 @@ class OfferWriteSerializer(serializers.ModelSerializer):
         # avoid passing multiple values to ``Offer.objects.create``. Defaults
         # to the request user.
         created_by = validated_data.pop('created_by', self.context['request'].user)
+        account = self.get_account()
 
         with transaction.atomic():
-            customer = Customer.objects.get(id=customer_id, created_by=created_by)
+            customer = Customer.objects.get(id=customer_id, account=account)
 
             offer = Offer.objects.create(
                 created_by=created_by,
                 customer=customer,
+                account=account,
                 **validated_data
             )
 
             total_offer_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
-                product = Product.objects.get(id=product_id, created_by=created_by)
+                product = Product.objects.get(id=product_id, account=account)
 
                 offer_item = OfferItem.objects.create(
                     offer=offer,
@@ -744,12 +762,13 @@ class OfferWriteSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items')
+        account = self.get_account()
         with transaction.atomic():
             instance.items.all().delete()
             total_offer_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
-                product = Product.objects.get(id=product_id, created_by=self.context['request'].user)
+                product = Product.objects.get(id=product_id, account=account)
                 offer_item = OfferItem.objects.create(
                     offer=instance,
                     product=product,
@@ -884,7 +903,7 @@ class SaleReturnItemSerializer(serializers.ModelSerializer):
         fields = ['product_id', 'quantity', 'unit_price', 'warehouse_id', 'reason']
 
 
-class SaleReturnSerializer(serializers.ModelSerializer):
+class SaleReturnSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     items = SaleReturnItemSerializer(many=True)
     sale_id = serializers.IntegerField()
 
@@ -896,17 +915,23 @@ class SaleReturnSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         sale_id = validated_data.pop('sale_id')
-        sale = Sale.objects.get(id=sale_id, created_by=self.context['request'].user)
-        sale_return = SaleReturn.objects.create(sale=sale, created_by=self.context['request'].user, **validated_data)
+        account = self.get_account()
+        sale = Sale.objects.get(id=sale_id, account=account)
+        sale_return = SaleReturn.objects.create(
+            sale=sale,
+            created_by=self.context['request'].user,
+            account=account,
+            **validated_data,
+        )
         for item_data in items_data:
             product = Product.objects.get(
-                id=item_data['product_id'], created_by=self.context['request'].user
+                id=item_data['product_id'], account=account
             )
             warehouse_id = item_data.get('warehouse_id')
             if warehouse_id is not None:
                 try:
                     warehouse = Warehouse.objects.get(
-                        id=warehouse_id, created_by=self.context['request'].user
+                        id=warehouse_id, account=account
                     )
                 except Warehouse.DoesNotExist as exc:
                     raise serializers.ValidationError(
@@ -953,7 +978,7 @@ class PurchaseReadSerializer(serializers.ModelSerializer):
         ]
 
 # For creating/writing a purchase
-class PurchaseWriteSerializer(serializers.ModelSerializer):
+class PurchaseWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     items = PurchaseItemWriteSerializer(many=True)
     supplier_id = serializers.IntegerField(required=False)
     customer_id = serializers.IntegerField(required=False)
@@ -970,26 +995,27 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
         if supplier_id and customer_id:
             raise serializers.ValidationError('Only one of supplier_id or customer_id may be provided.')
         created_by = self.context['request'].user
+        account = self.get_account()
 
         with transaction.atomic():
             exchange_rate = validated_data.pop('exchange_rate', Decimal('1'))
             original_currency = validated_data.pop('original_currency', None)
 
             if supplier_id:
-                supplier = Supplier.objects.get(id=supplier_id, created_by=created_by)
-                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or supplier.currency, **validated_data)
+                supplier = Supplier.objects.get(id=supplier_id, account=account)
+                purchase = Purchase.objects.create(created_by=created_by, supplier=supplier, exchange_rate=exchange_rate, original_currency=original_currency or supplier.currency, account=account, **validated_data)
             else:
-                customer = Customer.objects.get(id=customer_id, created_by=created_by)
-                purchase = Purchase.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, **validated_data)
+                customer = Customer.objects.get(id=customer_id, account=account)
+                purchase = Purchase.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, account=account, **validated_data)
 
             total_purchase_amount = 0
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
                 warehouse_id = item_data.pop('warehouse_id')
-                product = Product.objects.get(id=product_id, created_by=created_by)
+                product = Product.objects.get(id=product_id, account=account)
                 try:
                     warehouse = Warehouse.objects.get(
-                        id=warehouse_id, created_by=created_by
+                        id=warehouse_id, account=account
                     )
                 except Warehouse.DoesNotExist as exc:
                     raise serializers.ValidationError(
@@ -1029,10 +1055,12 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
         if supplier_id and customer_id:
             raise serializers.ValidationError('Only one of supplier_id or customer_id may be provided.')
 
+        account = self.get_account()
+
         with transaction.atomic():
             old_supplier = instance.supplier
             old_customer = instance.customer
-            if not instance.account_id:
+            if not instance.bank_account_id:
                 if old_supplier:
                     Supplier.objects.filter(id=old_supplier.id).update(open_balance=F('open_balance') - instance.converted_amount)
                 elif old_customer:
@@ -1041,11 +1069,11 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
             # Handle partner switch
             if supplier_id != instance.supplier_id or customer_id != instance.customer_id:
                 if supplier_id:
-                    supplier = Supplier.objects.get(id=supplier_id, created_by=self.context['request'].user)
+                    supplier = Supplier.objects.get(id=supplier_id, account=account)
                     instance.supplier = supplier
                     instance.customer = None
                 else:
-                    customer = Customer.objects.get(id=customer_id, created_by=self.context['request'].user)
+                    customer = Customer.objects.get(id=customer_id, account=account)
                     instance.customer = customer
                     instance.supplier = None
             else:
@@ -1072,11 +1100,11 @@ class PurchaseWriteSerializer(serializers.ModelSerializer):
                 product_id = item_data.pop('product_id')
                 warehouse_id = item_data.pop('warehouse_id')
                 product = Product.objects.get(
-                    id=product_id, created_by=self.context['request'].user
+                    id=product_id, account=account
                 )
                 try:
                     warehouse = Warehouse.objects.get(
-                        id=warehouse_id, created_by=self.context['request'].user
+                        id=warehouse_id, account=account
                     )
                 except Warehouse.DoesNotExist as exc:
                     raise serializers.ValidationError(
@@ -1120,7 +1148,7 @@ class PurchaseReturnItemSerializer(serializers.ModelSerializer):
         fields = ['product_id', 'quantity', 'unit_price', 'warehouse_id']
 
 
-class PurchaseReturnSerializer(serializers.ModelSerializer):
+class PurchaseReturnSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     items = PurchaseReturnItemSerializer(many=True)
     purchase_id = serializers.IntegerField()
 
@@ -1132,17 +1160,23 @@ class PurchaseReturnSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         purchase_id = validated_data.pop('purchase_id')
-        purchase = Purchase.objects.get(id=purchase_id, created_by=self.context['request'].user)
-        purchase_return = PurchaseReturn.objects.create(purchase=purchase, created_by=self.context['request'].user, **validated_data)
+        account = self.get_account()
+        purchase = Purchase.objects.get(id=purchase_id, account=account)
+        purchase_return = PurchaseReturn.objects.create(
+            purchase=purchase,
+            created_by=self.context['request'].user,
+            account=account,
+            **validated_data,
+        )
         for item_data in items_data:
             product = Product.objects.get(
-                id=item_data['product_id'], created_by=self.context['request'].user
+                id=item_data['product_id'], account=account
             )
             warehouse_id = item_data.get('warehouse_id')
             if warehouse_id is not None:
                 try:
                     warehouse = Warehouse.objects.get(
-                        id=warehouse_id, created_by=self.context['request'].user
+                        id=warehouse_id, account=account
                     )
                 except Warehouse.DoesNotExist as exc:
                     raise serializers.ValidationError(
