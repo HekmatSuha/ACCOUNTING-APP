@@ -1,7 +1,13 @@
 """Expose public API views for the application."""
 
 from .activities import ActivityViewSet
-from .auth import CreateUserView
+from .auth import (
+    AccountUserManagementView,
+    ChangePasswordView,
+    CurrentUserView,
+    InvitationAcceptanceView,
+    InvitationDetailView,
+)
 from .banking import BankAccountViewSet
 from .common import dashboard_summary
 from .company import CompanyInfoViewSet, CompanySettingsViewSet
@@ -30,7 +36,11 @@ __all__ = [
     'CompanyInfoViewSet',
     'CompanySettingsViewSet',
     'CurrencyViewSet',
-    'CreateUserView',
+    'AccountUserManagementView',
+    'CurrentUserView',
+    'ChangePasswordView',
+    'InvitationDetailView',
+    'InvitationAcceptanceView',
     'CustomerPaymentViewSet',
     'CustomerViewSet',
     'ExpenseCategoryViewSet',
