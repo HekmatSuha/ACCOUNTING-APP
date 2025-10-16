@@ -10,14 +10,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import CompanySettings, Expense, Payment, Purchase, Sale
+from ..models import CompanySettings, Customer, Expense, Payment, Product, Purchase, Sale
+from .utils import get_request_account
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
     """Provide summary data for the dashboard."""
-    user = request.user
+    account = get_request_account(request)
 
     base_currency = CompanySettings.load().base_currency
 
@@ -35,13 +36,13 @@ def dashboard_summary(request):
                 breakdown[currency] = total
         return breakdown
 
-    sales_qs = Sale.objects.filter(created_by=user)
+    sales_qs = Sale.objects.filter(account=account)
     sales_total = sales_qs.aggregate(
         total=Coalesce(Sum('converted_amount'), zero, output_field=DecimalField())
     )['total']
     turnover_breakdown = _currency_breakdown(sales_qs, 'original_currency', 'original_amount')
 
-    customer_sales_qs = sales_qs.filter(customer__created_by=user)
+    customer_sales_qs = sales_qs.filter(customer__account=account)
     customer_sales_total = customer_sales_qs.aggregate(
         total=Coalesce(Sum('converted_amount'), zero, output_field=DecimalField())
     )['total']
@@ -49,7 +50,7 @@ def dashboard_summary(request):
         customer_sales_qs, 'original_currency', 'original_amount'
     )
 
-    payments_qs = Payment.objects.filter(created_by=user, customer__created_by=user)
+    payments_qs = Payment.objects.filter(account=account, customer__account=account)
     payments_total = payments_qs.aggregate(
         total=Coalesce(Sum('converted_amount'), zero, output_field=DecimalField())
     )['total']
@@ -82,7 +83,7 @@ def dashboard_summary(request):
         today_payments_qs, 'original_currency', 'original_amount'
     )
 
-    expenses_qs = Expense.objects.filter(created_by=user)
+    expenses_qs = Expense.objects.filter(account=account)
     total_expenses = expenses_qs.aggregate(
         total=Coalesce(Sum('amount'), zero, output_field=DecimalField())
     )['total']
@@ -96,8 +97,8 @@ def dashboard_summary(request):
     )
     expenses_breakdown = _currency_breakdown(expenses_currency_qs, 'currency', 'amount')
 
-    purchases_qs = Purchase.objects.filter(created_by=user, supplier__created_by=user)
-    credit_purchases_qs = purchases_qs.filter(account__isnull=True)
+    purchases_qs = Purchase.objects.filter(account=account, supplier__account=account)
+    credit_purchases_qs = purchases_qs.filter(bank_account__isnull=True)
     credit_purchase_total = credit_purchases_qs.aggregate(
         total=Coalesce(Sum('converted_amount'), zero, output_field=DecimalField())
     )['total']
@@ -105,7 +106,7 @@ def dashboard_summary(request):
         credit_purchases_qs, 'original_currency', 'original_amount'
     )
 
-    supplier_expenses_qs = expenses_qs.filter(supplier__created_by=user)
+    supplier_expenses_qs = expenses_qs.filter(supplier__account=account)
     supplier_expenses_total = supplier_expenses_qs.aggregate(
         total=Coalesce(Sum('amount'), zero, output_field=DecimalField())
     )['total']
@@ -128,7 +129,7 @@ def dashboard_summary(request):
             payables_breakdown[currency] = balance
     total_payables = credit_purchase_total - supplier_expenses_total
 
-    stock_value = user.products.aggregate(
+    stock_value = Product.objects.filter(account=account).aggregate(
         total_value=Coalesce(Sum(F('purchase_price') * F('stock_quantity')), zero, output_field=DecimalField())
     )['total_value']
     stock_value = stock_value or zero
@@ -145,7 +146,7 @@ def dashboard_summary(request):
         'expenses_breakdown': expenses_breakdown,
         'stock_value': stock_value,
         'stock_value_breakdown': stock_value_breakdown,
-        'customer_count': user.customers.count(),
+        'customer_count': Customer.objects.filter(account=account).count(),
         'today_sales': today_sales,
         'today_sales_breakdown': today_sales_breakdown,
         'today_incoming': today_incoming,

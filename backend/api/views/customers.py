@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from ..activity_logger import log_activity
 from ..models import Customer, Payment
+from .utils import get_request_account
 from ..report_exports import (
     generate_customer_balance_pdf,
     generate_customer_balance_workbook,
@@ -33,14 +34,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'email', 'phone']
 
     def get_queryset(self):
-        return self.request.user.customers.all().order_by('-created_at')
+        account = get_request_account(self.request)
+        return Customer.objects.filter(account=account).order_by('-created_at')
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -79,10 +83,11 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
+        account = get_request_account(self.request)
         customer_pk = self.kwargs.get('customer_pk')
         if customer_pk:
             try:
-                customer = Customer.objects.get(pk=customer_pk, created_by=self.request.user)
+                customer = Customer.objects.get(pk=customer_pk, account=account)
                 context['customer'] = customer
             except Customer.DoesNotExist:
                 pass
@@ -90,22 +95,26 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         customer_pk = self.kwargs.get('customer_pk')
-        return Payment.objects.filter(customer__id=customer_pk, created_by=self.request.user)
+        account = get_request_account(self.request)
+        return Payment.objects.filter(customer__id=customer_pk, account=account)
 
     def perform_create(self, serializer):
         customer_pk = self.kwargs.get('customer_pk')
+        account = get_request_account(self.request)
         try:
-            customer = Customer.objects.get(pk=customer_pk, created_by=self.request.user)
+            customer = Customer.objects.get(pk=customer_pk, account=account)
             instance = serializer.save(
                 created_by=self.request.user,
                 customer=customer,
+                account=account,
             )
             log_activity(self.request.user, 'created', instance)
         except Customer.DoesNotExist:
             raise NotFound(detail="Customer not found.")
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -118,7 +127,8 @@ class CustomerPaymentViewSet(viewsets.ModelViewSet):
 def customer_balance_report(request):
     """Return a simplified customer balance report for the current user."""
 
-    queryset = Customer.objects.filter(created_by=request.user).order_by('name')
+    account = get_request_account(request)
+    queryset = Customer.objects.filter(account=account).order_by('name')
     serializer = CustomerBalanceReportSerializer(queryset, many=True)
     data = serializer.data
 

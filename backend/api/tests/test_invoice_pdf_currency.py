@@ -4,12 +4,12 @@ import re
 import zlib
 import base64
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 
 from ..models import Customer, Product, Supplier, Warehouse
 from ..serializers import SaleWriteSerializer
 from ..invoice_pdf import generate_invoice_pdf
+from . import create_user_with_account
 
 
 def extract_pdf_text(pdf_bytes):
@@ -50,7 +50,7 @@ def extract_pdf_text(pdf_bytes):
 
 class InvoicePDFCurrencyTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="curuser", password="pw")
+        self.user, self.account = create_user_with_account("curuser")
         self.product = Product.objects.create(
             name="Prod",
             sale_price=Decimal("10.00"),

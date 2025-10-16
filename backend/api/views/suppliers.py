@@ -17,6 +17,7 @@ from ..serializers import (
     SaleReadSerializer,
     SupplierSerializer,
 )
+from .utils import get_request_account
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
@@ -26,14 +27,17 @@ class SupplierViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.suppliers.all().order_by('-created_at')
+        account = get_request_account(self.request)
+        return Supplier.objects.filter(account=account).order_by('-created_at')
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -74,15 +78,18 @@ class SupplierPaymentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         supplier_pk = self.kwargs.get('supplier_pk')
-        return Expense.objects.filter(supplier__id=supplier_pk, created_by=self.request.user)
+        account = get_request_account(self.request)
+        return Expense.objects.filter(supplier__id=supplier_pk, account=account)
 
     def perform_create(self, serializer):
         supplier_pk = self.kwargs.get('supplier_pk')
+        account = get_request_account(self.request)
         try:
-            supplier = Supplier.objects.get(pk=supplier_pk, created_by=self.request.user)
+            supplier = Supplier.objects.get(pk=supplier_pk, account=account)
             instance = serializer.save(
                 created_by=self.request.user,
                 supplier=supplier,
+                account=account,
             )
             log_activity(self.request.user, 'created', instance)
         except Supplier.DoesNotExist:

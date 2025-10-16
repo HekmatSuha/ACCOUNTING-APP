@@ -14,6 +14,7 @@ from ..serializers import (
     WarehouseSerializer,
     WarehouseTransferSerializer,
 )
+from .utils import get_request_account
 
 
 class WarehouseViewSet(viewsets.ModelViewSet):
@@ -22,8 +23,9 @@ class WarehouseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        account = get_request_account(self.request)
         return (
-            Warehouse.objects.filter(created_by=self.request.user)
+            Warehouse.objects.filter(account=account)
             .prefetch_related('stocks__product')
             .order_by('name')
         )
@@ -34,11 +36,13 @@ class WarehouseViewSet(viewsets.ModelViewSet):
         return WarehouseSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):

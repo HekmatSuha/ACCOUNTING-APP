@@ -23,6 +23,7 @@ from ..serializers import (
     PurchaseReturnSerializer,
     PurchaseWriteSerializer,
 )
+from .utils import get_request_account
 
 
 class PurchaseViewSet(viewsets.ModelViewSet):
@@ -36,14 +37,17 @@ class PurchaseViewSet(viewsets.ModelViewSet):
         return PurchaseReadSerializer
 
     def get_queryset(self):
-        return self.request.user.purchases.all().order_by('-purchase_date')
+        account = get_request_account(self.request)
+        return Purchase.objects.filter(account=account).order_by('-purchase_date')
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     @transaction.atomic
@@ -56,7 +60,7 @@ class PurchaseViewSet(viewsets.ModelViewSet):
                 item.save(update_fields=['warehouse'])
             WarehouseInventory.adjust_stock(item.product, warehouse, -item.quantity)
 
-        if not instance.account_id:
+        if not instance.bank_account_id:
             if instance.supplier_id:
                 Supplier.objects.filter(id=instance.supplier.id).update(
                     open_balance=F('open_balance') - instance.total_amount
@@ -91,10 +95,12 @@ class PurchaseReturnViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        return PurchaseReturn.objects.filter(purchase__created_by=self.request.user).order_by('-return_date')
+        account = get_request_account(self.request)
+        return PurchaseReturn.objects.filter(account=account).order_by('-return_date')
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_destroy(self, instance):

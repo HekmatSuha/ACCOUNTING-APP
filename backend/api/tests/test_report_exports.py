@@ -4,7 +4,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 from io import BytesIO
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from openpyxl import load_workbook
 from rest_framework.test import APIClient
@@ -18,11 +17,12 @@ from ..models import (
     Warehouse,
     WarehouseInventory,
 )
+from . import create_user_with_account
 
 
 class ReportExportTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="reportuser", password="pw")
+        self.user, self.account = create_user_with_account("reportuser")
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
