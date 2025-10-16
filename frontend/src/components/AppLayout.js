@@ -6,6 +6,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     Speedometer2,
     People,
+    PeopleFill,
     Truck,
     Receipt,
     Cart,
@@ -20,10 +21,13 @@ import {
     BoxArrowRight,
     List,
     PersonCircle,
-    Gear
+    Gear,
+    ShieldLock,
+    Diagram3
 } from 'react-bootstrap-icons';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import { hasAdminAccess, useProfile } from '../context/ProfileContext';
 
 function AppLayout({ children }) {
     const navigate = useNavigate();
@@ -32,8 +36,12 @@ function AppLayout({ children }) {
     const [collapsed, setCollapsed] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
     const [reportsOpen, setReportsOpen] = useState(false);
+    const [adminOpen, setAdminOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    const username = localStorage.getItem('username') || 'User';
+    const { profile, loading: profileLoading } = useProfile();
+    const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
+
+    const username = profile?.username || profile?.email || localStorage.getItem('username') || 'User';
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -43,15 +51,33 @@ function AppLayout({ children }) {
 
     useEffect(() => {
         setReportsOpen(false);
+        setAdminOpen(false);
     }, [location.pathname, collapsed]);
+
+    useEffect(() => {
+        if (profile) {
+            const hasAccess = hasAdminAccess(profile);
+            setIsAdmin(hasAccess);
+            if (profile.username) {
+                localStorage.setItem('username', profile.username);
+            }
+            localStorage.setItem('isAdmin', hasAccess ? 'true' : 'false');
+        } else if (!profileLoading) {
+            setIsAdmin(false);
+            localStorage.removeItem('isAdmin');
+        }
+    }, [profile, profileLoading]);
 
     const handleLogout = () => {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('isAdmin');
         navigate('/login');
     };
 
     const isReportsRoute = location.pathname.startsWith('/reports');
+    const isAdminRoute = location.pathname.startsWith('/admin');
     const linkClass = `app-nav-link w-100 d-flex gap-2 ${
         collapsed ? 'justify-content-center' : 'align-items-center'
     } mb-2`;
@@ -61,6 +87,10 @@ function AppLayout({ children }) {
     const reportsToggleClass = `app-nav-link w-100 d-flex ${
         collapsed ? 'justify-content-center' : 'align-items-center justify-content-between'
     } gap-2 mb-2 ${reportsToggleActive ? 'active' : ''}`;
+    const adminToggleActive = isAdminRoute || adminOpen;
+    const adminToggleClass = `app-nav-link w-100 d-flex ${
+        collapsed ? 'justify-content-center' : 'align-items-center justify-content-between'
+    } gap-2 mb-2 ${adminToggleActive ? 'active' : ''}`;
 
     const SidebarContent = (
         <>
@@ -152,6 +182,54 @@ function AppLayout({ children }) {
                 <Nav.Link as={NavLink} to="/accounts" className={linkClass}>
                     <Bank className={iconClass} /> {!collapsed && t('navigation.bankAccounts')}
                 </Nav.Link>
+                {isAdmin && (
+                    <div className="position-relative mt-3">
+                        <button
+                            type="button"
+                            className={`${adminToggleClass} border-0`}
+                            onClick={() => setAdminOpen((prev) => !prev)}
+                            aria-expanded={adminOpen}
+                        >
+                            <span className="d-flex align-items-center gap-2">
+                                <ShieldLock className={iconClass} /> {!collapsed && 'Admin'}
+                            </span>
+                            {!collapsed && (adminOpen ? <DashLg size={18} /> : <PlusLg size={18} />)}
+                        </button>
+                        {adminOpen && (
+                            <div
+                                className={`sidebar-submenu ${
+                                    collapsed
+                                        ? 'sidebar-submenu-collapsed position-absolute start-100 top-0 ms-2'
+                                        : 'mt-2 ms-2 w-100'
+                                }`}
+                                style={collapsed ? { minWidth: '220px', zIndex: 1050 } : {}}
+                            >
+                                <NavLink
+                                    to="/admin/accounts"
+                                    className={({ isActive }) =>
+                                        `sidebar-submenu-link ${isActive ? 'active' : ''}`
+                                    }
+                                >
+                                    <span className="d-flex align-items-center gap-2">
+                                        <PeopleFill size={16} />
+                                        <span>Accounts</span>
+                                    </span>
+                                </NavLink>
+                                <NavLink
+                                    to="/admin/accounts?section=plans"
+                                    className={({ isActive }) =>
+                                        `sidebar-submenu-link ${isActive ? 'active' : ''}`
+                                    }
+                                >
+                                    <span className="d-flex align-items-center gap-2">
+                                        <Diagram3 size={16} />
+                                        <span>Plans</span>
+                                    </span>
+                                </NavLink>
+                            </div>
+                        )}
+                    </div>
+                )}
             </Nav>
         </>
     );
