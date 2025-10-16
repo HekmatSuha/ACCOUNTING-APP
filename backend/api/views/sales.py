@@ -34,6 +34,7 @@ from ..serializers import (
     SaleReturnSerializer,
     SaleWriteSerializer,
 )
+from .utils import get_request_account
 
 
 class SaleViewSet(viewsets.ModelViewSet):
@@ -47,14 +48,17 @@ class SaleViewSet(viewsets.ModelViewSet):
         return SaleReadSerializer
 
     def get_queryset(self):
-        return Sale.objects.filter(created_by=self.request.user).order_by('-sale_date')
+        account = get_request_account(self.request)
+        return Sale.objects.filter(account=account).order_by('-sale_date')
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     @transaction.atomic
@@ -117,18 +121,21 @@ class OfferViewSet(viewsets.ModelViewSet):
         return context
 
     def get_queryset(self):
-        queryset = Offer.objects.filter(created_by=self.request.user).order_by('-offer_date')
+        account = get_request_account(self.request)
+        queryset = Offer.objects.filter(account=account).order_by('-offer_date')
         customer_pk = self.kwargs.get('customer_pk')
         if customer_pk is not None:
             queryset = queryset.filter(customer_id=customer_pk)
         return queryset
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -163,6 +170,7 @@ class OfferViewSet(viewsets.ModelViewSet):
                 total_amount=offer.total_amount,
                 details=offer.details,
                 created_by=offer.created_by,
+                account=offer.account,
             )
 
             default_warehouse = Warehouse.get_default(request.user)
@@ -204,7 +212,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
         sale_pk = self.kwargs.get('sale_pk')
         if sale_pk:
             try:
-                sale = Sale.objects.get(pk=sale_pk, created_by=self.request.user)
+                account = get_request_account(self.request)
+                sale = Sale.objects.get(pk=sale_pk, account=account)
                 context['customer'] = sale.customer
             except Sale.DoesNotExist:
                 pass
@@ -212,25 +221,29 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         sale_pk = self.kwargs.get('sale_pk')
+        account = get_request_account(self.request)
         if sale_pk:
-            return Payment.objects.filter(sale__id=sale_pk, created_by=self.request.user)
-        return self.request.user.payments.all()
+            return Payment.objects.filter(sale__id=sale_pk, account=account)
+        return Payment.objects.filter(account=account)
 
     def perform_create(self, serializer):
         sale_pk = self.kwargs.get('sale_pk')
+        account = get_request_account(self.request)
         try:
-            sale = Sale.objects.get(pk=sale_pk, created_by=self.request.user)
+            sale = Sale.objects.get(pk=sale_pk, account=account)
             instance = serializer.save(
                 created_by=self.request.user,
                 sale=sale,
                 customer=sale.customer,
+                account=account,
             )
             log_activity(self.request.user, 'created', instance)
         except Sale.DoesNotExist:
             raise NotFound(detail="Sale not found.")
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -246,10 +259,12 @@ class SaleReturnViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        return SaleReturn.objects.filter(sale__created_by=self.request.user).order_by('-return_date')
+        account = get_request_account(self.request)
+        return SaleReturn.objects.filter(account=account).order_by('-return_date')
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_destroy(self, instance):
@@ -262,7 +277,7 @@ class SaleReturnViewSet(viewsets.ModelViewSet):
 def sales_report(request):
     """Provide a sales report for a given date range."""
 
-    user = request.user
+    account = get_request_account(request)
 
     start_date_str = request.query_params.get('start_date', '2000-01-01')
     end_date_str = request.query_params.get('end_date', date.today().strftime('%Y-%m-%d'))
@@ -274,7 +289,7 @@ def sales_report(request):
 
     sales_in_range = list(
         Sale.objects.filter(
-            created_by=user,
+            account=account,
             sale_date__range=[start_date_str, end_date_str],
         )
         .select_related('customer', 'supplier')

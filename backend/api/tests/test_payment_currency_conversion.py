@@ -2,32 +2,35 @@ from decimal import Decimal
 from datetime import date
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 
 from ..models import Customer, Supplier, BankAccount, Payment, Expense
 from ..services.currency import convert_amount
+from . import create_user_with_account
 
 
 class CurrencyConversionServiceTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="payer", password="pw")
+        self.user, self.account = create_user_with_account("payer")
         self.customer = Customer.objects.create(
             name="Alice",
             currency="USD",
             open_balance=Decimal("125.00"),
             created_by=self.user,
+            account=self.account,
         )
         self.supplier = Supplier.objects.create(
             name="Bob",
             currency="GBP",
             open_balance=Decimal("0"),
             created_by=self.user,
+            account=self.account,
         )
-        self.account = BankAccount.objects.create(
+        self.bank_account = BankAccount.objects.create(
             name="Euro Account",
             currency="EUR",
             created_by=self.user,
+            account=self.account,
         )
 
     @patch("api.services.currency.get_exchange_rate", return_value=Decimal("1.25"))
@@ -38,6 +41,7 @@ class CurrencyConversionServiceTest(TestCase):
             original_amount=Decimal("100.00"),
             original_currency="EUR",
             exchange_rate=Decimal("1.25"),
+            bank_account=self.bank_account,
             account=self.account,
             method="Cash",
             created_by=self.user,
@@ -45,12 +49,12 @@ class CurrencyConversionServiceTest(TestCase):
 
         payment.refresh_from_db()
         self.customer.refresh_from_db()
-        self.account.refresh_from_db()
+        self.bank_account.refresh_from_db()
 
         self.assertEqual(payment.converted_amount, Decimal("125.00"))
         self.assertEqual(payment.account_converted_amount, Decimal("100.00"))
         self.assertEqual(payment.account_exchange_rate, Decimal("1"))
-        self.assertEqual(self.account.balance, Decimal("100.00"))
+        self.assertEqual(self.bank_account.balance, Decimal("100.00"))
         self.assertEqual(self.customer.open_balance, Decimal("0.00"))
         mock_rate.assert_not_called()
 
@@ -66,7 +70,10 @@ class CurrencyConversionServiceTest(TestCase):
         mock_rate.side_effect = side_effect
 
         lira_account = BankAccount.objects.create(
-            name="Lira Account", currency="TRY", created_by=self.user
+            name="Lira Account",
+            currency="TRY",
+            created_by=self.user,
+            account=self.account,
         )
 
         payment = Payment.objects.create(
@@ -77,7 +84,8 @@ class CurrencyConversionServiceTest(TestCase):
             exchange_rate=Decimal("0"),
             account_exchange_rate=Decimal("0"),
             method="Cash",
-            account=lira_account,
+            bank_account=lira_account,
+            account=self.account,
             created_by=self.user,
         )
 
@@ -104,7 +112,10 @@ class CurrencyConversionServiceTest(TestCase):
         mock_rate.side_effect = side_effect
 
         expense_account = BankAccount.objects.create(
-            name="Expense Account", currency="EUR", created_by=self.user
+            name="Expense Account",
+            currency="EUR",
+            created_by=self.user,
+            account=self.account,
         )
 
         expense = Expense.objects.create(
@@ -113,7 +124,8 @@ class CurrencyConversionServiceTest(TestCase):
             original_currency="USD",
             expense_date=date.today(),
             description="Travel",
-            account=expense_account,
+            bank_account=expense_account,
+            account=self.account,
             supplier=self.supplier,
             created_by=self.user,
         )

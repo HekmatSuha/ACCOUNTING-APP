@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -17,13 +16,14 @@ from ..models import (
     Sale,
     Supplier,
 )
+from . import create_user_with_account
 
 
 class DashboardSummaryTest(TestCase):
     """Validate currency-aware aggregates in the dashboard summary response."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username='dash', password='pw')
+        self.user, self.account = create_user_with_account('dash')
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
@@ -42,7 +42,7 @@ class DashboardSummaryTest(TestCase):
             currency='USD',
             created_by=self.user,
         )
-        self.account = BankAccount.objects.create(
+        self.bank_account = BankAccount.objects.create(
             name='Operating',
             currency='USD',
             created_by=self.user,
@@ -95,6 +95,7 @@ class DashboardSummaryTest(TestCase):
         Expense.objects.create(
             amount=Decimal('30.00'),
             expense_date=today,
+            bank_account=self.bank_account,
             account=self.account,
             created_by=self.user,
         )

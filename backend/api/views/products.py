@@ -16,6 +16,7 @@ from ..report_exports import (
     generate_inventory_report_workbook,
 )
 from ..serializers import ProductSerializer
+from .utils import get_request_account
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -26,14 +27,16 @@ class ProductViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
+        account = get_request_account(self.request)
         return (
-            self.request.user.products.all()
+            Product.objects.filter(account=account)
             .prefetch_related('warehouse_stocks__warehouse')
             .order_by('name')
         )
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
 
@@ -45,8 +48,10 @@ def inventory_report(request):
     export_format = request.query_params.get('export_format') or request.query_params.get('format')
     export_format = (export_format or '').lower()
 
+    account = get_request_account(request)
+
     products = list(
-        Product.objects.filter(created_by=request.user)
+        Product.objects.filter(account=account)
         .prefetch_related('warehouse_stocks__warehouse')
         .order_by('name')
     )

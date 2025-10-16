@@ -17,6 +17,7 @@ from ..serializers import (
     ExpenseCategorySerializer,
     ExpenseSerializer,
 )
+from .utils import get_request_account
 
 
 class ExpenseCategoryViewSet(viewsets.ModelViewSet):
@@ -26,14 +27,17 @@ class ExpenseCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.expense_categories.all().order_by('name')
+        account = get_request_account(self.request)
+        return account.expense_categories.order_by('name')
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -48,14 +52,17 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return self.request.user.expenses.all().order_by('-expense_date')
+        account = get_request_account(self.request)
+        return Expense.objects.filter(account=account).order_by('-expense_date')
 
     def perform_create(self, serializer):
-        instance = serializer.save(created_by=self.request.user)
+        account = get_request_account(self.request)
+        instance = serializer.save(created_by=self.request.user, account=account)
         log_activity(self.request.user, 'created', instance)
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        account = get_request_account(self.request)
+        instance = serializer.save(account=account)
         log_activity(self.request.user, 'updated', instance)
 
     def perform_destroy(self, instance):
@@ -68,13 +75,13 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 def profit_and_loss_report(request):
     """Provide a profit and loss report for a given date range."""
 
-    user = request.user
+    account = get_request_account(request)
 
     start_date_str = request.query_params.get('start_date', '2000-01-01')
     end_date_str = request.query_params.get('end_date', date.today().strftime('%Y-%m-%d'))
 
     sales_in_range = Sale.objects.filter(
-        created_by=user,
+        account=account,
         sale_date__range=[start_date_str, end_date_str],
     )
 
@@ -83,7 +90,7 @@ def profit_and_loss_report(request):
     )['total']
 
     expenses_in_range = Expense.objects.filter(
-        created_by=user,
+        account=account,
         expense_date__range=[start_date_str, end_date_str],
     )
 
