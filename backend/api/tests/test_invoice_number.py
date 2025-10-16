@@ -2,16 +2,16 @@ from datetime import date
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 
 from ..models import Customer, Product, Warehouse
 from ..serializers import SaleWriteSerializer
+from . import create_user_with_account
 
 
 class InvoiceNumberGenerationTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="invuser", password="pw")
+        self.user, self.account = create_user_with_account("invuser")
         self.customer = Customer.objects.create(name="C", created_by=self.user)
         self.warehouse = Warehouse.get_default(self.user)
         self.product = Product.objects.create(

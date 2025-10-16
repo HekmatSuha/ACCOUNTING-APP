@@ -1,15 +1,15 @@
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from ..models import Product, Warehouse, WarehouseInventory
+from . import create_user_with_account
 
 
 class WarehouseTransferAPITest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='warehouse-user', password='pw')
+        self.user, self.account = create_user_with_account('warehouse-user')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.product = Product.objects.create(

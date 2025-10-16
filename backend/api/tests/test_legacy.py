@@ -1,7 +1,6 @@
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from django.contrib.contenttypes.models import ContentType
 
@@ -34,11 +33,12 @@ from ..activity_logger import log_activity
 from rest_framework.test import APIClient
 from unittest.mock import patch
 
+from . import create_user_with_account
 
 class ProductSerializerTest(TestCase):
     def setUp(self):
-        self.user1 = User.objects.create_user(username='user1', password='pw')
-        self.user2 = User.objects.create_user(username='user2', password='pw')
+        self.user1, self.account1 = create_user_with_account('user1')
+        self.user2, self.account2 = create_user_with_account('user2')
 
     def _get_request(self, user):
         class DummyRequest:
@@ -49,7 +49,13 @@ class ProductSerializerTest(TestCase):
         return req
 
     def test_duplicate_sku_same_user_fails(self):
-        Product.objects.create(name='ProdA', sale_price=1, created_by=self.user1, sku='ABC')
+        Product.objects.create(
+            name='ProdA',
+            sale_price=1,
+            created_by=self.user1,
+            account=self.account1,
+            sku='ABC',
+        )
         serializer = ProductSerializer(
             data={'name': 'ProdB', 'sale_price': 1, 'sku': 'ABC'},
             context={'request': self._get_request(self.user1)},
@@ -58,7 +64,13 @@ class ProductSerializerTest(TestCase):
         self.assertIn('sku', serializer.errors)
 
     def test_duplicate_sku_different_user_succeeds(self):
-        Product.objects.create(name='ProdA', sale_price=1, created_by=self.user1, sku='ABC')
+        Product.objects.create(
+            name='ProdA',
+            sale_price=1,
+            created_by=self.user1,
+            account=self.account1,
+            sku='ABC',
+        )
         serializer = ProductSerializer(
             data={'name': 'ProdB', 'sale_price': 1, 'sku': 'ABC'},
             context={'request': self._get_request(self.user2)},
@@ -73,7 +85,13 @@ class ProductSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
     def test_update_same_sku_allowed(self):
-        product = Product.objects.create(name='ProdA', sale_price=1, created_by=self.user1, sku='ABC')
+        product = Product.objects.create(
+            name='ProdA',
+            sale_price=1,
+            created_by=self.user1,
+            account=self.account1,
+            sku='ABC',
+        )
         serializer = ProductSerializer(
             product,
             data={'name': 'ProdA', 'sale_price': 1, 'sku': 'ABC'},
@@ -83,8 +101,20 @@ class ProductSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
     def test_update_conflicting_sku_fails(self):
-        Product.objects.create(name='ProdA', sale_price=1, created_by=self.user1, sku='ABC')
-        product = Product.objects.create(name='ProdB', sale_price=1, created_by=self.user1, sku='DEF')
+        Product.objects.create(
+            name='ProdA',
+            sale_price=1,
+            created_by=self.user1,
+            account=self.account1,
+            sku='ABC',
+        )
+        product = Product.objects.create(
+            name='ProdB',
+            sale_price=1,
+            created_by=self.user1,
+            account=self.account1,
+            sku='DEF',
+        )
         serializer = ProductSerializer(
             product,
             data={'name': 'ProdB', 'sale_price': 1, 'sku': 'ABC'},
@@ -97,9 +127,17 @@ class ProductSerializerTest(TestCase):
 
 class BankAccountTransactionTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='u', password='pw')
-        self.account = BankAccount.objects.create(name='Main', created_by=self.user)
-        self.customer = Customer.objects.create(name='C', created_by=self.user)
+        self.user, self.account = create_user_with_account('u')
+        self.bank_account = BankAccount.objects.create(
+            name='Main',
+            created_by=self.user,
+            account=self.account,
+        )
+        self.customer = Customer.objects.create(
+            name='C',
+            created_by=self.user,
+            account=self.account,
+        )
 
     def test_payment_updates_account_balance(self):
         Payment.objects.create(
@@ -108,27 +146,30 @@ class BankAccountTransactionTest(TestCase):
             original_amount=Decimal('100.00'),
             original_currency='USD',
             method='Cash',
+            bank_account=self.bank_account,
             account=self.account,
             created_by=self.user,
         )
-        self.account.refresh_from_db()
-        self.assertEqual(self.account.balance, Decimal('100.00'))
+        self.bank_account.refresh_from_db()
+        self.assertEqual(self.bank_account.balance, Decimal('100.00'))
 
     def test_expense_updates_account_balance(self):
         Expense.objects.create(
             amount=Decimal('50.00'),
             expense_date=date.today(),
+            original_currency='USD',
+            bank_account=self.bank_account,
             account=self.account,
             created_by=self.user,
         )
-        self.account.refresh_from_db()
-        self.assertEqual(self.account.balance, Decimal('-50.00'))
+        self.bank_account.refresh_from_db()
+        self.assertEqual(self.bank_account.balance, Decimal('-50.00'))
 
 
 class PurchaseAccountTransactionTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='u2', password='pw')
-        self.account = BankAccount.objects.create(name='Main', created_by=self.user)
+        self.user, self.account = create_user_with_account('u2')
+        self.bank_account = BankAccount.objects.create(name='Main', created_by=self.user)
         self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(name='P', sale_price=1, purchase_price=Decimal('5.00'), created_by=self.user)
         self.warehouse = Warehouse.get_default(self.user)
@@ -137,9 +178,10 @@ class PurchaseAccountTransactionTest(TestCase):
         purchase = Purchase.objects.create(
             supplier=self.supplier,
             purchase_date=date.today(),
-            account=self.account,
+            bank_account=self.bank_account,
             created_by=self.user,
             original_currency='USD',
+            account=self.account,
         )
         PurchaseItem.objects.create(
             purchase=purchase,
@@ -152,16 +194,16 @@ class PurchaseAccountTransactionTest(TestCase):
         purchase.exchange_rate = Decimal('1')
         purchase.save()
 
-        self.account.refresh_from_db()
+        self.bank_account.refresh_from_db()
         self.supplier.refresh_from_db()
 
-        self.assertEqual(self.account.balance, Decimal('-10.00'))
+        self.assertEqual(self.bank_account.balance, Decimal('-10.00'))
         self.assertEqual(self.supplier.open_balance, Decimal('0.00'))
 
 
 class PurchaseReturnTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='pruser', password='pw')
+        self.user, self.account = create_user_with_account('pruser')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
@@ -222,7 +264,7 @@ class PurchaseReturnTest(TestCase):
 
 class SaleReturnTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='sruser', password='pw')
+        self.user, self.account = create_user_with_account('sruser')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
@@ -284,7 +326,7 @@ class SaleReturnTest(TestCase):
 
 class CustomerBalanceTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='ub', password='pw')
+        self.user, self.account = create_user_with_account('ub')
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
         Sale.objects.create(customer=self.customer, original_currency='USD', original_amount=Decimal('100.00'), created_by=self.user)
 
@@ -330,10 +372,10 @@ class CustomerBalanceTest(TestCase):
 
 class CrossCurrencyPaymentTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='xc', password='pw')
+        self.user, self.account = create_user_with_account('xc')
         self.customer = Customer.objects.create(name='Cust', currency='USD', created_by=self.user)
         Sale.objects.create(customer=self.customer, original_currency='USD', original_amount=Decimal('200.00'), created_by=self.user)
-        self.account = BankAccount.objects.create(name='Euro', currency='EUR', created_by=self.user)
+        self.bank_account = BankAccount.objects.create(name='Euro', currency='EUR', created_by=self.user)
 
     @patch('api.models.get_exchange_rate', return_value=Decimal('1.10'))
     def test_cross_currency_payment_updates_balances(self, mock_rate):
@@ -344,15 +386,16 @@ class CrossCurrencyPaymentTest(TestCase):
             original_currency='EUR',
             exchange_rate=Decimal('1.10'),
             method='Cash',
+            bank_account=self.bank_account,
             account=self.account,
             created_by=self.user,
         )
         payment.refresh_from_db()
-        self.account.refresh_from_db()
+        self.bank_account.refresh_from_db()
         self.customer.refresh_from_db()
         self.assertEqual(payment.account_converted_amount, Decimal('100.00'))
         self.assertEqual(payment.account_exchange_rate, Decimal('1'))
-        self.assertEqual(self.account.balance, Decimal('100.00'))
+        self.assertEqual(self.bank_account.balance, Decimal('100.00'))
         self.assertEqual(self.customer.balance, Decimal('90.00'))
 
     @patch('api.models.get_exchange_rate', return_value=Decimal('1.10'))
@@ -367,6 +410,7 @@ class CrossCurrencyPaymentTest(TestCase):
             payment_date=date.today(),
             original_amount=Decimal('100.00'),
             method='Cash',
+            bank_account=self.bank_account,
             account=self.account,
             created_by=self.user,
         )
@@ -384,12 +428,12 @@ class CrossCurrencyPaymentTest(TestCase):
         self.assertEqual(payment.account_converted_amount, Decimal('100.00'))
 
         self.customer.refresh_from_db()
-        self.account.refresh_from_db()
+        self.bank_account.refresh_from_db()
 
         # Customer balance started at 200 USD. After a 110 USD equivalent payment, it should be 90 USD.
         self.assertEqual(self.customer.balance, Decimal('90.00'))
         # Account balance started at 0 EUR. After a 100 EUR payment, it should be 100 EUR.
-        self.assertEqual(self.account.balance, Decimal('100.00'))
+        self.assertEqual(self.bank_account.balance, Decimal('100.00'))
 
     @patch('api.models.get_exchange_rate', side_effect=ValueError)
     def test_error_when_rate_unavailable_and_currencies_differ(self, mock_rate):
@@ -401,7 +445,8 @@ class CrossCurrencyPaymentTest(TestCase):
                 payment_date=date.today(),
                 original_amount=Decimal('50.00'),
                 method='Cash',
-                account=self.account, # Account currency is EUR, customer is USD
+                bank_account=self.bank_account,
+                account=self.account,  # Account currency is EUR, customer is USD
                 created_by=self.user,
             )
 
@@ -413,7 +458,7 @@ class CrossCurrencyPaymentTest(TestCase):
 
 class ActivityRestoreTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='restorer', password='pw')
+        self.user, self.account = create_user_with_account('restorer')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=1, created_by=self.user)
@@ -430,7 +475,7 @@ class ActivityRestoreTest(TestCase):
 
 class ActivityDateFilterTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='actuser', password='pw')
+        self.user, self.account = create_user_with_account('actuser')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=1, created_by=self.user)
@@ -445,7 +490,7 @@ class ActivityDateFilterTest(TestCase):
 
 class OfferNestedRouteTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='offeruser', password='pw')
+        self.user, self.account = create_user_with_account('offeruser')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
@@ -480,7 +525,7 @@ class OfferNestedRouteTest(TestCase):
 
 class OfferEditDeletePermissionTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='edituser', password='pw')
+        self.user, self.account = create_user_with_account('edituser')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
@@ -531,7 +576,7 @@ class OfferEditDeletePermissionTest(TestCase):
 
 class SaleDeletionTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='saleuser', password='pw')
+        self.user, self.account = create_user_with_account('saleuser')
         self.customer = Customer.objects.create(name='Cust', created_by=self.user, open_balance=Decimal('0.00'))
         self.product = Product.objects.create(
             name='Prod',
@@ -587,7 +632,7 @@ class SaleDeletionTest(TestCase):
 
 class CrossDealTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='xdeal', password='pw')
+        self.user, self.account = create_user_with_account('xdeal')
         self.customer = Customer.objects.create(name='Cust', created_by=self.user)
         self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)
         self.product = Product.objects.create(
@@ -651,7 +696,7 @@ class CrossDealTest(TestCase):
 
 class SupplierDetailsIncludeSalesTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='supdetail', password='pw')
+        self.user, self.account = create_user_with_account('supdetail')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.supplier = Supplier.objects.create(name='Sup', currency='USD', created_by=self.user)

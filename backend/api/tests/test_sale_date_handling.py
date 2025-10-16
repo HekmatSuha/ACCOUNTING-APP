@@ -3,18 +3,18 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 
 from ..models import Customer, Product, Sale, Warehouse
 from ..serializers import SaleWriteSerializer
+from . import create_user_with_account
 
 
 class SaleDateSerializerTests(TestCase):
     """Ensure sales honour provided sale dates across create and update flows."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username="sale-dates", password="pw")
+        self.user, self.account = create_user_with_account("sale-dates")
         self.request = self._get_request()
         self.customer = Customer.objects.create(name="Customer", created_by=self.user)
         self.product = Product.objects.create(

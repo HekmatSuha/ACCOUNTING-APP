@@ -2,18 +2,18 @@
 
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from ..models import BankAccount, BankAccountTransaction
+from . import create_user_with_account
 
 
 class BankAccountAPITest(TestCase):
     """Verify deposit, withdrawal, and transfer actions."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username='bankuser', password='pw')
+        self.user, self.account = create_user_with_account('bankuser')
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -22,12 +22,14 @@ class BankAccountAPITest(TestCase):
             currency='USD',
             balance=Decimal('100.00'),
             created_by=self.user,
+            account=self.account,
         )
         self.secondary_account = BankAccount.objects.create(
             name='Savings',
             currency='USD',
             balance=Decimal('50.00'),
             created_by=self.user,
+            account=self.account,
         )
 
     def test_deposit_updates_balance_and_creates_transaction(self):
@@ -41,7 +43,7 @@ class BankAccountAPITest(TestCase):
         self.primary_account.refresh_from_db()
         self.assertEqual(self.primary_account.balance, Decimal('125.00'))
 
-        transaction = BankAccountTransaction.objects.get(account=self.primary_account)
+        transaction = BankAccountTransaction.objects.get(bank_account=self.primary_account)
         self.assertEqual(transaction.transaction_type, BankAccountTransaction.DEPOSIT)
         self.assertEqual(transaction.amount, Decimal('25.00'))
         self.assertEqual(transaction.description, 'Initial funding')
@@ -57,7 +59,7 @@ class BankAccountAPITest(TestCase):
         self.primary_account.refresh_from_db()
         self.assertEqual(self.primary_account.balance, Decimal('80.00'))
 
-        transaction = BankAccountTransaction.objects.get(account=self.primary_account)
+        transaction = BankAccountTransaction.objects.get(bank_account=self.primary_account)
         self.assertEqual(transaction.transaction_type, BankAccountTransaction.WITHDRAWAL)
         self.assertEqual(transaction.amount, Decimal('20.00'))
 
@@ -80,11 +82,11 @@ class BankAccountAPITest(TestCase):
         self.assertEqual(self.secondary_account.balance, Decimal('80.00'))
 
         source_txn = BankAccountTransaction.objects.get(
-            account=self.primary_account,
+            bank_account=self.primary_account,
             transaction_type=BankAccountTransaction.TRANSFER_OUT,
         )
         target_txn = BankAccountTransaction.objects.get(
-            account=self.secondary_account,
+            bank_account=self.secondary_account,
             transaction_type=BankAccountTransaction.TRANSFER_IN,
         )
 
@@ -97,6 +99,7 @@ class BankAccountAPITest(TestCase):
             currency='EUR',
             balance=Decimal('10.00'),
             created_by=self.user,
+            account=self.account,
         )
 
         response = self.client.post(
