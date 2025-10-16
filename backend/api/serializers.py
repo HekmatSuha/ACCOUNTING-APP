@@ -8,6 +8,8 @@ from decimal import Decimal
 from .exchange_rates import get_exchange_rate
 from .models import (
     Account,
+    AccountInvitation,
+    AccountMembership,
     Activity,
     BankAccount,
     BankAccountTransaction,
@@ -32,6 +34,11 @@ from .models import (
     Supplier,
     Warehouse,
     WarehouseInventory,
+)
+from .services.account_users import (
+    activate_membership,
+    consume_available_invitation,
+    ensure_account_has_available_seat,
 )
 from rest_framework.validators import UniqueValidator
 
@@ -138,15 +145,225 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class AccountUserSerializer(AccountScopedSerializerMixin, serializers.Serializer):
+    """Serializer used by staff or tenant admins to add users to an account."""
+
+    account = serializers.PrimaryKeyRelatedField(
+        queryset=Account.objects.all(), required=False
+    )
+    email = serializers.EmailField()
+    username = serializers.CharField(required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, required=False)
+    invite = serializers.BooleanField(default=False)
+    is_admin = serializers.BooleanField(default=False)
+    is_billing_manager = serializers.BooleanField(default=False)
+
+    def _resolve_account(self, attrs: dict) -> Account:
+        request = self.context.get('request')
+        account = None
+        if request and request.user and request.user.is_staff:
+            account = attrs.get('account')
+        if account is None:
+            account = self.get_account()
+        if not account:
+            raise serializers.ValidationError({
+                'account': 'An account context is required to manage users.'
+            })
+        return account
+
+    def _normalise_username(self, username: str, email: str) -> str:
+        base = (username or '').strip()
+        if base:
+            return base
+        base = email.split('@')[0]
+        candidate = base
+        suffix = 1
+        while User.objects.filter(username=candidate).exists():
+            candidate = f"{base}{suffix}"
+            suffix += 1
+        return candidate
+
+    def validate(self, attrs):
+        account = self._resolve_account(attrs)
+        attrs['account'] = account
+
+        invite = attrs.get('invite', False)
+        password = attrs.get('password')
+
+        if not invite:
+            if not password:
+                raise serializers.ValidationError({
+                    'password': 'A password is required when directly creating a user.'
+                })
+            validate_password(password)
+
+        username = self._normalise_username(attrs.get('username', ''), attrs['email'])
+        attrs['username'] = username
+
+        return attrs
+
+    def create(self, validated_data):
+        account: Account = validated_data['account']
+        email = validated_data['email']
+        username = validated_data['username']
+        invite = validated_data.get('invite', False)
+        roles = {
+            'is_admin': validated_data.get('is_admin', False),
+            'is_billing_manager': validated_data.get('is_billing_manager', False),
+        }
+        request = self.context.get('request')
+        inviter = getattr(request, 'user', None)
+
+        if invite:
+            invitation = consume_available_invitation(
+                account,
+                email,
+                include_roles=roles,
+                invited_by=inviter,
+            )
+            return invitation
+
+        membership = AccountMembership.objects.filter(
+            account=account, user__username=username
+        ).select_related('user').first()
+
+        if membership and membership.is_active:
+            user = membership.user
+            if email and user.email != email:
+                user.email = email
+        else:
+            ensure_account_has_available_seat(account)
+            user = None
+            if membership:
+                user = membership.user
+            else:
+                try:
+                    user = User.objects.get(username=username)
+                except User.DoesNotExist:
+                    user = User(username=username)
+            user.email = email
+        user.set_password(validated_data['password'])
+        user.save()
+
+        if membership is None:
+            membership = AccountMembership(
+                account=account,
+                user=user,
+                invited_by=inviter,
+            )
+
+        membership.is_admin = roles['is_admin']
+        membership.is_billing_manager = roles['is_billing_manager']
+        membership.invited_by = membership.invited_by or inviter
+        membership.save()
+        activate_membership(membership)
+
+        return membership
+
+    def to_representation(self, instance):
+        if isinstance(instance, AccountInvitation):
+            return {
+                'id': instance.id,
+                'email': instance.email,
+                'token': instance.token,
+                'account': instance.account_id,
+                'is_admin': instance.is_admin,
+                'is_billing_manager': instance.is_billing_manager,
+                'status': 'invited',
+            }
+        membership = instance
+        return {
+            'id': membership.id,
+            'user': membership.user_id,
+            'username': membership.user.username,
+            'email': membership.user.email,
+            'account': membership.account_id,
+            'roles': membership.roles,
+        }
+
+
+class InvitationAcceptanceSerializer(serializers.Serializer):
+    """Serializer that finalises an invitation by setting credentials."""
+
+    token = serializers.CharField()
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        try:
+            invitation = AccountInvitation.objects.select_related('account').get(
+                token=attrs['token'], is_active=True
+            )
+        except AccountInvitation.DoesNotExist as exc:
+            raise serializers.ValidationError({'token': 'Invitation is invalid or expired.'}) from exc
+
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+
+        validate_password(attrs['password'])
+        attrs['invitation'] = invitation
+        return attrs
+
+    def create(self, validated_data):
+        invitation: AccountInvitation = validated_data['invitation']
+        account = invitation.account
+        username = validated_data['username']
+        password = validated_data['password']
+        email = invitation.email
+
+        user, _ = User.objects.get_or_create(username=username, defaults={'email': email})
+        if email and user.email != email:
+            user.email = email
+        user.set_password(password)
+        user.save()
+
+        membership = AccountMembership.objects.filter(account=account, user=user).first()
+        if not (membership and membership.is_active):
+            ensure_account_has_available_seat(account)
+            if membership is None:
+                membership = AccountMembership(
+                    account=account,
+                    user=user,
+                    invited_by=invitation.invited_by,
+                )
+
+        membership.is_admin = invitation.is_admin
+        membership.is_billing_manager = invitation.is_billing_manager
+        membership.invited_by = membership.invited_by or invitation.invited_by
+        membership.save()
+        activate_membership(membership)
+        invitation.mark_accepted(membership)
+        return membership
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer for viewing and updating the authenticated user's profile."""
 
     username = serializers.CharField(read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)
+    account = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email']
-        read_only_fields = ['id', 'username']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'account', 'roles']
+        read_only_fields = ['id', 'username', 'is_staff', 'account', 'roles']
+
+    def get_account(self, obj):
+        account = Account.for_user(obj)
+        if not account:
+            return None
+        return {'id': account.id, 'name': account.name, 'slug': account.slug}
+
+    def get_roles(self, obj):
+        account = Account.for_user(obj)
+        if not account:
+            return []
+        membership = account.memberships.filter(user=obj, is_active=True).first()
+        if not membership:
+            return []
+        return membership.roles
 
 
 class ChangePasswordSerializer(serializers.Serializer):

@@ -76,6 +76,34 @@ class Account(models.Model):
     def seats_in_use(self) -> int:
         return self.memberships.filter(is_active=True).count()
 
+    @property
+    def active_memberships(self):
+        """Return a queryset of active memberships for the account."""
+
+        return self.memberships.active()
+
+    @property
+    def user_limit(self) -> int | None:
+        """Return the maximum number of users allowed for the account.
+
+        The limit is primarily driven by the active subscription plan.  If the
+        account does not yet have an associated subscription plan we fall back
+        to a conservative single-seat allowance so that validations relying on
+        the property continue to operate deterministically.
+        """
+
+        subscription = getattr(self, "subscription", None)
+        if subscription and subscription.plan:
+            return subscription.plan.user_limit
+        return 1
+
+    def refresh_subscription_usage(self) -> None:
+        """Synchronise cached subscription seat counts with current usage."""
+
+        subscription = getattr(self, "subscription", None)
+        if subscription:
+            subscription.refresh_seat_usage()
+
 
 class AccountMembershipQuerySet(models.QuerySet):
     def active(self):
@@ -140,6 +168,58 @@ class AccountMembership(models.Model):
             ]
         )
         return [name for name, enabled in mapping.items() if enabled]
+
+
+class AccountInvitation(models.Model):
+    """Tracks pending invitations for users to join an account."""
+
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="invitations",
+    )
+    email = models.EmailField()
+    token = models.CharField(max_length=64, unique=True)
+    invited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issued_account_invitations",
+    )
+    is_admin = models.BooleanField(default=False)
+    is_billing_manager = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    membership = models.ForeignKey(
+        AccountMembership,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invitations",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["account", "email"],
+                condition=models.Q(is_active=True),
+                name="unique_active_invitation_per_account_email",
+            )
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - helper only
+        return f"Invitation to {self.email} for {self.account}"
+
+    def mark_accepted(self, membership: AccountMembership) -> None:
+        """Mark the invitation as accepted and bind to ``membership``."""
+
+        self.membership = membership
+        self.accepted_at = timezone.now()
+        self.is_active = False
+        self.save(update_fields=["membership", "accepted_at", "is_active"])
 
 
 class SubscriptionPlan(models.Model):
