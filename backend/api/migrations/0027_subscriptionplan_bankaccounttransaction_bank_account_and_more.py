@@ -265,6 +265,22 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.RunPython(copy_bank_account_relationships, migrations.RunPython.noop),
+        migrations.RunSQL(
+            "ALTER TABLE api_bankaccounttransaction ALTER COLUMN account_id DROP NOT NULL;",
+            "ALTER TABLE api_bankaccounttransaction ALTER COLUMN account_id SET NOT NULL;",
+        ),
+        migrations.RunSQL(
+            "UPDATE api_bankaccounttransaction SET account_id = NULL;",
+            migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            "UPDATE api_expense SET account_id = NULL;",
+            migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            "UPDATE api_payment SET account_id = NULL;",
+            migrations.RunSQL.noop,
+        ),
         migrations.AlterField(
             model_name="bankaccounttransaction",
             name="account",
