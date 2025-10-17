@@ -19,8 +19,7 @@ def copy_bank_account_relationships(apps, schema_editor):
         Model = apps.get_model("api", model_name)
         for obj in Model.objects.exclude(account_id=None).only("id", "account_id"):
             setattr(obj, f"{field_name}_id", obj.account_id)
-            obj.account_id = None
-            obj.save(update_fields=[field_name, "account"])
+            obj.save(update_fields=[field_name])
 
 
 class Migration(migrations.Migration):
