@@ -32,7 +32,12 @@ def create_accounts_and_backfill(apps, schema_editor):
     now = timezone.now()
 
     for user in User.objects.all():
-        base_name = (user.get_full_name() or user.username or f"Account {user.pk}").strip() or f"Account {user.pk}"
+        first_name = getattr(user, "first_name", "") or ""
+        last_name = getattr(user, "last_name", "") or ""
+        full_name = f"{first_name} {last_name}".strip()
+        username = getattr(user, "username", "") or ""
+        email = getattr(user, "email", "") or ""
+        base_name = (full_name or username or email or f"Account {user.pk}").strip() or f"Account {user.pk}"
         name_candidate = base_name
         suffix = 1
         while name_candidate in existing_names:
