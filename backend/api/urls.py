@@ -7,6 +7,7 @@ from rest_framework_nested import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views.activities import ActivityViewSet
+from .views.admin import AdminAccountViewSet
 from .views.auth import (
     AccountUserManagementView,
     ChangePasswordView,
@@ -32,6 +33,7 @@ from .views.suppliers import SupplierPaymentViewSet, SupplierViewSet
 
 router = DefaultRouter()
 router.register(r'company-info', CompanyInfoViewSet, basename='company-info')
+router.register(r'admin/accounts', AdminAccountViewSet, basename='admin-accounts')
 router.register(r'settings', CompanySettingsViewSet, basename='company-settings')
 router.register(r'activities', ActivityViewSet, basename='activity')
 router.register(r'customers', CustomerViewSet, basename='customer')

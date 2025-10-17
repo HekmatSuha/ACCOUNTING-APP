@@ -93,8 +93,11 @@ class Account(models.Model):
         """
 
         subscription = getattr(self, "subscription", None)
-        if subscription and subscription.plan:
-            return subscription.plan.user_limit
+        if subscription:
+            if subscription.seat_limit is not None:
+                return subscription.seat_limit
+            if subscription.plan and subscription.plan.user_limit is not None:
+                return subscription.plan.user_limit
         return 1
 
     def refresh_subscription_usage(self) -> None:
@@ -232,13 +235,15 @@ class SubscriptionPlan(models.Model):
 
     code = models.SlugField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
-    user_limit = models.PositiveIntegerField(default=1)
+    user_limit = models.PositiveIntegerField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    currency = models.CharField(max_length=3, default="USD")
     billing_interval = models.CharField(
         max_length=20, choices=BILLING_INTERVAL_CHOICES, default=BILLING_INTERVAL_MONTHLY
     )
     description = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True)
+    features = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["price", "name"]
@@ -277,6 +282,12 @@ class Subscription(models.Model):
     cancel_at_period_end = models.BooleanField(default=False)
     canceled_at = models.DateTimeField(null=True, blank=True)
     seats_in_use = models.PositiveIntegerField(default=0)
+    seat_limit = models.PositiveIntegerField(null=True, blank=True)
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=SubscriptionPlan.BILLING_INTERVAL_CHOICES,
+        default=SubscriptionPlan.BILLING_INTERVAL_MONTHLY,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
