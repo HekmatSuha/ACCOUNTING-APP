@@ -281,6 +281,10 @@ class Migration(migrations.Migration):
             "UPDATE api_payment SET account_id = NULL;",
             migrations.RunSQL.noop,
         ),
+        migrations.RunSQL(
+            "SET CONSTRAINTS ALL IMMEDIATE;",
+            migrations.RunSQL.noop,
+        ),
         migrations.AlterField(
             model_name="bankaccounttransaction",
             name="account",
