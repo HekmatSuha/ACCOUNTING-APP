@@ -1215,7 +1215,22 @@ class PurchaseWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSer
     customer_id = serializers.IntegerField(required=False)
     class Meta:
         model = Purchase
-        fields = ['supplier_id', 'customer_id', 'purchase_date', 'bill_number', 'account', 'items', 'original_currency', 'exchange_rate']
+        fields = [
+            'supplier_id',
+            'customer_id',
+            'purchase_date',
+            'bill_number',
+            'account',
+            'items',
+            'original_currency',
+            'exchange_rate',
+        ]
+        extra_kwargs = {
+            'account': {'required': False},
+            'bill_number': {'required': False, 'allow_blank': True},
+            'original_currency': {'required': False},
+            'exchange_rate': {'required': False},
+        }
 
     def create(self, validated_data):
         items_data = validated_data.pop('items')
