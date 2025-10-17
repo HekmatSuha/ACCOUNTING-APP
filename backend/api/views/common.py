@@ -89,7 +89,7 @@ def dashboard_summary(request):
     )['total']
     expenses_currency_qs = expenses_qs.annotate(
         currency=Case(
-            When(account__currency__isnull=False, then=F('account__currency')),
+            When(bank_account__isnull=False, then=F('bank_account__currency')),
             When(supplier__currency__isnull=False, then=F('supplier__currency')),
             default=Value(base_currency),
             output_field=CharField(),
@@ -113,7 +113,7 @@ def dashboard_summary(request):
     supplier_expenses_currency_qs = supplier_expenses_qs.annotate(
         currency=Case(
             When(supplier__currency__isnull=False, then=F('supplier__currency')),
-            When(account__currency__isnull=False, then=F('account__currency')),
+            When(bank_account__isnull=False, then=F('bank_account__currency')),
             default=Value(base_currency),
             output_field=CharField(),
         )
