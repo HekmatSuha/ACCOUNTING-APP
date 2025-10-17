@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   createAccount,
   listAccounts,
+  listPlans,
   parseAdminError,
   withOptimisticUpdate,
 } from '../../utils/adminApi';
@@ -11,7 +12,7 @@ import {
 const EMPTY_FORM = {
   name: '',
   seat_limit: '',
-  plan: 'starter',
+  plan: '',
 };
 
 function formatPlanName(plan) {
@@ -36,6 +37,7 @@ function AdminAccountListPage() {
   const [creating, setCreating] = useState(false);
   const [showPlanHint, setShowPlanHint] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [plans, setPlans] = useState([]);
 
   const hasAccounts = accounts.length > 0;
 
@@ -64,16 +66,26 @@ function AdminAccountListPage() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadAccounts() {
+    async function loadData() {
       try {
         setLoading(true);
-        const response = await listAccounts();
+        const [accountsResponse, plansResponse] = await Promise.all([
+          listAccounts(),
+          listPlans(),
+        ]);
+
         if (mounted) {
-          setAccounts(Array.isArray(response) ? response : []);
+          const loadedPlans = Array.isArray(plansResponse) ? plansResponse : [];
+          setPlans(loadedPlans);
+          setAccounts(Array.isArray(accountsResponse) ? accountsResponse : []);
+
+          if (loadedPlans.length > 0 && !formState.plan) {
+            setFormState((prev) => ({ ...prev, plan: loadedPlans[0].code }));
+          }
         }
       } catch (loadError) {
         if (mounted) {
-          setError(loadError.message || 'Unable to load accounts.');
+          setError(loadError.message || 'Unable to load accounts or plans.');
         }
       } finally {
         if (mounted) {
@@ -82,7 +94,7 @@ function AdminAccountListPage() {
       }
     }
 
-    loadAccounts();
+    loadData();
 
     return () => {
       mounted = false;
@@ -204,10 +216,14 @@ function AdminAccountListPage() {
                 name="plan"
                 value={formState.plan}
                 onChange={handleInputChange}
+                disabled={plans.length === 0}
               >
-                <option value="starter">Starter</option>
-                <option value="growth">Growth</option>
-                <option value="enterprise">Enterprise</option>
+                {plans.length === 0 && <option>No plans available</option>}
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.code}>
+                    {plan.name}
+                  </option>
+                ))}
               </Form.Select>
             </div>
             <div className="col-md-2 align-self-end">
