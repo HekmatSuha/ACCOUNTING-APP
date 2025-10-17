@@ -768,8 +768,14 @@ class SaleWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSeriali
             raise serializers.ValidationError('customer_id or supplier_id required')
         if customer_id and supplier_id:
             raise serializers.ValidationError('Only one of customer_id or supplier_id may be provided.')
-        created_by = self.context['request'].user
-        account = self.get_account()
+        created_by = validated_data.pop(
+            'created_by', self.context['request'].user
+        )
+        account = validated_data.pop('account', self.get_account())
+        if account is None:
+            raise serializers.ValidationError(
+                'Unable to determine the account for this sale.'
+            )
 
         with transaction.atomic():
             if not validated_data.get('invoice_number'):
@@ -1132,11 +1138,18 @@ class SaleReturnSerializer(AccountScopedSerializerMixin, serializers.ModelSerial
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         sale_id = validated_data.pop('sale_id')
-        account = self.get_account()
+        account = validated_data.pop('account', self.get_account())
+        if account is None:
+            raise serializers.ValidationError(
+                'Unable to determine the account for this sale return.'
+            )
         sale = Sale.objects.get(id=sale_id, account=account)
+        created_by = validated_data.pop(
+            'created_by', self.context['request'].user
+        )
         sale_return = SaleReturn.objects.create(
             sale=sale,
-            created_by=self.context['request'].user,
+            created_by=created_by,
             account=account,
             **validated_data,
         )
@@ -1211,8 +1224,14 @@ class PurchaseWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSer
             raise serializers.ValidationError('supplier_id or customer_id required')
         if supplier_id and customer_id:
             raise serializers.ValidationError('Only one of supplier_id or customer_id may be provided.')
-        created_by = self.context['request'].user
-        account = self.get_account()
+        created_by = validated_data.pop(
+            'created_by', self.context['request'].user
+        )
+        account = validated_data.pop('account', self.get_account())
+        if account is None:
+            raise serializers.ValidationError(
+                'Unable to determine the account for this purchase.'
+            )
 
         with transaction.atomic():
             exchange_rate = validated_data.pop('exchange_rate', Decimal('1'))
