@@ -8,24 +8,12 @@ const ProfileContext = createContext({
   refreshProfile: () => Promise.resolve(),
 });
 
-const ADMIN_ROLE_KEYS = ['account_owner', 'owner', 'admin'];
-
 export function hasAdminAccess(profile) {
   if (!profile) {
     return false;
   }
 
-  if (profile.is_staff || profile.isAdmin) {
-    return true;
-  }
-
-  const roles = Array.isArray(profile.roles)
-    ? profile.roles
-    : profile.role
-      ? [profile.role]
-      : [];
-
-  return roles.some((role) => ADMIN_ROLE_KEYS.includes(String(role).toLowerCase()));
+  return Boolean(profile.is_staff || profile.is_superuser);
 }
 
 function persistProfile(profile) {
