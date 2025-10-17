@@ -103,4 +103,28 @@ describe('AdminAccountDetailPage', () => {
     );
     expect(await screen.findByTestId('subscription-success')).toBeInTheDocument();
   });
+
+  test('shows validation error when seat limit is below usage', async () => {
+    fetchAccount.mockResolvedValue({
+      id: '123',
+      name: 'Acme Corp',
+      seat_limit: 10,
+      seats_used: 8,
+      owner_name: 'Ada Lovelace',
+      subscription: { plan: 'starter', billing_cycle: 'monthly', renews_on: '2025-01-01' },
+      members: [],
+    });
+
+    render(<AdminAccountDetailPage />);
+
+    expect(await screen.findByText('Acme Corp')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Seats allowed'), { target: { value: '7' } });
+    fireEvent.submit(screen.getByTestId('seat-limit-form'));
+
+    const seatLimitError = await screen.findByTestId('seat-limit-error');
+    expect(seatLimitError).toHaveTextContent('Seat limit cannot be less than seats in use (8).');
+    expect(updateAccount).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
+  });
 });
