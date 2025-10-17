@@ -14,6 +14,7 @@ function AdminAccountDetailPage() {
   const [seatError, setSeatError] = useState(null);
   const [subscriptionMessage, setSubscriptionMessage] = useState(null);
   const [subscriptionError, setSubscriptionError] = useState(null);
+  const [seatValidationError, setSeatValidationError] = useState(false);
   const [updatingSeatLimit, setUpdatingSeatLimit] = useState(false);
   const [updatingSubscription, setUpdatingSubscription] = useState(false);
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -62,16 +63,32 @@ function AdminAccountDetailPage() {
 
   const handleSeatLimitSubmit = async (event) => {
     event.preventDefault();
+    setSeatValidationError(false);
     setSeatError(null);
     setSeatMessage(null);
+
+    const nextLimit = Number(limitValue);
+    if (Number.isNaN(nextLimit)) {
+      setSeatValidationError(true);
+      setSeatError('Seat limit must be a number.');
+      return;
+    }
+
+    if (nextLimit < seatUsage.used) {
+      setSeatValidationError(true);
+      setSeatError(`Seat limit cannot be less than seats in use (${seatUsage.used}).`);
+      return;
+    }
+
     setUpdatingSeatLimit(true);
 
     try {
-      const payload = { seat_limit: Number(limitValue) };
+      const payload = { seat_limit: nextLimit };
       const updated = await updateAccount(id, payload);
       setAccount(updated);
       setSeatMessage('Seat limit updated successfully.');
     } catch (requestError) {
+      setSeatValidationError(false);
       setSeatError(parseAdminError(requestError, 'Unable to update the seat limit.'));
     } finally {
       setUpdatingSeatLimit(false);
@@ -166,11 +183,19 @@ function AdminAccountDetailPage() {
                     type="number"
                     min={0}
                     value={limitValue}
-                    onChange={(event) => setLimitValue(event.target.value)}
+                    onChange={(event) => {
+                      setLimitValue(event.target.value);
+                      if (seatValidationError) {
+                        setSeatValidationError(false);
+                      }
+                      if (seatError) {
+                        setSeatError(null);
+                      }
+                    }}
                     required
                   />
                 </Form.Group>
-                <Button type="submit" disabled={updatingSeatLimit}>
+                <Button type="submit" disabled={updatingSeatLimit || seatValidationError}>
                   {updatingSeatLimit ? 'Saving…' : 'Update'}
                 </Button>
               </Form>
