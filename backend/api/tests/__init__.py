@@ -25,6 +25,8 @@ def create_user_with_account(username: str, password: str = "pw"):
             "billing_interval": "monthly",
             "description": "Test plan",
             "is_active": True,
+            "currency": "USD",
+            "features": [],
         },
     )
     Subscription.objects.create(
@@ -33,5 +35,7 @@ def create_user_with_account(username: str, password: str = "pw"):
         status=Subscription.STATUS_ACTIVE,
         current_period_start=timezone.now(),
         seats_in_use=1,
+        seat_limit=plan.user_limit,
+        billing_cycle=plan.billing_interval,
     )
     return user, account
