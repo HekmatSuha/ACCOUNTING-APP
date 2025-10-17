@@ -1,7 +1,7 @@
 // frontend/src/pages/SupplierDetailPage.js
 
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Row, Col, Spinner, Alert, Button, Accordion, ButtonToolbar, Table } from 'react-bootstrap';
 import { PersonCircle, Cash, Tag, Hammer, BarChart, PencilSquare, Trash, ReceiptCutoff, Wallet2, CartCheck, Printer } from 'react-bootstrap-icons';
@@ -25,13 +25,16 @@ const extractFilenameFromDisposition = disposition => {
 
 function SupplierDetailPage() {
     const { id } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [printingSaleId, setPrintingSaleId] = useState(null);
     const [printingPurchaseId, setPrintingPurchaseId] = useState(null);
-    const fetchDetails = async () => {
+    const fetchDetails = useCallback(async () => {
+        setLoading(true);
+        setError('');
         try {
             const response = await axiosInstance.get(`suppliers/${id}/details/`);
             setData(response.data);
@@ -40,11 +43,11 @@ function SupplierDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
     useEffect(() => {
         fetchDetails();
-    }, [id]);
+    }, [fetchDetails, location.key]);
 
     const handleDeletePurchase = async (purchaseId) => {
         if (!window.confirm('Are you sure you want to delete this purchase?')) return;
