@@ -35,12 +35,31 @@ function AdminAccountListPage() {
   const [formError, setFormError] = useState(null);
   const [creating, setCreating] = useState(false);
   const [showPlanHint, setShowPlanHint] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const hasAccounts = accounts.length > 0;
 
+  const filteredAccounts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return accounts;
+    }
+
+    return accounts.filter((account) => {
+      const name = account.name?.toLowerCase() ?? '';
+      const domain = account.email_domain?.toLowerCase() ?? '';
+      const plan = formatPlanName(account.subscription?.plan).toLowerCase();
+
+      return (
+        name.includes(query) || domain.includes(query) || plan.includes(query)
+      );
+    });
+  }, [accounts, searchQuery]);
+
   const sortedAccounts = useMemo(() => {
-    return [...accounts].sort((a, b) => a.name.localeCompare(b.name));
-  }, [accounts]);
+    return [...filteredAccounts].sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredAccounts]);
 
   useEffect(() => {
     let mounted = true;
@@ -209,11 +228,24 @@ function AdminAccountListPage() {
 
       <Card>
         <Card.Body>
-          <Card.Title as="h2" className="h4 d-flex justify-content-between align-items-center">
-            Managed customer accounts
-            <Badge bg="secondary" data-testid="account-count-badge">
-              {accounts.length}
-            </Badge>
+          <Card.Title as="h2" className="h4">
+            <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-2">
+                <span>Managed customer accounts</span>
+                <Badge bg="secondary" data-testid="account-count-badge">
+                  {accounts.length}
+                </Badge>
+              </div>
+              <Form.Control
+                type="search"
+                placeholder="Search accounts"
+                aria-label="Search accounts"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                data-testid="admin-account-search"
+                style={{ maxWidth: 320 }}
+              />
+            </div>
           </Card.Title>
           {showPlanHint && (
             <Alert variant="info" className="mb-3" data-testid="admin-plan-hint">
