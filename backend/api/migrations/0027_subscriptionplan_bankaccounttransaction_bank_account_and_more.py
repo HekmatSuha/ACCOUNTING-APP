@@ -282,6 +282,10 @@ class Migration(migrations.Migration):
             migrations.RunSQL.noop,
         ),
         migrations.RunSQL(
+            "UPDATE api_purchase SET account_id = NULL;",
+            migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
             "SET CONSTRAINTS ALL IMMEDIATE;",
             migrations.RunSQL.noop,
         ),
