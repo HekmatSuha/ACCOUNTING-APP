@@ -877,6 +877,7 @@ class SaleWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSeriali
             instance.original_currency = validated_data.get('original_currency', instance.original_currency)
 
             new_total_amount = 0
+
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
                 warehouse_id = item_data.pop('warehouse_id')
@@ -1109,7 +1110,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 # For creating a new purchase
 class PurchaseItemWriteSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField()
-    warehouse_id = serializers.IntegerField()
+    warehouse_id = serializers.IntegerField(required=False, allow_null=True)
 
     class Meta:
         model = PurchaseItem
@@ -1245,18 +1246,23 @@ class PurchaseWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSer
                 purchase = Purchase.objects.create(created_by=created_by, customer=customer, exchange_rate=exchange_rate, original_currency=original_currency or customer.currency, account=account, **validated_data)
 
             total_purchase_amount = 0
+            default_warehouse = Warehouse.get_default(created_by)
+
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
-                warehouse_id = item_data.pop('warehouse_id')
+                warehouse_id = item_data.pop('warehouse_id', None)
                 product = Product.objects.get(id=product_id, account=account)
-                try:
-                    warehouse = Warehouse.objects.get(
-                        id=warehouse_id, account=account
-                    )
-                except Warehouse.DoesNotExist as exc:
-                    raise serializers.ValidationError(
-                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
-                    ) from exc
+                if warehouse_id is None:
+                    warehouse = default_warehouse
+                else:
+                    try:
+                        warehouse = Warehouse.objects.get(
+                            id=warehouse_id, account=account
+                        )
+                    except Warehouse.DoesNotExist as exc:
+                        raise serializers.ValidationError(
+                            {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                        ) from exc
 
                 quantity = Decimal(item_data['quantity'])
 
@@ -1332,20 +1338,26 @@ class PurchaseWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSer
             instance.original_currency = validated_data.get('original_currency', instance.original_currency)
 
             new_total_amount = 0
+            created_by = getattr(instance, 'created_by', None) or self.context['request'].user
+            default_warehouse = Warehouse.get_default(created_by)
+
             for item_data in items_data:
                 product_id = item_data.pop('product_id')
-                warehouse_id = item_data.pop('warehouse_id')
+                warehouse_id = item_data.pop('warehouse_id', None)
                 product = Product.objects.get(
                     id=product_id, account=account
                 )
-                try:
-                    warehouse = Warehouse.objects.get(
-                        id=warehouse_id, account=account
-                    )
-                except Warehouse.DoesNotExist as exc:
-                    raise serializers.ValidationError(
-                        {'items': f"Invalid warehouse selection for product '{product.name}'."}
-                    ) from exc
+                if warehouse_id is None:
+                    warehouse = default_warehouse
+                else:
+                    try:
+                        warehouse = Warehouse.objects.get(
+                            id=warehouse_id, account=account
+                        )
+                    except Warehouse.DoesNotExist as exc:
+                        raise serializers.ValidationError(
+                            {'items': f"Invalid warehouse selection for product '{product.name}'."}
+                        ) from exc
 
                 quantity = Decimal(item_data['quantity'])
 

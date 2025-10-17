@@ -262,6 +262,49 @@ class PurchaseReturnTest(TestCase):
         self.assertTrue(Activity.objects.filter(content_type=ct, object_id=pr_id, action_type='created').exists())
 
 
+class PurchaseDefaultWarehouseTest(TestCase):
+    def setUp(self):
+        self.user, self.account = create_user_with_account('defaultwh')
+        self.supplier = Supplier.objects.create(name='Default Supplier', currency='USD', created_by=self.user)
+        self.product = Product.objects.create(
+            name='Widget',
+            sale_price=Decimal('10.00'),
+            purchase_price=Decimal('4.00'),
+            created_by=self.user,
+        )
+
+    def _get_request(self):
+        class DummyRequest:
+            pass
+
+        req = DummyRequest()
+        req.user = self.user
+        return req
+
+    def test_purchase_items_use_default_warehouse_when_missing(self):
+        serializer = PurchaseWriteSerializer(
+            data={
+                'supplier_id': self.supplier.id,
+                'purchase_date': str(date.today()),
+                'items': [
+                    {
+                        'product_id': self.product.id,
+                        'quantity': '3',
+                        'unit_price': '4.00',
+                    }
+                ],
+            },
+            context={'request': self._get_request()},
+        )
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        purchase = serializer.save()
+
+        item = purchase.items.get()
+        default_warehouse = Warehouse.get_default(self.user)
+        self.assertEqual(item.warehouse, default_warehouse)
+
+
 class SaleReturnTest(TestCase):
     def setUp(self):
         self.user, self.account = create_user_with_account('sruser')
