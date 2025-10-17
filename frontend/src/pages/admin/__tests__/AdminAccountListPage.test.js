@@ -132,4 +132,46 @@ describe('AdminAccountListPage', () => {
 
     expect(await screen.findByTestId('admin-plan-hint')).toBeInTheDocument();
   });
+
+  test('filters accounts by search query', async () => {
+    listAccounts.mockResolvedValue([
+      {
+        id: '1',
+        name: 'Acme Corp',
+        email_domain: 'acme.example',
+        seat_limit: 10,
+        seats_used: 3,
+        subscription: { plan: 'starter' },
+      },
+      {
+        id: '2',
+        name: 'Beta LLC',
+        email_domain: 'beta.test',
+        seat_limit: 5,
+        seats_used: 1,
+        subscription: { plan: 'growth' },
+      },
+    ]);
+
+    render(<AdminAccountListPage />);
+
+    expect(await screen.findByText('Acme Corp')).toBeInTheDocument();
+    expect(screen.getByText('Beta LLC')).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText('Search accounts');
+
+    fireEvent.change(searchInput, { target: { value: 'growth' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Acme Corp')).not.toBeInTheDocument();
+      expect(screen.getByText('Beta LLC')).toBeInTheDocument();
+    });
+
+    fireEvent.change(searchInput, { target: { value: 'acme' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+      expect(screen.queryByText('Beta LLC')).not.toBeInTheDocument();
+    });
+  });
 });
