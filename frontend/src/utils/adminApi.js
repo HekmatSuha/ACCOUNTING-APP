@@ -1,6 +1,7 @@
 import axiosInstance from './axiosInstance';
 
 const ADMIN_BASE_URL = '/admin/accounts';
+const ADMIN_PLANS_BASE_URL = '/admin/plans';
 
 export function parseAdminError(error, fallbackMessage = 'Unable to complete the admin request.') {
   if (error?.response?.data) {
@@ -37,6 +38,50 @@ function toAdminError(error, fallbackMessage) {
   const wrapped = new Error(message);
   wrapped.cause = error;
   return wrapped;
+}
+
+export async function listPlans() {
+  try {
+    const { data } = await axiosInstance.get(`${ADMIN_PLANS_BASE_URL}/`);
+    return data;
+  } catch (error) {
+    throw toAdminError(error, 'Unable to load plans.');
+  }
+}
+
+export async function fetchPlan(planId) {
+  try {
+    const { data } = await axiosInstance.get(`${ADMIN_PLANS_BASE_URL}/${planId}/`);
+    return data;
+  } catch (error) {
+    throw toAdminError(error, 'Unable to load the plan.');
+  }
+}
+
+export async function createPlan(payload) {
+  try {
+    const { data } = await axiosInstance.post(`${ADMIN_PLANS_BASE_URL}/`, payload);
+    return data;
+  } catch (error) {
+    throw toAdminError(error, 'Unable to create the plan.');
+  }
+}
+
+export async function updatePlan(planId, payload) {
+  try {
+    const { data } = await axiosInstance.put(`${ADMIN_PLANS_BASE_URL}/${planId}/`, payload);
+    return data;
+  } catch (error) {
+    throw toAdminError(error, 'Unable to update the plan.');
+  }
+}
+
+export async function deletePlan(planId) {
+  try {
+    await axiosInstance.delete(`${ADMIN_PLANS_BASE_URL}/${planId}/`);
+  } catch (error) {
+    throw toAdminError(error, 'Unable to delete the plan.');
+  }
 }
 
 export async function listAccounts() {
