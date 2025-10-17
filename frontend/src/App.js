@@ -47,6 +47,7 @@ import AdminGuard from './pages/admin/AdminGuard';
 import AdminAccountListPage from './pages/admin/AdminAccountListPage';
 import AdminAccountDetailPage from './pages/admin/AdminAccountDetailPage';
 import AdminPlanEditorPage from './pages/admin/AdminPlanEditorPage';
+import AdminPlansPage from './pages/admin/AdminPlansPage';
 
 
 function App() {
@@ -112,6 +113,14 @@ function App() {
                       element={
                         <AdminGuard>
                           <AdminAccountListPage />
+                        </AdminGuard>
+                      }
+                    />
+                    <Route
+                      path="admin/plans"
+                      element={
+                        <AdminGuard>
+                          <AdminPlansPage />
                         </AdminGuard>
                       }
                     />
