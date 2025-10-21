@@ -13,6 +13,11 @@ const EMPTY_FORM = {
   name: '',
   seat_limit: '',
   plan: '',
+  owner_email: '',
+  owner_username: '',
+  owner_password: '',
+  owner_is_admin: true,
+  owner_is_billing_manager: false,
 };
 
 function formatPlanName(plan) {
@@ -33,11 +38,26 @@ function AdminAccountListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formState, setFormState] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [creating, setCreating] = useState(false);
   const [showPlanHint, setShowPlanHint] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [plans, setPlans] = useState([]);
+
+  const resolveFieldError = (fieldName) => {
+    const message = formErrors?.[fieldName];
+    if (!message) {
+      return '';
+    }
+    if (Array.isArray(message)) {
+      return message.join(' ');
+    }
+    if (typeof message === 'string') {
+      return message;
+    }
+    return String(message);
+  };
 
   const hasAccounts = accounts.length > 0;
 
@@ -109,13 +129,16 @@ function AdminAccountListPage() {
   }, [location.search]);
 
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormState((previous) => ({ ...previous, [name]: value }));
+    const { name, value, type, checked } = event.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+    setFormState((previous) => ({ ...previous, [name]: nextValue }));
+    setFormErrors((previous) => ({ ...previous, [name]: undefined }));
   };
 
   const handleCreateAccount = async (event) => {
     event.preventDefault();
     setFormError(null);
+    setFormErrors({});
     setCreating(true);
 
     const payload = {
@@ -124,6 +147,21 @@ function AdminAccountListPage() {
       plan: formState.plan,
     };
 
+    const trimmedOwnerEmail = formState.owner_email.trim();
+    const trimmedOwnerUsername = formState.owner_username.trim();
+
+    if (trimmedOwnerEmail) {
+      payload.owner_email = trimmedOwnerEmail;
+    }
+    if (trimmedOwnerUsername) {
+      payload.owner_username = trimmedOwnerUsername;
+      payload.owner_is_admin = Boolean(formState.owner_is_admin);
+      payload.owner_is_billing_manager = Boolean(formState.owner_is_billing_manager);
+    }
+    if (trimmedOwnerUsername && formState.owner_password) {
+      payload.owner_password = formState.owner_password;
+    }
+
     const optimisticAccount = {
       id: `optimistic-${Date.now()}`,
       name: payload.name,
@@ -131,6 +169,14 @@ function AdminAccountListPage() {
       seats_used: 0,
       subscription: { plan: payload.plan },
       status: 'Provisioning',
+      owner: trimmedOwnerUsername
+        ? {
+            username: trimmedOwnerUsername,
+            email: trimmedOwnerEmail || null,
+            is_admin: Boolean(formState.owner_is_admin),
+            is_billing_manager: Boolean(formState.owner_is_billing_manager),
+          }
+        : null,
       optimistic: true,
     };
 
@@ -154,9 +200,14 @@ function AdminAccountListPage() {
           },
         },
       );
-      setFormState(EMPTY_FORM);
+      setFormState((previous) => ({ ...EMPTY_FORM, plan: previous.plan }));
+      setFormErrors({});
     } catch (requestError) {
       setFormError(parseAdminError(requestError, 'Unable to create the account.'));
+      const fieldMessages = requestError?.cause?.response?.data;
+      if (fieldMessages && typeof fieldMessages === 'object' && !Array.isArray(fieldMessages)) {
+        setFormErrors(fieldMessages);
+      }
     } finally {
       setCreating(false);
     }
@@ -186,7 +237,7 @@ function AdminAccountListPage() {
             Create a new customer account
           </Card.Title>
           <Form onSubmit={handleCreateAccount} className="row g-3" data-testid="create-account-form">
-            <div className="col-md-5">
+            <div className="col-12 col-lg-4">
               <Form.Label htmlFor="account-name">Account name</Form.Label>
               <Form.Control
                 id="account-name"
@@ -195,9 +246,13 @@ function AdminAccountListPage() {
                 onChange={handleInputChange}
                 placeholder="Acme Corporation"
                 required
+                isInvalid={Boolean(resolveFieldError('name'))}
               />
+              <Form.Control.Feedback type="invalid">
+                {resolveFieldError('name')}
+              </Form.Control.Feedback>
             </div>
-            <div className="col-md-3">
+            <div className="col-6 col-lg-2">
               <Form.Label htmlFor="account-seat-limit">Seat limit</Form.Label>
               <Form.Control
                 id="account-seat-limit"
@@ -208,10 +263,14 @@ function AdminAccountListPage() {
                 onChange={handleInputChange}
                 placeholder="25"
                 required
+                isInvalid={Boolean(resolveFieldError('seat_limit'))}
               />
+              <Form.Control.Feedback type="invalid">
+                {resolveFieldError('seat_limit')}
+              </Form.Control.Feedback>
               <Form.Text muted>Users allowed for this workspace.</Form.Text>
             </div>
-            <div className="col-md-2">
+            <div className="col-6 col-lg-2">
               <Form.Label htmlFor="account-plan">Plan</Form.Label>
               <Form.Select
                 id="account-plan"
@@ -219,6 +278,7 @@ function AdminAccountListPage() {
                 value={formState.plan}
                 onChange={handleInputChange}
                 disabled={plans.length === 0}
+                isInvalid={Boolean(resolveFieldError('plan'))}
               >
                 {plans.length === 0 && <option>No plans available</option>}
                 {plans.map((plan) => (
@@ -227,8 +287,79 @@ function AdminAccountListPage() {
                   </option>
                 ))}
               </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                {resolveFieldError('plan')}
+              </Form.Control.Feedback>
             </div>
-            <div className="col-md-2 align-self-end">
+            <div className="col-12 col-lg-4">
+              <Form.Label htmlFor="owner-username">Owner username</Form.Label>
+              <Form.Control
+                id="owner-username"
+                name="owner_username"
+                value={formState.owner_username}
+                onChange={handleInputChange}
+                placeholder="owner.user"
+                isInvalid={Boolean(resolveFieldError('owner_username'))}
+                autoComplete="username"
+              />
+              <Form.Control.Feedback type="invalid">
+                {resolveFieldError('owner_username')}
+              </Form.Control.Feedback>
+            </div>
+            <div className="col-12 col-lg-4">
+              <Form.Label htmlFor="owner-email">Owner email</Form.Label>
+              <Form.Control
+                id="owner-email"
+                name="owner_email"
+                type="email"
+                value={formState.owner_email}
+                onChange={handleInputChange}
+                placeholder="owner@example.com"
+                isInvalid={Boolean(resolveFieldError('owner_email'))}
+                autoComplete="email"
+              />
+              <Form.Control.Feedback type="invalid">
+                {resolveFieldError('owner_email')}
+              </Form.Control.Feedback>
+            </div>
+            <div className="col-12 col-lg-4">
+              <Form.Label htmlFor="owner-password">Owner password</Form.Label>
+              <Form.Control
+                id="owner-password"
+                name="owner_password"
+                type="password"
+                value={formState.owner_password}
+                onChange={handleInputChange}
+                placeholder="Set a secure password"
+                isInvalid={Boolean(resolveFieldError('owner_password'))}
+                autoComplete="new-password"
+              />
+              <Form.Control.Feedback type="invalid">
+                {resolveFieldError('owner_password')}
+              </Form.Control.Feedback>
+            </div>
+            <div className="col-12 col-lg-4">
+              <Form.Label className="d-block">Owner roles</Form.Label>
+              <div className="d-flex flex-column gap-2">
+                <Form.Check
+                  id="owner-is-admin"
+                  name="owner_is_admin"
+                  type="checkbox"
+                  label="Grant admin access"
+                  checked={Boolean(formState.owner_is_admin)}
+                  onChange={handleInputChange}
+                />
+                <Form.Check
+                  id="owner-is-billing-manager"
+                  name="owner_is_billing_manager"
+                  type="checkbox"
+                  label="Grant billing manager access"
+                  checked={Boolean(formState.owner_is_billing_manager)}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            <div className="col-12 col-lg-2 align-self-end ms-lg-auto">
               <Button type="submit" className="w-100" disabled={creating}>
                 {creating ? 'Creating…' : 'Create account'}
               </Button>
