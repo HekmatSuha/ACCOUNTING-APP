@@ -13,7 +13,21 @@ export function hasAdminAccess(profile) {
     return false;
   }
 
-  return Boolean(profile.is_staff || profile.is_superuser);
+  const { isAdmin, is_staff: isStaff, is_superuser: isSuperuser, roles } = profile;
+
+  if (isAdmin || isStaff || isSuperuser) {
+    return true;
+  }
+
+  if (!roles) {
+    return false;
+  }
+
+  const normalizedRoles = (Array.isArray(roles) ? roles : [roles])
+    .filter((role) => typeof role === 'string')
+    .map((role) => role.toLowerCase());
+
+  return normalizedRoles.some((role) => role === 'admin' || role === 'owner');
 }
 
 function persistProfile(profile) {
