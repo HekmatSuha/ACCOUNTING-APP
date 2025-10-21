@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from ..models import Account, SubscriptionPlan
+from ..models import Account, AccountMembership, SubscriptionPlan
 from . import create_user_with_account
 
 
@@ -51,6 +51,42 @@ class AdminAccountAPITest(TestCase):
         self.assertIsNotNone(getattr(created_account, "subscription", None))
         self.assertEqual(created_account.subscription.seat_limit, 10)
         self.assertEqual(created_account.subscription.plan.code, "starter")
+
+    def test_create_account_with_owner_credentials(self):
+        payload = {
+            "name": "Owner Corp",
+            "seat_limit": 5,
+            "plan": "starter",
+            "owner_username": "owner.user",
+            "owner_email": "owner@example.com",
+            "owner_password": "StrongPassword123!",
+            "owner_is_admin": True,
+            "owner_is_billing_manager": True,
+        }
+
+        response = self.client.post("/api/admin/accounts/", payload, format="json")
+        self.assertEqual(response.status_code, 201, response.content)
+
+        account = Account.objects.get(name="Owner Corp")
+        owner = User.objects.get(username="owner.user")
+        self.assertEqual(account.owner, owner)
+        self.assertTrue(owner.check_password("StrongPassword123!"))
+        self.assertEqual(owner.email, "owner@example.com")
+
+        membership = AccountMembership.objects.get(account=account, user=owner)
+        self.assertTrue(membership.is_owner)
+        self.assertTrue(membership.is_admin)
+        self.assertTrue(membership.is_billing_manager)
+        self.assertTrue(membership.is_active)
+
+        account.subscription.refresh_from_db()
+        self.assertEqual(account.subscription.seats_in_use, 1)
+
+        self.assertIn("owner", response.data)
+        self.assertEqual(response.data["owner"]["username"], "owner.user")
+        self.assertEqual(response.data["owner"]["email"], "owner@example.com")
+        self.assertTrue(response.data["owner"]["is_admin"])
+        self.assertTrue(response.data["owner"]["is_billing_manager"])
 
     def test_update_seat_limit(self):
         response = self.client.patch(

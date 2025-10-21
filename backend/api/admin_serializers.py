@@ -5,12 +5,13 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from django.contrib.auth import password_validation
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework import serializers
 
-from .models import Account, Subscription, SubscriptionPlan
+from .models import Account, AccountMembership, Subscription, SubscriptionPlan
 
 
 def _normalise_seat_limit(value: int | None) -> int | None:
@@ -57,6 +58,11 @@ class AdminAccountCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     seat_limit = serializers.IntegerField(min_value=0, required=False, allow_null=True)
     plan = serializers.CharField(max_length=50)
+    owner_email = serializers.EmailField(required=False, allow_blank=True)
+    owner_username = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    owner_password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    owner_is_admin = serializers.BooleanField(required=False)
+    owner_is_billing_manager = serializers.BooleanField(required=False)
 
     def validate_name(self, value: str) -> str:
         cleaned = value.strip()
@@ -70,9 +76,53 @@ class AdminAccountCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Plan code is required.")
         return cleaned
 
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        owner_username = (attrs.get("owner_username") or "").strip()
+        owner_email = (attrs.get("owner_email") or "").strip()
+        owner_password = attrs.get("owner_password") or ""
+        role_fields = [
+            attrs.get("owner_is_admin"),
+            attrs.get("owner_is_billing_manager"),
+        ]
+
+        if owner_username:
+            attrs["owner_username"] = owner_username
+        if owner_email:
+            attrs["owner_email"] = owner_email
+
+        if owner_password and not owner_username:
+            raise serializers.ValidationError(
+                {"owner_username": "Username is required when setting a password."}
+            )
+
+        if (owner_email or owner_password or any(value is not None for value in role_fields)) and not owner_username:
+            raise serializers.ValidationError(
+                {"owner_username": "Username is required when specifying owner details."}
+            )
+
+        if owner_password:
+            try:
+                user_for_validation = User.objects.get(username=owner_username)
+            except (User.DoesNotExist, ValueError):
+                user_for_validation = User(
+                    username=owner_username or "",
+                    email=owner_email or "",
+                )
+            else:
+                if owner_email:
+                    user_for_validation.email = owner_email
+            password_validation.validate_password(owner_password, user=user_for_validation)
+
+        return attrs
+
     def create(self, validated_data: dict[str, Any]) -> Account:
         seat_limit = validated_data.get("seat_limit")
         plan_code = validated_data["plan"]
+        owner_email = validated_data.pop("owner_email", "") or ""
+        owner_username = validated_data.pop("owner_username", "") or ""
+        owner_password = validated_data.pop("owner_password", "") or ""
+        owner_is_admin = validated_data.pop("owner_is_admin", None)
+        owner_is_billing_manager = validated_data.pop("owner_is_billing_manager", None)
         plan_defaults = {
             "name": plan_code.replace("_", " ").title(),
             "price": Decimal("0"),
@@ -93,6 +143,39 @@ class AdminAccountCreateSerializer(serializers.Serializer):
             seat_limit=_normalise_seat_limit(seat_limit),
             billing_cycle=plan.billing_interval,
         )
+        owner_user: User | None = None
+        if owner_username:
+            defaults = {"email": owner_email} if owner_email else {}
+            owner_user, created = User.objects.get_or_create(
+                username=owner_username,
+                defaults=defaults,
+            )
+            updated_fields: list[str] = []
+            if owner_email and owner_user.email != owner_email:
+                owner_user.email = owner_email
+                updated_fields.append("email")
+            if owner_password:
+                owner_user.set_password(owner_password)
+                updated_fields.append("password")
+            elif created and not owner_user.has_usable_password():
+                owner_user.set_unusable_password()
+            if created or updated_fields:
+                owner_user.save(update_fields=updated_fields or None)
+
+            account.owner = owner_user
+            account.save(update_fields=["owner", "updated_at"])
+
+            AccountMembership.objects.update_or_create(
+                account=account,
+                user=owner_user,
+                defaults={
+                    "is_owner": True,
+                    "is_admin": owner_is_admin if owner_is_admin is not None else True,
+                    "is_billing_manager": bool(owner_is_billing_manager),
+                    "is_active": True,
+                },
+            )
+
         account.refresh_subscription_usage()
         return account
 
@@ -105,6 +188,7 @@ class AdminAccountListSerializer(serializers.ModelSerializer):
     subscription = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     email_domain = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Account
@@ -116,6 +200,7 @@ class AdminAccountListSerializer(serializers.ModelSerializer):
             "subscription",
             "status",
             "email_domain",
+            "owner",
         ]
 
     def get_seat_limit(self, obj: Account) -> int | None:
@@ -153,6 +238,18 @@ class AdminAccountListSerializer(serializers.ModelSerializer):
         if len(parts) != 2:
             return None
         return parts[-1].lower()
+
+    def get_owner(self, obj: Account) -> dict[str, Any] | None:
+        owner = obj.owner
+        if not owner:
+            return None
+        membership = obj.memberships.filter(user=owner, is_active=True).first()
+        return {
+            "username": owner.username,
+            "email": owner.email,
+            "is_admin": bool(membership.is_admin) if membership else False,
+            "is_billing_manager": bool(membership.is_billing_manager) if membership else False,
+        }
 
 
 class AdminAccountDetailSerializer(AdminAccountListSerializer):
