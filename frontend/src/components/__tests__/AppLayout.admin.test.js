@@ -21,7 +21,26 @@ jest.mock(
       default: React.createContext({}),
       ProfileProvider: ({ children }) => <>{children}</>,
       useProfile: mockedUseProfile,
-      hasAdminAccess: jest.fn((profile) => Boolean(profile?.is_staff || profile?.isAdmin)),
+      hasAdminAccess: jest.fn((profile) => {
+        if (!profile) {
+          return false;
+        }
+
+        if (profile.isAdmin || profile.is_staff || profile.is_superuser) {
+          return true;
+        }
+
+        const { roles } = profile;
+        if (!roles) {
+          return false;
+        }
+
+        const normalizedRoles = (Array.isArray(roles) ? roles : [roles])
+          .filter((role) => typeof role === 'string')
+          .map((role) => role.toLowerCase());
+
+        return normalizedRoles.some((role) => role === 'admin' || role === 'owner');
+      }),
     };
   },
 );
@@ -60,6 +79,25 @@ describe('AppLayout admin navigation', () => {
 
   test('shows admin navigation toggle for staff users', async () => {
     useProfile.mockReturnValue({ profile: { username: 'admin-user', is_staff: true }, loading: false, error: null });
+
+    render(
+      <AppLayout>
+        <div>Child content</div>
+      </AppLayout>,
+    );
+
+    const adminToggle = screen.getByRole('button', { name: /Admin/i });
+    expect(adminToggle).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(adminToggle);
+    });
+
+    expect(await screen.findByRole('link', { name: /Accounts/i })).toBeInTheDocument();
+  });
+
+  test('shows admin navigation toggle for account administrators', async () => {
+    useProfile.mockReturnValue({ profile: { username: 'account-admin', roles: ['member', 'Admin'] }, loading: false, error: null });
 
     render(
       <AppLayout>
