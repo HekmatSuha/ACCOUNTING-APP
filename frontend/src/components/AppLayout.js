@@ -216,7 +216,7 @@ function AppLayout({ children }) {
                                     </span>
                                 </NavLink>
                                 <NavLink
-                                    to="/admin/accounts?section=plans"
+                                    to="/admin/plans"
                                     className={({ isActive }) =>
                                         `sidebar-submenu-link ${isActive ? 'active' : ''}`
                                     }
