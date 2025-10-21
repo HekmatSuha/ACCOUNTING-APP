@@ -7,6 +7,7 @@ from typing import Any
 
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.utils.text import slugify
 from rest_framework import serializers
 
 from .models import Account, Subscription, SubscriptionPlan
@@ -262,7 +263,26 @@ class AdminSubscriptionUpdateSerializer(serializers.Serializer):
         return subscription
 
 
+def _generate_plan_code(name: str) -> str:
+    """Create a unique slug code for a subscription plan."""
+
+    base_slug = slugify(name)[:50] or "plan"
+    code = base_slug
+    suffix = 2
+    while SubscriptionPlan.objects.filter(code=code).exists():
+        candidate = f"{base_slug}-{suffix}"
+        if len(candidate) > 50:
+            # Reserve space for the numeric suffix when the base slug is long.
+            trimmed_base = base_slug[: max(50 - len(str(suffix)) - 1, 1)]
+            candidate = f"{trimmed_base}-{suffix}"
+        code = candidate
+        suffix += 1
+    return code
+
+
 class AdminPlanSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    code = serializers.SlugField(read_only=True)
     billing_cycle = serializers.ChoiceField(
         choices=SubscriptionPlan.BILLING_INTERVAL_CHOICES,
         source="billing_interval",
@@ -281,13 +301,33 @@ class AdminPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SubscriptionPlan
-        fields = ["name", "price", "currency", "billing_cycle", "seat_limit", "features"]
+        fields = [
+            "id",
+            "code",
+            "name",
+            "price",
+            "currency",
+            "billing_cycle",
+            "seat_limit",
+            "features",
+        ]
 
     def to_representation(self, instance: SubscriptionPlan) -> dict[str, Any]:
         data = super().to_representation(instance)
         data["seat_limit"] = instance.user_limit
         data["features"] = instance.features or []
         return data
+
+    def create(self, validated_data: dict[str, Any]) -> SubscriptionPlan:
+        seat_limit = validated_data.pop("user_limit", None)
+        features = validated_data.pop("features", None)
+        plan_name = validated_data.get("name") or "Plan"
+        validated_data.setdefault("code", _generate_plan_code(plan_name))
+        instance = SubscriptionPlan(**validated_data)
+        instance.user_limit = _normalise_seat_limit(seat_limit)
+        instance.features = features or []
+        instance.save()
+        return instance
 
     def update(self, instance: SubscriptionPlan, validated_data: dict[str, Any]) -> SubscriptionPlan:
         if "user_limit" in validated_data:

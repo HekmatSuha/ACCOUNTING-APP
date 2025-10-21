@@ -112,3 +112,13 @@ class AdminAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, view
         serializer.is_valid(raise_exception=True)
         updated_plan = serializer.save()
         return Response(AdminPlanSerializer(updated_plan, context=self.get_serializer_context()).data)
+
+
+class AdminPlanViewSet(viewsets.ModelViewSet):
+    """CRUD endpoints for managing reusable subscription plans."""
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = AdminPlanSerializer
+
+    def get_queryset(self):
+        return SubscriptionPlan.objects.all().order_by("price", "name")
