@@ -79,8 +79,10 @@ function AdminAccountListPage() {
           setPlans(loadedPlans);
           setAccounts(Array.isArray(accountsResponse) ? accountsResponse : []);
 
-          if (loadedPlans.length > 0 && !formState.plan) {
-            setFormState((prev) => ({ ...prev, plan: loadedPlans[0].code }));
+          if (loadedPlans.length > 0) {
+            setFormState((prev) =>
+              prev.plan ? prev : { ...prev, plan: loadedPlans[0].code },
+            );
           }
         }
       } catch (loadError) {
