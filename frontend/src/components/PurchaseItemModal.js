@@ -158,23 +158,26 @@ function PurchaseItemModal({
                                     </span>
                                 )}
                             </div>
-                            <ProductSearchSelect
-                                products={products}
-                                value={selectedProduct}
-                                onSelect={handleProductSelect}
-                                placeholder="Search name or SKU"
-                                imageBaseUrl={imageBaseUrl}
-                            />
-                            <div className="mt-2">
-                                <Button
-                                    variant="link"
-                                    className="p-0"
-                                    href="/inventory/new"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    + Add new inventory item
-                                </Button>
+                            <div className="sale-form__inventory-panel">
+                                <div className="sale-form__inventory-panel-header">ÜRÜN / HİZMETLER</div>
+                                <div className="sale-form__inventory-panel-body">
+                                    <ProductSearchSelect
+                                        products={products}
+                                        value={selectedProduct}
+                                        onSelect={handleProductSelect}
+                                        placeholder="Ürün isminden arayın veya barkod okutun"
+                                        imageBaseUrl={imageBaseUrl}
+                                    />
+                                    <Button
+                                        variant="link"
+                                        className="sale-form__inventory-panel-action"
+                                        href="/inventory/new"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        listede olmayan ürün eklemek için tıklayın
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
