@@ -9,6 +9,8 @@ import '../styles/saleForm.css';
 import ProductSearchSelect from '../components/ProductSearchSelect';
 import PurchaseItemModal from '../components/PurchaseItemModal';
 import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+import PurchaseSuccessModal from '../components/purchases/PurchaseSuccessModal';
+import { extractFilenameFromDisposition, openPdfBlobInNewTab } from '../utils/pdf';
 
 function PurchaseFormPage() {
     const { supplierId, customerId } = useParams();
@@ -19,12 +21,14 @@ function PurchaseFormPage() {
     const returnTo = location.state?.returnTo ?? null;
     const isEditing = Boolean(purchaseId);
 
+    const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
     const [partner, setPartner] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
     const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
-    const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
-    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
+    const [purchaseDate, setPurchaseDate] = useState(todayIso);
+    const [invoiceDate, setInvoiceDate] = useState(todayIso);
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [documentNumber, setDocumentNumber] = useState('');
     const [description, setDescription] = useState('');
@@ -33,6 +37,10 @@ function PurchaseFormPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [itemModalState, setItemModalState] = useState({ show: false, index: null, initialItem: null });
     const [quickSearchKey, setQuickSearchKey] = useState(0);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [savedPurchase, setSavedPurchase] = useState(null);
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+    const [successModalError, setSuccessModalError] = useState('');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -180,6 +188,74 @@ function PurchaseFormPage() {
 
     const hasLineItems = lineItems.length > 0;
 
+    const resetFormForNewPurchase = useCallback(() => {
+        setLineItems([]);
+        setPurchaseDate(todayIso);
+        setInvoiceDate(todayIso);
+        setInvoiceNumber('');
+        setDocumentNumber('');
+        setDescription('');
+        setFormError(null);
+        setQuickSearchKey((prev) => prev + 1);
+        setItemModalState({ show: false, index: null, initialItem: null });
+    }, [todayIso]);
+
+    const handleCloseSuccessModal = useCallback(() => {
+        setShowSuccessModal(false);
+        setSuccessModalError('');
+    }, []);
+
+    const handlePrintInvoice = useCallback(async () => {
+        if (!savedPurchase?.id) {
+            return;
+        }
+        setSuccessModalError('');
+        setIsGeneratingInvoice(true);
+        try {
+            const response = await axiosInstance.get(`/purchases/${savedPurchase.id}/invoice_pdf/`, {
+                responseType: 'blob',
+            });
+            const fallbackIdentifier = savedPurchase.invoice_number || savedPurchase.bill_number || savedPurchase.id;
+            const filename =
+                extractFilenameFromDisposition(response.headers['content-disposition']) ||
+                `purchase_${fallbackIdentifier}.pdf`;
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            openPdfBlobInNewTab(blob, filename);
+        } catch (error) {
+            console.error('Failed to generate purchase invoice PDF', error);
+            setSuccessModalError('Could not generate the purchase invoice PDF. Please try again.');
+        } finally {
+            setIsGeneratingInvoice(false);
+        }
+    }, [savedPurchase]);
+
+    const handleRecordPayment = useCallback(() => {
+        if (!savedPurchase?.id) {
+            return;
+        }
+
+        setShowSuccessModal(false);
+        const supplierIdForPayment = savedPurchase.supplier || savedPurchase.supplier_id;
+        const customerIdForPayment = savedPurchase.customer || savedPurchase.customer_id;
+
+        if (supplierIdForPayment) {
+            navigate(`/suppliers/${supplierIdForPayment}/payment`, {
+                state: { fromPurchaseId: savedPurchase.id },
+            });
+        } else if (customerIdForPayment) {
+            navigate(`/customers/${customerIdForPayment}/payment`, {
+                state: { fromPurchaseId: savedPurchase.id },
+            });
+        }
+    }, [navigate, savedPurchase]);
+
+    const handleStartNewPurchase = useCallback(() => {
+        resetFormForNewPurchase();
+        setSavedPurchase(null);
+        setShowSuccessModal(false);
+        setSuccessModalError('');
+    }, [resetFormForNewPurchase]);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setFormError(null);
@@ -211,10 +287,27 @@ function PurchaseFormPage() {
 
         try {
             setIsSubmitting(true);
+            setSavedPurchase(null);
+            setShowSuccessModal(false);
+
             if (isEditing) {
                 await axiosInstance.put(`/purchases/${purchaseId}/`, payload);
-            } else {
-                await axiosInstance.post('/purchases/', payload);
+                if (returnTo) {
+                    navigate(returnTo, { replace: true });
+                } else {
+                    navigate(supplierId ? `/suppliers/${supplierId}` : `/customers/${customerId}`);
+                }
+                return;
+            }
+
+            const response = await axiosInstance.post('/purchases/', payload);
+            const createdPurchase = response?.data;
+
+            if (!returnTo && createdPurchase?.id) {
+                setSavedPurchase(createdPurchase);
+                setShowSuccessModal(true);
+                setSuccessModalError('');
+                return;
             }
 
             if (returnTo) {
@@ -534,6 +627,16 @@ function PurchaseFormPage() {
                 warehouses={warehouses}
                 currency={partner.currency}
                 imageBaseUrl={baseApiUrl}
+            />
+            <PurchaseSuccessModal
+                show={showSuccessModal}
+                onHide={handleCloseSuccessModal}
+                purchase={savedPurchase}
+                onPrint={handlePrintInvoice}
+                onRecordPayment={handleRecordPayment}
+                onNewPurchase={handleStartNewPurchase}
+                isPrinting={isGeneratingInvoice}
+                errorMessage={successModalError}
             />
         </Container>
     );
