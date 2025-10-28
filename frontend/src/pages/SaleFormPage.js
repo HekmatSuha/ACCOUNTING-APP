@@ -292,7 +292,23 @@ function SaleFormPage({
         if (!savedSale?.id) {
             return;
         }
+
         setShowSuccessModal(false);
+
+        if (savedSale.customer) {
+            navigate(`/customers/${savedSale.customer}/payment`, {
+                state: { fromSaleId: savedSale.id },
+            });
+            return;
+        }
+
+        if (savedSale.supplier) {
+            navigate(`/suppliers/${savedSale.supplier}/payment`, {
+                state: { fromSaleId: savedSale.id },
+            });
+            return;
+        }
+
         navigate(`/sales/${savedSale.id}`, { state: { openPaymentModal: true } });
     }, [navigate, savedSale]);
 
