@@ -180,6 +180,17 @@ function SaleItemModal({
                                 placeholder="Search name or SKU"
                                 imageBaseUrl={imageBaseUrl}
                             />
+                            <div className="mt-2">
+                                <Button
+                                    variant="link"
+                                    className="p-0"
+                                    href="/inventory/new"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    + Add new inventory item
+                                </Button>
+                            </div>
                         </div>
                     </div>
                     <Row className="gy-3">
