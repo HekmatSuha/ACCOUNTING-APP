@@ -3,9 +3,10 @@
 from django.db import transaction
 from django.db.models import F
 from django.http import FileResponse
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from ..activity_logger import log_activity
 from ..invoice_pdf import generate_purchase_invoice_pdf
@@ -39,6 +40,18 @@ class PurchaseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         account = get_request_account(self.request)
         return Purchase.objects.filter(account=account).order_by('-purchase_date')
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        instance = serializer.instance
+        read_serializer = PurchaseReadSerializer(
+            instance, context=self.get_serializer_context()
+        )
+        headers = self.get_success_headers(read_serializer.data)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         account = get_request_account(self.request)
