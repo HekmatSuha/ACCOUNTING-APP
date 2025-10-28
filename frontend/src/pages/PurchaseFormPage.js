@@ -475,14 +475,25 @@ function PurchaseFormPage() {
                                         </small>
                                     </div>
                                     <div className="sale-form__quick-add">
-                                        <ProductSearchSelect
-                                            key={quickSearchKey}
-                                            products={allProducts}
-                                            value={null}
-                                            onSelect={handleQuickProductSelect}
-                                            placeholder="Search products to add"
-                                            imageBaseUrl={baseApiUrl}
-                                        />
+                                        <div className="sale-form__quick-add-search">
+                                            <ProductSearchSelect
+                                                key={quickSearchKey}
+                                                products={allProducts}
+                                                value={null}
+                                                onSelect={handleQuickProductSelect}
+                                                placeholder="Search products to add"
+                                                imageBaseUrl={baseApiUrl}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="link"
+                                                className="sale-form__add-new-item"
+                                                onClick={() => openCreateItemModal()}
+                                                disabled={!hasWarehouses}
+                                            >
+                                                Add new inventory item
+                                            </Button>
+                                        </div>
                                         <Button
                                             type="button"
                                             className="mt-2 mt-sm-0"

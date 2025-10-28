@@ -333,9 +333,24 @@
 
 .sale-form__quick-add {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
     flex-wrap: wrap;
+}
+
+.sale-form__quick-add-search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 260px;
+    flex: 1;
+}
+
+.sale-form__add-new-item {
+    align-self: flex-start;
+    padding-left: 0;
+    padding-right: 0;
+    font-weight: 500;
 }
 
 .sale-form__items-card .card-body {
