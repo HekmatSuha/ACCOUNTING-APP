@@ -48,7 +48,9 @@ function SaleLineItemsTable({
                                 onClick={onNewLine}
                                 disabled={!hasWarehouses}
                             >
-                                Add new item
+
+                                Add new inventory item
+
                             </Button>
                         </div>
                         <Button
