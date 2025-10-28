@@ -491,7 +491,9 @@ function PurchaseFormPage() {
                                                 onClick={() => openCreateItemModal()}
                                                 disabled={!hasWarehouses}
                                             >
+
                                                 Add new inventory item
+
                                             </Button>
                                         </div>
                                         <Button
