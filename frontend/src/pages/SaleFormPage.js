@@ -12,7 +12,9 @@ import SaleCustomerSelector from '../components/sales/SaleCustomerSelector';
 import SaleSidebarSummary from '../components/sales/SaleSidebarSummary';
 import SaleLineItemsTable from '../components/sales/SaleLineItemsTable';
 import useSaleItemModal from '../components/sales/useSaleItemModal';
+import SaleSuccessModal from '../components/sales/SaleSuccessModal';
 import { getBaseApiUrl } from '../utils/image';
+import { extractFilenameFromDisposition, openPdfBlobInNewTab } from '../utils/pdf';
 
 function SaleFormPage({
     mode: modeProp,
@@ -68,6 +70,10 @@ function SaleFormPage({
         useSaleItemModal();
     const [quickSearchKey, setQuickSearchKey] = useState(0);
     const [hasHydratedFromProps, setHasHydratedFromProps] = useState(initialLineItems.length > 0);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [savedSale, setSavedSale] = useState(null);
+    const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+    const [successModalError, setSuccessModalError] = useState('');
 
     useEffect(() => {
         if (!(isStandaloneSale || allowCustomerSwitch)) {
@@ -239,6 +245,64 @@ function SaleFormPage({
 
     const hasLineItems = lineItems.length > 0;
 
+    const resetFormForNewSale = useCallback(() => {
+        setLineItems([]);
+        setSaleDate(todayIso);
+        setInvoiceDate(todayIso);
+        setInvoiceNumber('');
+        setDocumentNumber('');
+        setDescription('');
+        setFormError(null);
+        setQuickSearchKey((prev) => prev + 1);
+        setHasHydratedFromProps(false);
+        if (isStandaloneSale) {
+            setSelectedCustomerId(null);
+        }
+    }, [isStandaloneSale, todayIso]);
+
+    const handleCloseSuccessModal = useCallback(() => {
+        setShowSuccessModal(false);
+        setSuccessModalError('');
+    }, []);
+
+    const handlePrintInvoice = useCallback(async () => {
+        if (!savedSale?.id) {
+            return;
+        }
+        setSuccessModalError('');
+        setIsGeneratingInvoice(true);
+        try {
+            const response = await axiosInstance.get(`/sales/${savedSale.id}/invoice_pdf/`, {
+                responseType: 'blob',
+            });
+            const fallbackFilename = `invoice_${savedSale.invoice_number || savedSale.id}.pdf`;
+            const filename =
+                extractFilenameFromDisposition(response.headers['content-disposition']) || fallbackFilename;
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            openPdfBlobInNewTab(blob, filename);
+        } catch (error) {
+            console.error('Failed to generate invoice PDF', error);
+            setSuccessModalError('Could not generate the invoice PDF. Please try again.');
+        } finally {
+            setIsGeneratingInvoice(false);
+        }
+    }, [savedSale]);
+
+    const handleRecordPayment = useCallback(() => {
+        if (!savedSale?.id) {
+            return;
+        }
+        setShowSuccessModal(false);
+        navigate(`/sales/${savedSale.id}`, { state: { openPaymentModal: true } });
+    }, [navigate, savedSale]);
+
+    const handleStartNewSale = useCallback(() => {
+        resetFormForNewSale();
+        setSavedSale(null);
+        setShowSuccessModal(false);
+        setSuccessModalError('');
+    }, [resetFormForNewSale]);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setFormError(null);
@@ -305,15 +369,29 @@ function SaleFormPage({
 
         try {
             setIsSubmitting(true);
+            let response;
             if (method === 'put') {
-                await axiosInstance.put(url, payload);
+                response = await axiosInstance.put(url, payload);
             } else {
-                await axiosInstance.post(url, payload);
+                response = await axiosInstance.post(url, payload);
             }
 
             if (onSuccess) {
                 onSuccess();
-            } else if (isEditMode) {
+                return;
+            }
+
+            if (method === 'post' && !isOffer) {
+                const createdSaleData = response?.data;
+                if (createdSaleData?.id) {
+                    setSavedSale(createdSaleData);
+                    setShowSuccessModal(true);
+                    setSuccessModalError('');
+                    return;
+                }
+            }
+
+            if (isEditMode) {
                 navigate(`/sales/${saleId}`);
             } else if (isSupplierSale) {
                 navigate(`/suppliers/${entityId}`);
@@ -487,6 +565,16 @@ function SaleFormPage({
                                 warehouses={warehouses}
                                 currency={customer.currency}
                                 imageBaseUrl={baseApiUrl}
+                            />
+                            <SaleSuccessModal
+                                show={showSuccessModal}
+                                onHide={handleCloseSuccessModal}
+                                sale={savedSale}
+                                onPrint={handlePrintInvoice}
+                                onRecordPayment={handleRecordPayment}
+                                onNewSale={handleStartNewSale}
+                                isPrinting={isGeneratingInvoice}
+                                errorMessage={successModalError}
                             />
                         </>
                     )

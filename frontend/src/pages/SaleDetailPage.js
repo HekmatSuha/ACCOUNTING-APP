@@ -1,28 +1,21 @@
 // frontend/src/pages/SaleDetailPage.js
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import AddPaymentModal from '../components/AddPaymentModal';
 import { getBaseCurrency, loadBaseCurrency } from '../config/currency';
 import '../styles/datatable.css';
 import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
-
-const extractFilenameFromDisposition = disposition => {
-    if (!disposition) {
-        return null;
-    }
-
-    const filenameMatch = /filename="?([^";]+)"?/i.exec(disposition);
-    return filenameMatch ? decodeURIComponent(filenameMatch[1]) : null;
-};
+import { extractFilenameFromDisposition, openPdfBlobInNewTab } from '../utils/pdf';
 
 const BASE_API_URL = getBaseApiUrl();
 
 function SaleDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [sale, setSale] = useState(null);
     const [payments, setPayments] = useState([]); // <-- State for payments
     const [customerCurrency, setCustomerCurrency] = useState('USD');
@@ -63,6 +56,13 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
         loadBaseCurrency().then(bc => setBaseCurrency(bc));
     },[id]);
 
+    useEffect(() => {
+        if (location.state?.openPaymentModal) {
+            setShowPaymentModal(true);
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.pathname, location.state, navigate]);
+
     // --- 1. ADD THIS DELETE HANDLER ---
     const handleDelete = async () => {
         if (window.confirm('Are you sure you want to delete this sale? This action will also restore product stock and cannot be undone.')) {
@@ -90,36 +90,10 @@ setCustomerCurrency(customerRes.data.currency || 'USD');
             });
 
             const fallbackFilename = `invoice_${sale.invoice_number || sale.id}.pdf`;
-            const filename = extractFilenameFromDisposition(response.headers['content-disposition']) || fallbackFilename;
+            const filename =
+                extractFilenameFromDisposition(response.headers['content-disposition']) || fallbackFilename;
             const blob = new Blob([response.data], { type: 'application/pdf' });
-            const blobUrl = window.URL.createObjectURL(blob);
-
-            // Try to render the PDF in a new tab for printing.
-            const pdfWindow = window.open('', '_blank');
-            if (pdfWindow && !pdfWindow.closed) {
-                pdfWindow.document.title = filename;
-                pdfWindow.document.write(`
-                    <html>
-                        <head><title>${filename}</title></head>
-                        <body style="margin:0">
-                            <embed src="${blobUrl}" type="application/pdf" width="100%" height="100%" />
-                        </body>
-                    </html>
-                `);
-                pdfWindow.document.close();
-            } else {
-                // Popup blocked? Fallback to downloading the file instead.
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.setAttribute('download', filename);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-
-            // Revoke the object URL once the browser has had a chance to use it.
-            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60 * 1000);
-
+            openPdfBlobInNewTab(blob, filename);
         } catch (err) {
             console.error('Failed to generate or open PDF:', err);
             setError('Could not generate the invoice PDF. Please try again.');
