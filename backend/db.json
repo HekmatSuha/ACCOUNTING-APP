@@ -1,0 +1,675 @@
+[
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$tZldDZ1SFonpqwKFv4FMwX$0efqMKp1FJH4o4t9i5EToQ2iahW/+nm5hUJ09QIImy0=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "suha34",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-08-17T12:09:57.612Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$56LL4RXWw4oo3BGi9xRxSo$rsrLOG5U0s1BTtonSpeLVEwdKo3ydrQGz0DPWaSHHGQ=",
+    "last_login": null,
+    "is_superuser": true,
+    "username": "testuser",
+    "first_name": "",
+    "last_name": "",
+    "email": "test@example.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2025-09-06T09:30:56.701Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$WZ3wCAqwUDaaV88fos0uAF$PnPCCpXus5RAMDCy95tqcZZI9DFWxHJiNOfc0FKmp5E=",
+    "last_login": "2025-09-09T10:20:48.819Z",
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "admin@admin.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2025-09-09T10:17:57.773Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "BankAccount suha was created.",
+    "timestamp": "2025-09-09T09:18:06.434Z",
+    "content_type": [
+      "api",
+      "bankaccount"
+    ],
+    "object_id": 1,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "Supplier Hakan was created.",
+    "timestamp": "2025-09-09T09:33:01.848Z",
+    "content_type": [
+      "api",
+      "supplier"
+    ],
+    "object_id": 1,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 3,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "Expense Expense of 34.00 on 2025-09-09 was created.",
+    "timestamp": "2025-09-09T09:38:35.839Z",
+    "content_type": [
+      "api",
+      "expense"
+    ],
+    "object_id": 3,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 4,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "Product mirror was created.",
+    "timestamp": "2025-09-09T09:49:03.204Z",
+    "content_type": [
+      "api",
+      "product"
+    ],
+    "object_id": 2,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 5,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "Purchase Purchase #1 from Hakan was created.",
+    "timestamp": "2025-09-09T09:49:22.975Z",
+    "content_type": [
+      "api",
+      "purchase"
+    ],
+    "object_id": 1,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 6,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "updated",
+    "description": "Purchase Purchase #1 from Hakan was updated.",
+    "timestamp": "2025-09-09T09:49:41.981Z",
+    "content_type": [
+      "api",
+      "purchase"
+    ],
+    "object_id": 1,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 7,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "updated",
+    "description": "Customer Hekmat Suha was updated.",
+    "timestamp": "2025-09-09T09:50:24.303Z",
+    "content_type": [
+      "api",
+      "customer"
+    ],
+    "object_id": 1,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 8,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "action_type": "created",
+    "description": "Supplier hakan was created.",
+    "timestamp": "2025-09-09T10:28:56.427Z",
+    "content_type": [
+      "api",
+      "supplier"
+    ],
+    "object_id": 2,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 9,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "action_type": "created",
+    "description": "Customer Aiesha was created.",
+    "timestamp": "2025-09-09T10:29:05.725Z",
+    "content_type": [
+      "api",
+      "customer"
+    ],
+    "object_id": 2,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 10,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "action_type": "created",
+    "description": "Product Suha was created.",
+    "timestamp": "2025-09-09T10:29:25.431Z",
+    "content_type": [
+      "api",
+      "product"
+    ],
+    "object_id": 3,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 11,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "action_type": "created",
+    "description": "Purchase Purchase #2 from hakan was created.",
+    "timestamp": "2025-09-09T10:31:00.178Z",
+    "content_type": [
+      "api",
+      "purchase"
+    ],
+    "object_id": 2,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 12,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "deleted",
+    "description": "Payment Payment of 23.00 for Sale #2 was deleted.",
+    "timestamp": "2025-09-12T10:21:22.707Z",
+    "content_type": [
+      "api",
+      "payment"
+    ],
+    "object_id": 1,
+    "object_repr": "[{\"model\": \"api.payment\", \"pk\": 1, \"fields\": {\"customer\": 1, \"sale\": 2, \"payment_date\": \"2025-08-17\", \"original_amount\": \"23.00\", \"original_currency\": \"USD\", \"exchange_rate\": \"1.000000\", \"converted_amount\": \"0.00\", \"account_exchange_rate\": \"1.000000\", \"account_converted_amount\": \"0.00\", \"method\": \"Cash\", \"notes\": \"\", \"account\": null, \"created_by\": 1, \"created_at\": \"2025-08-17T16:55:43.656Z\"}}]"
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 13,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "BankAccount Suha Kaspi was created.",
+    "timestamp": "2025-09-12T10:24:19.204Z",
+    "content_type": [
+      "api",
+      "bankaccount"
+    ],
+    "object_id": 2,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 14,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "deleted",
+    "description": "Purchase Purchase #1 from Hakan was deleted.",
+    "timestamp": "2025-09-12T10:26:08.966Z",
+    "content_type": [
+      "api",
+      "purchase"
+    ],
+    "object_id": 1,
+    "object_repr": "{\"purchase\": \"[{\\\"model\\\": \\\"api.purchase\\\", \\\"pk\\\": 1, \\\"fields\\\": {\\\"supplier\\\": 1, \\\"customer\\\": null, \\\"purchase_date\\\": \\\"2025-09-09\\\", \\\"bill_number\\\": \\\"\\\", \\\"original_currency\\\": \\\"KZT\\\", \\\"original_amount\\\": \\\"12000.00\\\", \\\"exchange_rate\\\": \\\"1.000000\\\", \\\"converted_amount\\\": \\\"12000.00\\\", \\\"total_amount\\\": \\\"12000.00\\\", \\\"account\\\": 1, \\\"created_by\\\": 1, \\\"created_at\\\": \\\"2025-09-09T09:49:22.958Z\\\"}}]\", \"items\": \"[{\\\"model\\\": \\\"api.purchaseitem\\\", \\\"pk\\\": 2, \\\"fields\\\": {\\\"purchase\\\": 1, \\\"product\\\": 2, \\\"quantity\\\": \\\"1000.00\\\", \\\"unit_price\\\": \\\"12.00\\\"}}]\"}"
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 15,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "Payment Payment of 56.00 from Hekmat Suha was created.",
+    "timestamp": "2025-09-12T10:30:26.053Z",
+    "content_type": [
+      "api",
+      "payment"
+    ],
+    "object_id": 2,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 16,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "created",
+    "description": "Payment Payment of 67.00 from Hekmat Suha was created.",
+    "timestamp": "2025-09-12T12:32:40.996Z",
+    "content_type": [
+      "api",
+      "payment"
+    ],
+    "object_id": 3,
+    "object_repr": ""
+  }
+},
+{
+  "model": "api.activity",
+  "pk": 17,
+  "fields": {
+    "user": [
+      "suha34"
+    ],
+    "action_type": "deleted",
+    "description": "Expense Expense of 23.00 on 2025-08-17 was deleted.",
+    "timestamp": "2025-09-12T17:16:59.524Z",
+    "content_type": [
+      "api",
+      "expense"
+    ],
+    "object_id": 2,
+    "object_repr": "[{\"model\": \"api.expense\", \"pk\": 2, \"fields\": {\"category\": 1, \"amount\": \"23.00\", \"expense_date\": \"2025-08-17\", \"description\": \"123\", \"account\": null, \"created_by\": 1, \"created_at\": \"2025-08-17T17:25:59.177Z\", \"supplier\": null}}]"
+  }
+},
+{
+  "model": "api.customer",
+  "pk": 1,
+  "fields": {
+    "name": "Hekmat Suha",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "image": "customer_images/IMG_9636_copy_Ag28jK5.jpg",
+    "currency": "KZT",
+    "open_balance": "-110.00",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-08-17T12:10:34.549Z",
+    "updated_at": "2025-09-09T09:50:24.295Z"
+  }
+},
+{
+  "model": "api.customer",
+  "pk": 2,
+  "fields": {
+    "name": "Aiesha",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "image": "",
+    "currency": "KZT",
+    "open_balance": "0.00",
+    "created_by": [
+      "admin"
+    ],
+    "created_at": "2025-09-09T10:29:05.714Z",
+    "updated_at": "2025-09-09T10:29:05.714Z"
+  }
+},
+{
+  "model": "api.sale",
+  "pk": 2,
+  "fields": {
+    "customer": 1,
+    "supplier": null,
+    "sale_date": "2025-08-17",
+    "invoice_number": null,
+    "original_currency": "USD",
+    "original_amount": "0.00",
+    "exchange_rate": "1.000000",
+    "converted_amount": "0.00",
+    "total_amount": "65.00",
+    "details": null,
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-08-17T12:14:29.472Z"
+  }
+},
+{
+  "model": "api.sale",
+  "pk": 3,
+  "fields": {
+    "customer": 1,
+    "supplier": null,
+    "sale_date": "2025-08-17",
+    "invoice_number": null,
+    "original_currency": "USD",
+    "original_amount": "0.00",
+    "exchange_rate": "1.000000",
+    "converted_amount": "0.00",
+    "total_amount": "13.00",
+    "details": null,
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-08-17T17:56:07.824Z"
+  }
+},
+{
+  "model": "api.bankaccount",
+  "pk": 1,
+  "fields": {
+    "name": "suha",
+    "balance": "123.00",
+    "currency": "KZT",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-09-09T09:18:06.425Z"
+  }
+},
+{
+  "model": "api.bankaccount",
+  "pk": 2,
+  "fields": {
+    "name": "Suha Kaspi",
+    "balance": "0.00",
+    "currency": "USD",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-09-12T10:24:19.199Z"
+  }
+},
+{
+  "model": "api.payment",
+  "pk": 2,
+  "fields": {
+    "customer": 1,
+    "sale": null,
+    "payment_date": "2025-09-12",
+    "original_amount": "56.00",
+    "original_currency": "KZT,Kazakhstani Tenge",
+    "exchange_rate": "1.000000",
+    "converted_amount": "56.00",
+    "account_exchange_rate": "1.000000",
+    "account_converted_amount": "56.00",
+    "method": "Cash",
+    "notes": "",
+    "account": 1,
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-09-12T10:30:26.035Z"
+  }
+},
+{
+  "model": "api.payment",
+  "pk": 3,
+  "fields": {
+    "customer": 1,
+    "sale": null,
+    "payment_date": "2025-09-12",
+    "original_amount": "67.00",
+    "original_currency": "KZT",
+    "exchange_rate": "1.000000",
+    "converted_amount": "67.00",
+    "account_exchange_rate": "1.000000",
+    "account_converted_amount": "67.00",
+    "method": "Cash",
+    "notes": "",
+    "account": 1,
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-09-12T12:32:40.987Z"
+  }
+},
+{
+  "model": "api.product",
+  "pk": 1,
+  "fields": {
+    "name": "pepsi300",
+    "description": "",
+    "sku": "001",
+    "purchase_price": "12.00",
+    "sale_price": "13.00",
+    "stock_quantity": "93.00",
+    "image": "",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-08-17T12:11:00.228Z",
+    "updated_at": "2025-08-17T17:56:07.839Z"
+  }
+},
+{
+  "model": "api.product",
+  "pk": 2,
+  "fields": {
+    "name": "mirror",
+    "description": "",
+    "sku": "004",
+    "purchase_price": "0.00",
+    "sale_price": "12.00",
+    "stock_quantity": "0.00",
+    "image": "product_images/001-1_WI21NcZ.jpg",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-09-09T09:49:03.196Z",
+    "updated_at": "2025-09-09T09:49:03.196Z"
+  }
+},
+{
+  "model": "api.product",
+  "pk": 3,
+  "fields": {
+    "name": "Suha",
+    "description": "",
+    "sku": null,
+    "purchase_price": "0.00",
+    "sale_price": "10.00",
+    "stock_quantity": "100.00",
+    "image": "",
+    "created_by": [
+      "admin"
+    ],
+    "created_at": "2025-09-09T10:29:25.423Z",
+    "updated_at": "2025-09-09T10:29:25.423Z"
+  }
+},
+{
+  "model": "api.saleitem",
+  "pk": 2,
+  "fields": {
+    "sale": 2,
+    "product": 1,
+    "quantity": 5,
+    "unit_price": "13.00"
+  }
+},
+{
+  "model": "api.saleitem",
+  "pk": 3,
+  "fields": {
+    "sale": 3,
+    "product": 1,
+    "quantity": 1,
+    "unit_price": "13.00"
+  }
+},
+{
+  "model": "api.supplier",
+  "pk": 1,
+  "fields": {
+    "name": "Hakan",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "image": "supplier_images/Gemini_Generated_Image_8fcecj8fcecj8fce_1Cwr9IW.png",
+    "currency": "KZT",
+    "open_balance": "0.00",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-09-09T09:33:01.837Z",
+    "updated_at": "2025-09-09T09:33:01.837Z"
+  }
+},
+{
+  "model": "api.supplier",
+  "pk": 2,
+  "fields": {
+    "name": "hakan",
+    "email": "",
+    "phone": "",
+    "address": "",
+    "image": "",
+    "currency": "KZT",
+    "open_balance": "1000.00",
+    "created_by": [
+      "admin"
+    ],
+    "created_at": "2025-09-09T10:28:56.419Z",
+    "updated_at": "2025-09-09T10:28:56.419Z"
+  }
+},
+{
+  "model": "api.expensecategory",
+  "pk": 1,
+  "fields": {
+    "name": "Rent",
+    "created_by": [
+      "suha34"
+    ],
+    "created_at": "2025-08-17T17:25:47.064Z"
+  }
+},
+{
+  "model": "api.purchase",
+  "pk": 2,
+  "fields": {
+    "supplier": 2,
+    "customer": null,
+    "purchase_date": "2025-09-09",
+    "bill_number": null,
+    "original_currency": "KZT",
+    "original_amount": "1000.00",
+    "exchange_rate": "1.000000",
+    "converted_amount": "1000.00",
+    "total_amount": "1000.00",
+    "account": null,
+    "created_by": [
+      "admin"
+    ],
+    "created_at": "2025-09-09T10:31:00.161Z"
+  }
+},
+{
+  "model": "api.purchaseitem",
+  "pk": 3,
+  "fields": {
+    "purchase": 2,
+    "product": 3,
+    "quantity": "100.00",
+    "unit_price": "10.00"
+  }
+},
+{
+  "model": "api.companyinfo",
+  "pk": 1,
+  "fields": {
+    "name": "Your Company Name",
+    "address": "",
+    "phone": "",
+    "email": "",
+    "website": "",
+    "logo": ""
+  }
+},
+{
+  "model": "api.companysettings",
+  "pk": 1,
+  "fields": {
+    "base_currency": "USD"
+  }
+}
+]
