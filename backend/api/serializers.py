@@ -789,8 +789,8 @@ class SaleWriteSerializer(AccountScopedSerializerMixin, serializers.ModelSeriali
                 else:
                     next_number = 1
                 invoice_number = str(next_number)
-                # Ensure global uniqueness in case another user chose same number
-                while Sale.objects.filter(invoice_number=invoice_number).exists():
+                # Ensure uniqueness within the account in case another user chose the same number
+                while Sale.objects.filter(account=account, invoice_number=invoice_number).exists():
                     next_number += 1
                     invoice_number = str(next_number)
                 validated_data['invoice_number'] = invoice_number
