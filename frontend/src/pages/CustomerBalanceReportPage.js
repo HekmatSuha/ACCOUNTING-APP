@@ -104,17 +104,17 @@ function CustomerBalanceReportPage() {
 
     const getStatusVariant = (balance) => {
         if (balance > 0) {
-            return 'danger';
+            return 'success';
         }
         if (balance < 0) {
-            return 'success';
+            return 'danger';
         }
         return 'secondary';
     };
 
     const getStatusLabel = (balance) => {
         if (balance > 0) {
-            return 'Owes us';
+            return 'They owe us';
         }
         if (balance < 0) {
             return 'We owe them';
@@ -178,7 +178,7 @@ function CustomerBalanceReportPage() {
                     <>
                         <Row className="mb-4">
                             <Col md={4} className="mb-3">
-                                <Card bg="danger" text="white" className="h-100">
+                                <Card bg="success" text="white" className="h-100">
                                     <Card.Body>
                                         <Card.Title className="text-uppercase fs-6">Customers Owing Us</Card.Title>
                                         <div className="display-6">{counts.oweUs}</div>
@@ -187,7 +187,7 @@ function CustomerBalanceReportPage() {
                                 </Card>
                             </Col>
                             <Col md={4} className="mb-3">
-                                <Card bg="success" text="white" className="h-100">
+                                <Card bg="danger" text="white" className="h-100">
                                     <Card.Body>
                                         <Card.Title className="text-uppercase fs-6">Customers We Owe</Card.Title>
                                         <div className="display-6">{counts.weOwe}</div>
@@ -228,9 +228,9 @@ function CustomerBalanceReportPage() {
                                         const balanceValue = Number(customer.balance);
                                         const balanceClass =
                                             balanceValue > 0
-                                                ? 'text-danger'
-                                                : balanceValue < 0
                                                 ? 'text-success'
+                                                : balanceValue < 0
+                                                ? 'text-danger'
                                                 : 'text-muted';
                                         return (
                                             <tr key={customer.id}>
