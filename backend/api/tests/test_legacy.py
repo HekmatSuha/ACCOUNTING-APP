@@ -1,8 +1,9 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import F
+from django.test import TestCase
 
 from ..models import (
     BankAccount,
@@ -505,6 +506,7 @@ class ActivityRestoreTest(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         self.product = Product.objects.create(name='Prod', sale_price=1, created_by=self.user)
+        self.warehouse = Warehouse.get_default(self.user)
 
     def test_restore_deleted_product(self):
         log_activity(self.user, 'deleted', self.product)
@@ -514,6 +516,68 @@ class ActivityRestoreTest(TestCase):
         response = self.client.post(f'/api/activities/{activity.id}/restore/')
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Product.objects.filter(pk=product_id).exists())
+
+    def test_restore_deleted_customer_sale(self):
+        customer = Customer.objects.create(name='Cust', created_by=self.user)
+        sale = Sale.objects.create(
+            customer=customer,
+            original_amount=Decimal('100.00'),
+            exchange_rate=Decimal('1.00'),
+            created_by=self.user,
+            account=self.account,
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.product,
+            quantity=1,
+            unit_price=Decimal('100.00'),
+            warehouse=self.warehouse,
+        )
+        log_activity(self.user, 'deleted', sale)
+        activity = Activity.objects.get(action_type='deleted', object_id=sale.pk)
+        Customer.objects.filter(id=customer.id).update(
+            open_balance=F('open_balance') - sale.total_amount
+        )
+        sale.delete()
+
+        response = self.client.post(f'/api/activities/{activity.id}/restore/')
+
+        self.assertEqual(response.status_code, 200)
+        customer.refresh_from_db()
+        restored_sale = Sale.objects.get(pk=sale.pk)
+        self.assertEqual(customer.open_balance, restored_sale.total_amount)
+        self.assertEqual(restored_sale.items.count(), 1)
+
+    def test_restore_deleted_supplier_sale(self):
+        supplier = Supplier.objects.create(name='Supp', created_by=self.user)
+        sale = Sale.objects.create(
+            supplier=supplier,
+            original_amount=Decimal('75.00'),
+            exchange_rate=Decimal('1.00'),
+            created_by=self.user,
+            account=self.account,
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.product,
+            quantity=1,
+            unit_price=Decimal('75.00'),
+            warehouse=self.warehouse,
+        )
+        log_activity(self.user, 'deleted', sale)
+        activity = Activity.objects.get(action_type='deleted', object_id=sale.pk)
+        Supplier.objects.filter(id=supplier.id).update(
+            open_balance=F('open_balance') + sale.total_amount
+        )
+        sale.delete()
+
+        response = self.client.post(f'/api/activities/{activity.id}/restore/')
+
+        self.assertEqual(response.status_code, 200)
+        supplier.refresh_from_db()
+        restored_sale = Sale.objects.get(pk=sale.pk)
+        self.assertEqual(supplier.open_balance, -restored_sale.total_amount)
+        self.assertEqual(restored_sale.items.count(), 1)
 
 
 class ActivityDateFilterTest(TestCase):
