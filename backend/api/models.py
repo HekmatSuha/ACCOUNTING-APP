@@ -4,7 +4,7 @@ from datetime import date
 from collections import OrderedDict
 
 from django.db import models, transaction
-from django.db.models import F, Sum, DecimalField
+from django.db.models import F, Sum, DecimalField, Q
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -449,7 +449,7 @@ class Sale(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     supplier = models.ForeignKey('Supplier', on_delete=models.CASCADE, related_name='sales', null=True, blank=True)
     sale_date = models.DateField(default=date.today)
-    invoice_number = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    invoice_number = models.CharField(max_length=50, blank=True, null=True)
     original_currency = models.CharField(max_length=3, default='USD')
     original_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     exchange_rate = models.DecimalField(max_digits=12, decimal_places=6, default=1)
@@ -463,6 +463,15 @@ class Sale(models.Model):
         related_name="sales",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["account", "invoice_number"],
+                condition=Q(invoice_number__isnull=False),
+                name="unique_account_invoice_number",
+            )
+        ]
 
     def __str__(self):
         if self.customer_id:
