@@ -60,9 +60,14 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                         item_obj.object.sale = restored_sale
                         item_obj.save()
 
-                    Customer.objects.filter(pk=restored_sale.customer.pk).update(
-                        open_balance=F('open_balance') + restored_sale.total_amount
-                    )
+                    if restored_sale.customer_id:
+                        Customer.objects.filter(pk=restored_sale.customer_id).update(
+                            open_balance=F('open_balance') + restored_sale.total_amount
+                        )
+                    elif restored_sale.supplier_id:
+                        Supplier.objects.filter(pk=restored_sale.supplier_id).update(
+                            open_balance=F('open_balance') - restored_sale.total_amount
+                        )
                     default_warehouse = Warehouse.get_default(request.user)
                     for item in restored_sale.items.select_related('product', 'warehouse'):
                         warehouse = item.warehouse or default_warehouse
@@ -85,8 +90,8 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                         item_obj.object.purchase = restored_purchase
                         item_obj.save()
 
-                    if not restored_purchase.account_id:
-                        Supplier.objects.filter(pk=restored_purchase.supplier.pk).update(
+                    if not restored_purchase.account_id and restored_purchase.supplier_id:
+                        Supplier.objects.filter(pk=restored_purchase.supplier_id).update(
                             open_balance=F('open_balance') + restored_purchase.total_amount
                         )
                     default_warehouse = Warehouse.get_default(request.user)
