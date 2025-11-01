@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image, Tabs, Tab } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image, Tabs, Tab, InputGroup } from 'react-bootstrap';
 
 const INITIAL_FORM_STATE = {
     name: '',
@@ -530,26 +530,46 @@ function ProductFormPage() {
                                             </Col>
                                             <Col md={4}>
                                                 <Form.Group className="mb-3">
-                                                    <Form.Label>Profit Margin (auto)</Form.Label>
-                                                    <Form.Control
-                                                        type="number"
-                                                        readOnly
-                                                        value={derivedProfitMargin.toFixed(2)}
-                                                    />
-                                                    <Form.Text className="text-muted">Calculated as ((Sale - Purchase) / Sale) × 100.</Form.Text>
+                                                    <Form.Label id="profit-margin-label">Profit Margin (auto)</Form.Label>
+                                                    <InputGroup aria-labelledby="profit-margin-label profit-margin-help">
+                                                        <InputGroup.Text id="profit-margin-addon">
+                                                            <span aria-hidden="true" className="me-2">🧮</span>
+                                                            <span className="fw-semibold">Auto</span>
+                                                        </InputGroup.Text>
+                                                        <div
+                                                            className="form-control bg-light text-end"
+                                                            role="status"
+                                                            aria-live="polite"
+                                                            aria-labelledby="profit-margin-label profit-margin-addon profit-margin-help"
+                                                        >
+                                                            {derivedProfitMargin.toFixed(2)}%
+                                                        </div>
+                                                    </InputGroup>
+                                                    <Form.Text id="profit-margin-help" className="text-muted">
+                                                        Calculated as ((Sale - Purchase) / Sale) × 100.
+                                                    </Form.Text>
                                                 </Form.Group>
                                             </Col>
                                             <Col md={4}>
                                                 <Form.Group className="mb-3">
-                                                    <Form.Label>
+                                                    <Form.Label id="final-sale-price-label">
                                                         Final Sale Price (incl. tax/discount) ({formData.currency})
                                                     </Form.Label>
-                                                    <Form.Control
-                                                        type="number"
-                                                        readOnly
-                                                        value={derivedFinalSalePrice.toFixed(2)}
-                                                    />
-                                                    <Form.Text className="text-muted">
+                                                    <InputGroup aria-labelledby="final-sale-price-label final-sale-price-help">
+                                                        <InputGroup.Text id="final-sale-price-addon">
+                                                            <span aria-hidden="true" className="me-2">💰</span>
+                                                            <span className="fw-semibold">Auto</span>
+                                                        </InputGroup.Text>
+                                                        <div
+                                                            className="form-control bg-light text-end"
+                                                            role="status"
+                                                            aria-live="polite"
+                                                            aria-labelledby="final-sale-price-label final-sale-price-addon final-sale-price-help"
+                                                        >
+                                                            {formData.currency} {derivedFinalSalePrice.toFixed(2)}
+                                                        </div>
+                                                    </InputGroup>
+                                                    <Form.Text id="final-sale-price-help" className="text-muted">
                                                         Displayed using the selected currency and current tax/discount values.
                                                     </Form.Text>
                                                 </Form.Group>
