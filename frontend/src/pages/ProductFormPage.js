@@ -19,6 +19,7 @@ function ProductFormPage() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(isEditing);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState({});
     const objectUrlRef = useRef(null);
 
     useEffect(() => {
@@ -51,8 +52,33 @@ function ProductFormPage() {
         }
     }, [id, isEditing]);
 
+    const validateValues = (values) => {
+        const errors = {};
+        const purchasePrice = parseFloat(values.purchase_price);
+        const salePrice = parseFloat(values.sale_price);
+
+        if (Number.isNaN(purchasePrice) || purchasePrice < 0) {
+            errors.purchase_price = 'Purchase price must be zero or greater.';
+        }
+
+        if (Number.isNaN(salePrice) || salePrice <= 0) {
+            errors.sale_price = 'Sale price must be greater than zero.';
+        } else if (!errors.purchase_price && !Number.isNaN(purchasePrice) && salePrice < purchasePrice) {
+            errors.sale_price = 'Sale price must not be lower than the purchase price.';
+        }
+
+        return errors;
+    };
+
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        const updatedForm = { ...formData, [name]: value };
+        setFormData(updatedForm);
+        const errors = validateValues(updatedForm);
+        setFieldErrors(errors);
+        if (Object.keys(errors).length === 0) {
+            setError('');
+        }
     };
 
     const handleImageChange = (e) => {
@@ -82,6 +108,15 @@ function ProductFormPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const validationErrors = validateValues(formData);
+        if (Object.keys(validationErrors).length > 0) {
+            setFieldErrors(validationErrors);
+            setError('Please correct the highlighted fields before saving.');
+            return;
+        }
+
+        setError('');
+
         const submissionData = new FormData();
         Object.keys(formData).forEach(key => {
             if (key !== 'image' && key !== 'id' && key !== 'stock_quantity') {
@@ -177,13 +212,38 @@ function ProductFormPage() {
                                 <Col md={4}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Purchase Price ($)</Form.Label>
-                                        <Form.Control type="number" step="0.01" name="purchase_price" value={formData.purchase_price} onChange={handleChange} disabled={isFormDisabled} />
+                                        <Form.Control
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            name="purchase_price"
+                                            value={formData.purchase_price}
+                                            onChange={handleChange}
+                                            isInvalid={Boolean(fieldErrors.purchase_price)}
+                                            disabled={isFormDisabled}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {fieldErrors.purchase_price}
+                                        </Form.Control.Feedback>
                                     </Form.Group>
                                 </Col>
                                 <Col md={4}>
                                     <Form.Group className="mb-3">
                                         <Form.Label>Sale Price ($) <span className="text-danger">*</span></Form.Label>
-                                        <Form.Control type="number" step="0.01" name="sale_price" value={formData.sale_price} onChange={handleChange} required disabled={isFormDisabled} />
+                                        <Form.Control
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            name="sale_price"
+                                            value={formData.sale_price}
+                                            onChange={handleChange}
+                                            required
+                                            isInvalid={Boolean(fieldErrors.sale_price)}
+                                            disabled={isFormDisabled}
+                                        />
+                                        <Form.Control.Feedback type="invalid">
+                                            {fieldErrors.sale_price}
+                                        </Form.Control.Feedback>
                                     </Form.Group>
                                 </Col>
                                 <Col md={4}>
