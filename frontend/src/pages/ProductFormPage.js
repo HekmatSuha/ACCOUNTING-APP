@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image, Accordion } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image, Tabs, Tab } from 'react-bootstrap';
 
 const INITIAL_FORM_STATE = {
     name: '',
@@ -41,6 +41,7 @@ function ProductFormPage() {
     const objectUrlRef = useRef(null);
     const [derivedProfitMargin, setDerivedProfitMargin] = useState(0);
     const [derivedFinalSalePrice, setDerivedFinalSalePrice] = useState(0);
+    const [activeSection, setActiveSection] = useState('basic');
 
     useEffect(() => {
         if (isEditing) {
@@ -245,10 +246,15 @@ function ProductFormPage() {
                         </div>
                     ) : (
                         <Form onSubmit={handleSubmit}>
-                            <Accordion defaultActiveKey={["0"]} alwaysOpen>
-                                <Accordion.Item eventKey="0">
-                                    <Accordion.Header>Basic Information</Accordion.Header>
-                                    <Accordion.Body>
+                            <Tabs
+                                id="product-form-tabs"
+                                activeKey={activeSection}
+                                onSelect={(key) => setActiveSection(key || 'basic')}
+                                className="mb-3"
+                                variant="pills"
+                                justify
+                            >
+                                <Tab eventKey="basic" title="Basic Information" mountOnEnter={false} unmountOnExit={false}>
                                         <Row>
                                             <Col md={8}>
                                                 <Form.Group className="mb-3">
@@ -267,11 +273,8 @@ function ProductFormPage() {
                                             <Form.Label>Description</Form.Label>
                                             <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} disabled={isFormDisabled} />
                                         </Form.Group>
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                                <Accordion.Item eventKey="1">
-                                    <Accordion.Header>Categorization & Metadata</Accordion.Header>
-                                    <Accordion.Body>
+                                </Tab>
+                                <Tab eventKey="categorization" title="Categorization & Metadata" mountOnEnter={false} unmountOnExit={false}>
                                         <Row>
                                             <Col md={6}>
                                                 <Form.Group className="mb-3">
@@ -359,11 +362,8 @@ function ProductFormPage() {
                                                 </Form.Group>
                                             </Col>
                                         </Row>
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                                <Accordion.Item eventKey="2">
-                                    <Accordion.Header>Pricing & Taxes</Accordion.Header>
-                                    <Accordion.Body>
+                                </Tab>
+                                <Tab eventKey="pricing" title="Pricing & Taxes" mountOnEnter={false} unmountOnExit={false}>
                                         <Row>
                                             <Col md={4}>
                                                 <Form.Group className="mb-3">
@@ -529,11 +529,8 @@ function ProductFormPage() {
                                                 </Form.Group>
                                             </Col>
                                         </Row>
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                                <Accordion.Item eventKey="3">
-                                    <Accordion.Header>Inventory & Media</Accordion.Header>
-                                    <Accordion.Body>
+                                </Tab>
+                                <Tab eventKey="inventory" title="Inventory & Media" mountOnEnter={false} unmountOnExit={false}>
                                         <Form.Group className="mb-3">
                                             <Form.Label>Product Image</Form.Label>
                                             <Form.Control
@@ -584,9 +581,8 @@ function ProductFormPage() {
                                                 </Form.Group>
                                             </Col>
                                         </Row>
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                            </Accordion>
+                                </Tab>
+                            </Tabs>
                             <div className="d-flex flex-column flex-sm-row mt-3">
                                 <Button variant="secondary" onClick={() => navigate('/inventory')} className="me-sm-2 mb-2 mb-sm-0">Cancel</Button>
                                 <Button variant="primary" type="submit" disabled={isFormDisabled}>
