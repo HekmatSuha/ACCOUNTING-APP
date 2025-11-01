@@ -5,14 +5,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image } from 'react-bootstrap';
 
+const INITIAL_FORM_STATE = {
+    name: '',
+    description: '',
+    sku: '',
+    category: '',
+    subcategory: '',
+    brand: '',
+    barcode: '',
+    unit_of_measure: '',
+    tags: '',
+    purchase_price: 0.00,
+    sale_price: 0.00,
+    stock_quantity: 0,
+};
+
 function ProductFormPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const isEditing = Boolean(id);
 
-    const [formData, setFormData] = useState({
-        name: '', description: '', sku: '', purchase_price: 0.00, sale_price: 0.00, stock_quantity: 0
-    });
+    const [formData, setFormData] = useState(() => ({ ...INITIAL_FORM_STATE }));
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [existingImage, setExistingImage] = useState(null);
@@ -27,8 +40,18 @@ function ProductFormPage() {
             setIsLoading(true);
             axiosInstance.get(`/products/${id}/`)
                 .then(response => {
-                    const { id: _removed, image, ...data } = response.data;
-                    setFormData(data);
+                    const { id: _removed, image, warehouse_quantities, ...data } = response.data;
+                    const numericFields = ['purchase_price', 'sale_price', 'stock_quantity'];
+                    const normalizedData = Object.keys(INITIAL_FORM_STATE).reduce((acc, key) => {
+                        const value = data[key];
+                        if (value === null || value === undefined) {
+                            acc[key] = numericFields.includes(key) ? INITIAL_FORM_STATE[key] : '';
+                        } else {
+                            acc[key] = value;
+                        }
+                        return acc;
+                    }, { ...INITIAL_FORM_STATE });
+                    setFormData(normalizedData);
                     setExistingImage(image || null);
                     setImagePreview(null);
                     setImageFile(null);
@@ -44,6 +67,7 @@ function ProductFormPage() {
             setExistingImage(null);
             setImagePreview(null);
             setImageFile(null);
+            setFormData({ ...INITIAL_FORM_STATE });
             if (objectUrlRef.current) {
                 URL.revokeObjectURL(objectUrlRef.current);
                 objectUrlRef.current = null;
@@ -176,6 +200,93 @@ function ProductFormPage() {
                                 <Form.Label>Description</Form.Label>
                                 <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} disabled={isFormDisabled} />
                             </Form.Group>
+                            <Row>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Category</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="category"
+                                            value={formData.category}
+                                            onChange={handleChange}
+                                            placeholder="e.g., Electronics"
+                                            disabled={isFormDisabled}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Subcategory</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="subcategory"
+                                            value={formData.subcategory}
+                                            onChange={handleChange}
+                                            placeholder="e.g., Mobile Phones"
+                                            disabled={isFormDisabled}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                            <Row>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Brand / Manufacturer</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="brand"
+                                            value={formData.brand}
+                                            onChange={handleChange}
+                                            placeholder="e.g., Acme Corp"
+                                            disabled={isFormDisabled}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Unit of Measure (UOM)</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="unit_of_measure"
+                                            value={formData.unit_of_measure}
+                                            onChange={handleChange}
+                                            placeholder="e.g., pcs, kg, liters"
+                                            disabled={isFormDisabled}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
+                            <Row>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Barcode / QR Code</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="barcode"
+                                            value={formData.barcode}
+                                            onChange={handleChange}
+                                            placeholder="Scan or enter barcode"
+                                            disabled={isFormDisabled}
+                                        />
+                                    </Form.Group>
+                                </Col>
+                                <Col md={6}>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Tags / Keywords</Form.Label>
+                                        <Form.Control
+                                            type="text"
+                                            name="tags"
+                                            value={formData.tags}
+                                            onChange={handleChange}
+                                            placeholder="e.g., featured, summer"
+                                            disabled={isFormDisabled}
+                                        />
+                                        <Form.Text className="text-muted">
+                                            Separate multiple tags with commas for easier filtering.
+                                        </Form.Text>
+                                    </Form.Group>
+                                </Col>
+                            </Row>
                             <Form.Group className="mb-3">
                                 <Form.Label>Product Image</Form.Label>
                                 <Form.Control
