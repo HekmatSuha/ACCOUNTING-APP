@@ -41,17 +41,17 @@ function SaleLineItemsTable({
                                 placeholder="Search products to add"
                                 imageBaseUrl={baseApiUrl}
                             />
-                            <div className="mt-2">
-                                <Button
-                                    variant="link"
-                                    className="p-0"
-                                    href="/inventory/new"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    + Add new inventory item
-                                </Button>
-                            </div>
+                            <Button
+                                type="button"
+                                variant="link"
+                                className="sale-form__add-new-item"
+                                onClick={onNewLine}
+                                disabled={!hasWarehouses}
+                            >
+
+                                Add new inventory item
+
+                            </Button>
                         </div>
                         <Button
                             type="button"
