@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image, Accordion } from 'react-bootstrap';
 
 const INITIAL_FORM_STATE = {
     name: '',
@@ -245,340 +245,364 @@ function ProductFormPage() {
                         </div>
                     ) : (
                         <Form onSubmit={handleSubmit}>
-                            <Row>
-                                <Col md={8}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Product Name <span className="text-danger">*</span></Form.Label>
-                                        <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required disabled={isFormDisabled} />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>SKU (Stock Keeping Unit)</Form.Label>
-                                        <Form.Control type="text" name="sku" value={formData.sku} onChange={handleChange} disabled={isFormDisabled} />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Description</Form.Label>
-                                <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} disabled={isFormDisabled} />
-                            </Form.Group>
-                            <Row>
-                                <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Category</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="category"
-                                            value={formData.category}
-                                            onChange={handleChange}
-                                            placeholder="e.g., Electronics"
-                                            disabled={isFormDisabled}
+                            <Accordion defaultActiveKey={["0"]} alwaysOpen>
+                                <Accordion.Item eventKey="0">
+                                    <Accordion.Header>Basic Information</Accordion.Header>
+                                    <Accordion.Body>
+                                        <Row>
+                                            <Col md={8}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Product Name <span className="text-danger">*</span></Form.Label>
+                                                    <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required disabled={isFormDisabled} />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>SKU (Stock Keeping Unit)</Form.Label>
+                                                    <Form.Control type="text" name="sku" value={formData.sku} onChange={handleChange} disabled={isFormDisabled} />
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Description</Form.Label>
+                                            <Form.Control as="textarea" rows={3} name="description" value={formData.description} onChange={handleChange} disabled={isFormDisabled} />
+                                        </Form.Group>
+                                    </Accordion.Body>
+                                </Accordion.Item>
+                                <Accordion.Item eventKey="1">
+                                    <Accordion.Header>Categorization & Metadata</Accordion.Header>
+                                    <Accordion.Body>
+                                        <Row>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Category</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        name="category"
+                                                        value={formData.category}
+                                                        onChange={handleChange}
+                                                        placeholder="e.g., Electronics"
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Subcategory</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        name="subcategory"
+                                                        value={formData.subcategory}
+                                                        onChange={handleChange}
+                                                        placeholder="e.g., Mobile Phones"
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                        <Row>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Brand / Manufacturer</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        name="brand"
+                                                        value={formData.brand}
+                                                        onChange={handleChange}
+                                                        placeholder="e.g., Acme Corp"
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Unit of Measure (UOM)</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        name="unit_of_measure"
+                                                        value={formData.unit_of_measure}
+                                                        onChange={handleChange}
+                                                        placeholder="e.g., pcs, kg, liters"
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                        <Row>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Barcode / QR Code</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        name="barcode"
+                                                        value={formData.barcode}
+                                                        onChange={handleChange}
+                                                        placeholder="Scan or enter barcode"
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Tags / Keywords</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        name="tags"
+                                                        value={formData.tags}
+                                                        onChange={handleChange}
+                                                        placeholder="e.g., featured, summer"
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Text className="text-muted">
+                                                        Separate multiple tags with commas for easier filtering.
+                                                    </Form.Text>
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                    </Accordion.Body>
+                                </Accordion.Item>
+                                <Accordion.Item eventKey="2">
+                                    <Accordion.Header>Pricing & Taxes</Accordion.Header>
+                                    <Accordion.Body>
+                                        <Row>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Currency</Form.Label>
+                                                    <Form.Select
+                                                        name="currency"
+                                                        value={formData.currency}
+                                                        onChange={handleChange}
+                                                        disabled={isFormDisabled}
+                                                    >
+                                                        <option value="USD">USD — US Dollar</option>
+                                                        <option value="EUR">EUR — Euro</option>
+                                                        <option value="GBP">GBP — British Pound</option>
+                                                        <option value="KZT">KZT — Kazakhstani Tenge</option>
+                                                        <option value="CAD">CAD — Canadian Dollar</option>
+                                                        <option value="AUD">AUD — Australian Dollar</option>
+                                                    </Form.Select>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Tax / VAT (%)</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max="100"
+                                                        name="tax_rate"
+                                                        value={formData.tax_rate}
+                                                        onChange={handleChange}
+                                                        isInvalid={Boolean(fieldErrors.tax_rate)}
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Control.Feedback type="invalid">
+                                                        {fieldErrors.tax_rate}
+                                                    </Form.Control.Feedback>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Discount (%)</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        max="100"
+                                                        name="discount_rate"
+                                                        value={formData.discount_rate}
+                                                        onChange={handleChange}
+                                                        isInvalid={Boolean(fieldErrors.discount_rate)}
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Control.Feedback type="invalid">
+                                                        {fieldErrors.discount_rate}
+                                                    </Form.Control.Feedback>
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                        <Row>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>
+                                                        Purchase Price ({formData.currency})
+                                                    </Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        name="purchase_price"
+                                                        value={formData.purchase_price}
+                                                        onChange={handleChange}
+                                                        isInvalid={Boolean(fieldErrors.purchase_price)}
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Control.Feedback type="invalid">
+                                                        {fieldErrors.purchase_price}
+                                                    </Form.Control.Feedback>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>
+                                                        Sale Price ({formData.currency}) <span className="text-danger">*</span>
+                                                    </Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0.01"
+                                                        name="sale_price"
+                                                        value={formData.sale_price}
+                                                        onChange={handleChange}
+                                                        required
+                                                        isInvalid={Boolean(fieldErrors.sale_price)}
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Control.Feedback type="invalid">
+                                                        {fieldErrors.sale_price}
+                                                    </Form.Control.Feedback>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Wholesale Price ({formData.currency})</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        name="wholesale_price"
+                                                        value={formData.wholesale_price}
+                                                        onChange={handleChange}
+                                                        isInvalid={Boolean(fieldErrors.wholesale_price)}
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Control.Feedback type="invalid">
+                                                        {fieldErrors.wholesale_price}
+                                                    </Form.Control.Feedback>
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                        <Row>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Minimum Sale Price ({formData.currency})</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        name="minimum_sale_price"
+                                                        value={formData.minimum_sale_price}
+                                                        onChange={handleChange}
+                                                        isInvalid={Boolean(fieldErrors.minimum_sale_price)}
+                                                        disabled={isFormDisabled}
+                                                    />
+                                                    <Form.Control.Feedback type="invalid">
+                                                        {fieldErrors.minimum_sale_price}
+                                                    </Form.Control.Feedback>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Profit Margin (auto)</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        readOnly
+                                                        value={derivedProfitMargin.toFixed(2)}
+                                                    />
+                                                    <Form.Text className="text-muted">Calculated as ((Sale - Purchase) / Sale) × 100.</Form.Text>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>
+                                                        Final Sale Price (incl. tax/discount) ({formData.currency})
+                                                    </Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        readOnly
+                                                        value={derivedFinalSalePrice.toFixed(2)}
+                                                    />
+                                                    <Form.Text className="text-muted">
+                                                        Displayed using the selected currency and current tax/discount values.
+                                                    </Form.Text>
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                    </Accordion.Body>
+                                </Accordion.Item>
+                                <Accordion.Item eventKey="3">
+                                    <Accordion.Header>Inventory & Media</Accordion.Header>
+                                    <Accordion.Body>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Product Image</Form.Label>
+                                            <Form.Control
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageChange}
+                                                disabled={isFormDisabled}
+                                            />
+                                            <Form.Text className="text-muted">
+                                                Supported formats: JPG, PNG, GIF up to 5 MB.
+                                            </Form.Text>
+                                            {imageFile && imagePreview && (
+                                                <div className="mt-2">
+                                                    <Image
+                                                        src={imagePreview}
+                                                        thumbnail
+                                                        alt="Selected product preview"
+                                                        style={{ maxWidth: '150px' }}
+                                                    />
+                                                </div>
+                                            )}
+                                            {!imageFile && existingImage && (
+                                                <div className="mt-2">
+                                                    <Image
+                                                        src={existingImage}
+                                                        thumbnail
+                                                        alt="Current product"
+                                                        style={{ maxWidth: '150px' }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </Form.Group>
+                                        <Row>
+                                            <Col md={6} lg={4}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Total Stock (read-only)</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        step="0.01"
+                                                        name="stock_quantity"
+                                                        value={formData.stock_quantity}
+                                                        readOnly
+                                                        disabled
+                                                    />
+                                                    <Form.Text className="text-muted">
+                                                        Manage inventory levels per warehouse from the Warehouses screen.
+                                                    </Form.Text>
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
+                                    </Accordion.Body>
+                                </Accordion.Item>
+                            </Accordion>
+                            <div className="d-flex flex-column flex-sm-row mt-3">
+                                <Button variant="secondary" onClick={() => navigate('/inventory')} className="me-sm-2 mb-2 mb-sm-0">Cancel</Button>
+                                <Button variant="primary" type="submit" disabled={isFormDisabled}>
+                                    {isSubmitting && (
+                                        <Spinner
+                                            as="span"
+                                            animation="border"
+                                            size="sm"
+                                            role="status"
+                                            aria-hidden="true"
+                                            className="me-2"
                                         />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Subcategory</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="subcategory"
-                                            value={formData.subcategory}
-                                            onChange={handleChange}
-                                            placeholder="e.g., Mobile Phones"
-                                            disabled={isFormDisabled}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Brand / Manufacturer</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="brand"
-                                            value={formData.brand}
-                                            onChange={handleChange}
-                                            placeholder="e.g., Acme Corp"
-                                            disabled={isFormDisabled}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Unit of Measure (UOM)</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="unit_of_measure"
-                                            value={formData.unit_of_measure}
-                                            onChange={handleChange}
-                                            placeholder="e.g., pcs, kg, liters"
-                                            disabled={isFormDisabled}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Barcode / QR Code</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="barcode"
-                                            value={formData.barcode}
-                                            onChange={handleChange}
-                                            placeholder="Scan or enter barcode"
-                                            disabled={isFormDisabled}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Tags / Keywords</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            name="tags"
-                                            value={formData.tags}
-                                            onChange={handleChange}
-                                            placeholder="e.g., featured, summer"
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Text className="text-muted">
-                                            Separate multiple tags with commas for easier filtering.
-                                        </Form.Text>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Currency</Form.Label>
-                                        <Form.Select
-                                            name="currency"
-                                            value={formData.currency}
-                                            onChange={handleChange}
-                                            disabled={isFormDisabled}
-                                        >
-                                            <option value="USD">USD — US Dollar</option>
-                                            <option value="EUR">EUR — Euro</option>
-                                            <option value="GBP">GBP — British Pound</option>
-                                            <option value="KZT">KZT — Kazakhstani Tenge</option>
-                                            <option value="CAD">CAD — Canadian Dollar</option>
-                                            <option value="AUD">AUD — Australian Dollar</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Tax / VAT (%)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            name="tax_rate"
-                                            value={formData.tax_rate}
-                                            onChange={handleChange}
-                                            isInvalid={Boolean(fieldErrors.tax_rate)}
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Control.Feedback type="invalid">
-                                            {fieldErrors.tax_rate}
-                                        </Form.Control.Feedback>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Discount (%)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            name="discount_rate"
-                                            value={formData.discount_rate}
-                                            onChange={handleChange}
-                                            isInvalid={Boolean(fieldErrors.discount_rate)}
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Control.Feedback type="invalid">
-                                            {fieldErrors.discount_rate}
-                                        </Form.Control.Feedback>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Product Image</Form.Label>
-                                <Form.Control
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    disabled={isFormDisabled}
-                                />
-                                <Form.Text className="text-muted">
-                                    Supported formats: JPG, PNG, GIF up to 5 MB.
-                                </Form.Text>
-                                {imageFile && imagePreview && (
-                                    <div className="mt-2">
-                                        <Image
-                                            src={imagePreview}
-                                            thumbnail
-                                            alt="Selected product preview"
-                                            style={{ maxWidth: '150px' }}
-                                        />
-                                    </div>
-                                )}
-                                {!imageFile && existingImage && (
-                                    <div className="mt-2">
-                                        <Image
-                                            src={existingImage}
-                                            thumbnail
-                                            alt="Current product"
-                                            style={{ maxWidth: '150px' }}
-                                        />
-                                    </div>
-                                )}
-                            </Form.Group>
-                            <Row>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>
-                                            Purchase Price ({formData.currency})
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            name="purchase_price"
-                                            value={formData.purchase_price}
-                                            onChange={handleChange}
-                                            isInvalid={Boolean(fieldErrors.purchase_price)}
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Control.Feedback type="invalid">
-                                            {fieldErrors.purchase_price}
-                                        </Form.Control.Feedback>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>
-                                            Sale Price ({formData.currency}) <span className="text-danger">*</span>
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            name="sale_price"
-                                            value={formData.sale_price}
-                                            onChange={handleChange}
-                                            required
-                                            isInvalid={Boolean(fieldErrors.sale_price)}
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Control.Feedback type="invalid">
-                                            {fieldErrors.sale_price}
-                                        </Form.Control.Feedback>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Total Stock (read-only)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            name="stock_quantity"
-                                            value={formData.stock_quantity}
-                                            readOnly
-                                            disabled
-                                        />
-                                        <Form.Text className="text-muted">
-                                            Manage inventory levels per warehouse from the Warehouses screen.
-                                        </Form.Text>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Wholesale Price ({formData.currency})</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            name="wholesale_price"
-                                            value={formData.wholesale_price}
-                                            onChange={handleChange}
-                                            isInvalid={Boolean(fieldErrors.wholesale_price)}
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Control.Feedback type="invalid">
-                                            {fieldErrors.wholesale_price}
-                                        </Form.Control.Feedback>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Minimum Sale Price ({formData.currency})</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            name="minimum_sale_price"
-                                            value={formData.minimum_sale_price}
-                                            onChange={handleChange}
-                                            isInvalid={Boolean(fieldErrors.minimum_sale_price)}
-                                            disabled={isFormDisabled}
-                                        />
-                                        <Form.Control.Feedback type="invalid">
-                                            {fieldErrors.minimum_sale_price}
-                                        </Form.Control.Feedback>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>Profit Margin (auto)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            readOnly
-                                            value={derivedProfitMargin.toFixed(2)}
-                                        />
-                                        <Form.Text className="text-muted">Calculated as ((Sale - Purchase) / Sale) × 100.</Form.Text>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col md={4}>
-                                    <Form.Group className="mb-3">
-                                        <Form.Label>
-                                            Final Sale Price (incl. tax/discount) ({formData.currency})
-                                        </Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            readOnly
-                                            value={derivedFinalSalePrice.toFixed(2)}
-                                        />
-                                        <Form.Text className="text-muted">
-                                            Displayed using the selected currency and current tax/discount values.
-                                        </Form.Text>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Button variant="secondary" onClick={() => navigate('/inventory')} className="me-2">Cancel</Button>
-                            <Button variant="primary" type="submit" disabled={isFormDisabled}>
-                                {isSubmitting && (
-                                    <Spinner
-                                        as="span"
-                                        animation="border"
-                                        size="sm"
-                                        role="status"
-                                        aria-hidden="true"
-                                        className="me-2"
-                                    />
-                                )}
-                                {isSubmitting ? 'Saving…' : 'Save Product'}
-                            </Button>
+                                    )}
+                                    {isSubmitting ? 'Saving…' : 'Save Product'}
+                                </Button>
+                            </div>
                         </Form>
                     )}
                 </Card.Body>
