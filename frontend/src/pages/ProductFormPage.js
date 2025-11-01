@@ -35,10 +35,12 @@ function ProductFormPage() {
     const [imagePreview, setImagePreview] = useState(null);
     const [existingImage, setExistingImage] = useState(null);
     const [error, setError] = useState('');
+    const [infoMessage, setInfoMessage] = useState('');
     const [isLoading, setIsLoading] = useState(isEditing);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
     const objectUrlRef = useRef(null);
+    const fileInputRef = useRef(null);
     const [derivedProfitMargin, setDerivedProfitMargin] = useState(0);
     const [derivedFinalSalePrice, setDerivedFinalSalePrice] = useState(0);
     const [activeSection, setActiveSection] = useState('basic');
@@ -70,6 +72,7 @@ function ProductFormPage() {
                     setExistingImage(image || null);
                     setImagePreview(null);
                     setImageFile(null);
+                    setInfoMessage('');
                     if (objectUrlRef.current) {
                         URL.revokeObjectURL(objectUrlRef.current);
                         objectUrlRef.current = null;
@@ -83,6 +86,7 @@ function ProductFormPage() {
             setImagePreview(null);
             setImageFile(null);
             setFormData({ ...INITIAL_FORM_STATE });
+            setInfoMessage('');
             if (objectUrlRef.current) {
                 URL.revokeObjectURL(objectUrlRef.current);
                 objectUrlRef.current = null;
@@ -179,6 +183,22 @@ function ProductFormPage() {
         objectUrlRef.current = previewUrl;
         setImageFile(file);
         setImagePreview(previewUrl);
+        setExistingImage(null);
+        setInfoMessage('');
+    };
+
+    const handleRemoveImage = () => {
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
+        setImageFile(null);
+        setImagePreview(null);
+        setExistingImage(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+        setInfoMessage('Image removed.');
     };
 
     useEffect(() => {
@@ -198,6 +218,7 @@ function ProductFormPage() {
             return;
         }
 
+        setInfoMessage('');
         setError('');
 
         const submissionData = new FormData();
@@ -232,12 +253,17 @@ function ProductFormPage() {
 
     const isFormDisabled = isLoading || isSubmitting;
 
+    const hasImagePreview = Boolean(imageFile && imagePreview);
+    const previewSrc = hasImagePreview ? imagePreview : existingImage;
+    const previewAlt = hasImagePreview ? 'Selected product preview' : 'Current product';
+
     return (
         <Container>
             <Card>
                 <Card.Header as="h4">{isEditing ? 'Edit Product' : 'Create New Product'}</Card.Header>
                 <Card.Body>
                     {error && <Alert variant="danger">{error}</Alert>}
+                    {infoMessage && <Alert variant="success">{infoMessage}</Alert>}
                     {isLoading ? (
                         <div className="d-flex justify-content-center py-5">
                             <Spinner animation="border" role="status">
@@ -537,29 +563,29 @@ function ProductFormPage() {
                                                 type="file"
                                                 accept="image/*"
                                                 onChange={handleImageChange}
+                                                ref={fileInputRef}
                                                 disabled={isFormDisabled}
                                             />
                                             <Form.Text className="text-muted">
                                                 Supported formats: JPG, PNG, GIF up to 5 MB.
                                             </Form.Text>
-                                            {imageFile && imagePreview && (
-                                                <div className="mt-2">
+                                            {(hasImagePreview || existingImage) && previewSrc && (
+                                                <div className="mt-2 d-flex flex-column align-items-start">
                                                     <Image
-                                                        src={imagePreview}
+                                                        src={previewSrc}
                                                         thumbnail
-                                                        alt="Selected product preview"
+                                                        alt={previewAlt}
                                                         style={{ maxWidth: '150px' }}
                                                     />
-                                                </div>
-                                            )}
-                                            {!imageFile && existingImage && (
-                                                <div className="mt-2">
-                                                    <Image
-                                                        src={existingImage}
-                                                        thumbnail
-                                                        alt="Current product"
-                                                        style={{ maxWidth: '150px' }}
-                                                    />
+                                                    <Button
+                                                        variant="outline-danger"
+                                                        size="sm"
+                                                        className="mt-2"
+                                                        onClick={handleRemoveImage}
+                                                        disabled={isFormDisabled}
+                                                    >
+                                                        Remove image
+                                                    </Button>
                                                 </div>
                                             )}
                                         </Form.Group>
