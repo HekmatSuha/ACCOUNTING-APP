@@ -812,8 +812,24 @@ class Product(models.Model):
     barcode = models.CharField(max_length=100, blank=True, null=True)
     unit_of_measure = models.CharField(max_length=50, blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
+    currency = models.CharField(max_length=3, default="USD")
     purchase_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     sale_price = models.DecimalField(max_digits=12, decimal_places=2)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    discount_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    wholesale_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+    minimum_sale_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+    )
+    profit_margin = models.DecimalField(max_digits=6, decimal_places=2, default=0.00)
     stock_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     image = models.ImageField(upload_to='product_images/', blank=True, null=True)
 
@@ -834,6 +850,8 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         creating = self.pk is None
+        self.profit_margin = self.calculate_profit_margin()
+
         ensure_account(self)
         super().save(*args, **kwargs)
 
@@ -850,6 +868,22 @@ class Product(models.Model):
                 warehouse=default_warehouse,
                 defaults={"quantity": Decimal(self.stock_quantity or 0)},
             )
+
+    def calculate_profit_margin(self) -> Decimal:
+        sale_price = Decimal(self.sale_price or 0)
+        purchase_price = Decimal(self.purchase_price or 0)
+        if sale_price <= 0:
+            return Decimal("0.00")
+        margin = (sale_price - purchase_price) / sale_price * Decimal("100")
+        return margin.quantize(Decimal("0.01"))
+
+    @property
+    def final_sale_price(self) -> Decimal:
+        sale_price = Decimal(self.sale_price or 0)
+        tax_multiplier = (Decimal(self.tax_rate or 0) / Decimal("100")) + Decimal("1")
+        discount_multiplier = Decimal("1") - (Decimal(self.discount_rate or 0) / Decimal("100"))
+        final_price = sale_price * tax_multiplier * max(discount_multiplier, Decimal("0"))
+        return final_price.quantize(Decimal("0.01")) if final_price else Decimal("0.00")
 
 
 class WarehouseInventory(models.Model):

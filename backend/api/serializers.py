@@ -488,13 +488,28 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
             'barcode',
             'unit_of_measure',
             'tags',
+            'currency',
             'purchase_price',
             'sale_price',
+            'tax_rate',
+            'discount_rate',
+            'wholesale_price',
+            'minimum_sale_price',
+            'profit_margin',
+            'final_sale_price',
             'stock_quantity',
             'warehouse_quantities',
             'image',
         ]
-        read_only_fields = ['created_by', 'stock_quantity', 'warehouse_quantities']
+        read_only_fields = [
+            'created_by',
+            'stock_quantity',
+            'warehouse_quantities',
+            'profit_margin',
+            'final_sale_price',
+        ]
+
+    final_sale_price = serializers.SerializerMethodField()
 
     def validate_sku(self, value):
         if not value:
@@ -523,6 +538,28 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
             }
             for stock in stock_records
         ]
+
+    def get_final_sale_price(self, obj):
+        return obj.final_sale_price
+
+    def validate_tax_rate(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError('Tax rate must be between 0 and 100%.')
+        return value
+
+    def validate_discount_rate(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError('Discount must be between 0 and 100%.')
+        return value
+
+    def validate(self, attrs):
+        minimum_sale_price = attrs.get('minimum_sale_price')
+        sale_price = attrs.get('sale_price', getattr(self.instance, 'sale_price', None))
+        if minimum_sale_price and sale_price and sale_price < minimum_sale_price:
+            raise serializers.ValidationError(
+                {'sale_price': 'Sale price must be greater than or equal to the minimum sale price.'}
+            )
+        return super().validate(attrs)
 
 
 class WarehouseStockSerializer(serializers.ModelSerializer):
