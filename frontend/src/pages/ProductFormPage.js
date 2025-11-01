@@ -1,9 +1,9 @@
 // frontend/src/pages/ProductFormPage.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
-import { Container, Card, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
+import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image } from 'react-bootstrap';
 
 function ProductFormPage() {
     const { id } = useParams();
@@ -14,10 +14,13 @@ function ProductFormPage() {
         name: '', description: '', sku: '', purchase_price: 0.00, sale_price: 0.00, stock_quantity: 0
     });
     const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [existingImage, setExistingImage] = useState(null);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(isEditing);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
+    const objectUrlRef = useRef(null);
 
     useEffect(() => {
         if (isEditing) {
@@ -26,11 +29,25 @@ function ProductFormPage() {
                 .then(response => {
                     const { id: _removed, image, ...data } = response.data;
                     setFormData(data);
+                    setExistingImage(image || null);
+                    setImagePreview(null);
+                    setImageFile(null);
+                    if (objectUrlRef.current) {
+                        URL.revokeObjectURL(objectUrlRef.current);
+                        objectUrlRef.current = null;
+                    }
                     setError('');
                 })
                 .catch(() => setError('Failed to fetch product details.'))
                 .finally(() => setIsLoading(false));
         } else {
+            setExistingImage(null);
+            setImagePreview(null);
+            setImageFile(null);
+            if (objectUrlRef.current) {
+                URL.revokeObjectURL(objectUrlRef.current);
+                objectUrlRef.current = null;
+            }
             setIsLoading(false);
         }
     }, [id, isEditing]);
@@ -66,10 +83,28 @@ function ProductFormPage() {
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-        if (file) {
-            setImageFile(file);
+        if (!file) {
+            return;
         }
+
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        objectUrlRef.current = previewUrl;
+        setImageFile(file);
+        setImagePreview(previewUrl);
     };
+
+    useEffect(() => {
+        return () => {
+            if (objectUrlRef.current) {
+                URL.revokeObjectURL(objectUrlRef.current);
+            }
+        };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -143,7 +178,35 @@ function ProductFormPage() {
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Product Image</Form.Label>
-                                <Form.Control type="file" onChange={handleImageChange} disabled={isFormDisabled} />
+                                <Form.Control
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    disabled={isFormDisabled}
+                                />
+                                <Form.Text className="text-muted">
+                                    Supported formats: JPG, PNG, GIF up to 5 MB.
+                                </Form.Text>
+                                {imageFile && imagePreview && (
+                                    <div className="mt-2">
+                                        <Image
+                                            src={imagePreview}
+                                            thumbnail
+                                            alt="Selected product preview"
+                                            style={{ maxWidth: '150px' }}
+                                        />
+                                    </div>
+                                )}
+                                {!imageFile && existingImage && (
+                                    <div className="mt-2">
+                                        <Image
+                                            src={existingImage}
+                                            thumbnail
+                                            alt="Current product"
+                                            style={{ maxWidth: '150px' }}
+                                        />
+                                    </div>
+                                )}
                             </Form.Group>
                             <Row>
                                 <Col md={4}>
