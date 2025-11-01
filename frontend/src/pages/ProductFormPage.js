@@ -1,6 +1,6 @@
 // frontend/src/pages/ProductFormPage.js
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Container, Card, Form, Button, Row, Col, Alert, Spinner, Image, Tabs, Tab, InputGroup } from 'react-bootstrap';
@@ -34,6 +34,9 @@ function ProductFormPage() {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [existingImage, setExistingImage] = useState(null);
+    const [existingGallery, setExistingGallery] = useState([]);
+    const [galleryFiles, setGalleryFiles] = useState([]);
+    const [galleryRemovalIds, setGalleryRemovalIds] = useState([]);
     const [error, setError] = useState('');
     const [infoMessage, setInfoMessage] = useState('');
     const [isLoading, setIsLoading] = useState(isEditing);
@@ -41,16 +44,56 @@ function ProductFormPage() {
     const [fieldErrors, setFieldErrors] = useState({});
     const objectUrlRef = useRef(null);
     const fileInputRef = useRef(null);
+    const galleryInputRef = useRef(null);
     const [derivedProfitMargin, setDerivedProfitMargin] = useState(0);
     const [derivedFinalSalePrice, setDerivedFinalSalePrice] = useState(0);
+    const [derivedProfit, setDerivedProfit] = useState(0);
     const [activeSection, setActiveSection] = useState('basic');
+    const [isGeneratingSku, setIsGeneratingSku] = useState(false);
+    const [isSuggestingPrice, setIsSuggestingPrice] = useState(false);
+    const [isFetchingTotalStock, setIsFetchingTotalStock] = useState(false);
+    const [totalStock, setTotalStock] = useState(0);
+    const [stockError, setStockError] = useState('');
+    const galleryObjectUrlsRef = useRef([]);
+
+    const clearGalleryPreviews = useCallback(() => {
+        galleryObjectUrlsRef.current.forEach(url => {
+            try {
+                URL.revokeObjectURL(url);
+            } catch (revocationError) {
+                console.error(revocationError);
+            }
+        });
+        galleryObjectUrlsRef.current = [];
+    }, []);
+
+    const refreshTotalStock = useCallback(async () => {
+        if (!isEditing) {
+            setTotalStock(0);
+            setStockError('');
+            return;
+        }
+
+        setIsFetchingTotalStock(true);
+        setStockError('');
+        try {
+            const { data } = await axiosInstance.get(`/products/${id}/total-stock/`);
+            const total = parseFloat(data.total_stock);
+            setTotalStock(Number.isFinite(total) ? total : 0);
+        } catch (stockFetchError) {
+            console.error(stockFetchError);
+            setStockError('Unable to refresh total stock at this time.');
+        } finally {
+            setIsFetchingTotalStock(false);
+        }
+    }, [id, isEditing]);
 
     useEffect(() => {
         if (isEditing) {
             setIsLoading(true);
             axiosInstance.get(`/products/${id}/`)
                 .then(response => {
-                    const { id: _removed, image, warehouse_quantities, ...data } = response.data;
+                    const { id: _removed, image, gallery = [], warehouse_quantities, ...data } = response.data;
                     const numericFields = ['purchase_price', 'sale_price', 'tax_rate', 'discount_rate', 'stock_quantity'];
                     const optionalNumericFields = ['wholesale_price', 'minimum_sale_price'];
                     const normalizedData = Object.keys(INITIAL_FORM_STATE).reduce((acc, key) => {
@@ -72,12 +115,20 @@ function ProductFormPage() {
                     setExistingImage(image || null);
                     setImagePreview(null);
                     setImageFile(null);
+                    setExistingGallery(Array.isArray(gallery) ? gallery : []);
+                    setGalleryFiles([]);
+                    setGalleryRemovalIds([]);
+                    clearGalleryPreviews();
+                    const stockValue = parseFloat(data.stock_quantity ?? 0);
+                    setTotalStock(Number.isFinite(stockValue) ? stockValue : 0);
+                    setStockError('');
                     setInfoMessage('');
                     if (objectUrlRef.current) {
                         URL.revokeObjectURL(objectUrlRef.current);
                         objectUrlRef.current = null;
                     }
                     setError('');
+                    refreshTotalStock();
                 })
                 .catch(() => setError('Failed to fetch product details.'))
                 .finally(() => setIsLoading(false));
@@ -85,7 +136,13 @@ function ProductFormPage() {
             setExistingImage(null);
             setImagePreview(null);
             setImageFile(null);
+            setExistingGallery([]);
+            setGalleryFiles([]);
+            setGalleryRemovalIds([]);
+            clearGalleryPreviews();
             setFormData({ ...INITIAL_FORM_STATE });
+            setTotalStock(0);
+            setStockError('');
             setInfoMessage('');
             if (objectUrlRef.current) {
                 URL.revokeObjectURL(objectUrlRef.current);
@@ -93,7 +150,7 @@ function ProductFormPage() {
             }
             setIsLoading(false);
         }
-    }, [id, isEditing]);
+    }, [id, isEditing, refreshTotalStock, clearGalleryPreviews]);
 
     useEffect(() => {
         const purchasePrice = parseFloat(formData.purchase_price) || 0;
@@ -106,6 +163,8 @@ function ProductFormPage() {
         const finalSale = salePrice * taxMultiplier * discountMultiplier;
         setDerivedProfitMargin(Number.isFinite(margin) ? margin : 0);
         setDerivedFinalSalePrice(Number.isFinite(finalSale) ? finalSale : 0);
+        const profit = salePrice - purchasePrice;
+        setDerivedProfit(Number.isFinite(profit) ? profit : 0);
     }, [formData.purchase_price, formData.sale_price, formData.tax_rate, formData.discount_rate]);
 
     const validateValues = (values) => {
@@ -201,13 +260,106 @@ function ProductFormPage() {
         setInfoMessage('Image removed.');
     };
 
+    const handleGalleryChange = (event) => {
+        const files = Array.from(event.target.files || []);
+        if (!files.length) {
+            return;
+        }
+
+        const newEntries = files.map((file, index) => {
+            const previewUrl = URL.createObjectURL(file);
+            galleryObjectUrlsRef.current.push(previewUrl);
+            return {
+                tempId: `${file.name}-${Date.now()}-${index}`,
+                file,
+                previewUrl,
+            };
+        });
+
+        setGalleryFiles(prev => [...prev, ...newEntries]);
+        if (galleryInputRef.current) {
+            galleryInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoveGalleryFile = (tempId) => {
+        setGalleryFiles(prev => {
+            const entry = prev.find(item => item.tempId === tempId);
+            if (entry) {
+                try {
+                    URL.revokeObjectURL(entry.previewUrl);
+                } catch (revocationError) {
+                    console.error(revocationError);
+                }
+                galleryObjectUrlsRef.current = galleryObjectUrlsRef.current.filter(
+                    url => url !== entry.previewUrl
+                );
+            }
+            return prev.filter(item => item.tempId !== tempId);
+        });
+    };
+
+    const handleRemoveExistingGallery = (imageId) => {
+        setExistingGallery(prev => prev.filter(item => item.id !== imageId));
+        setGalleryRemovalIds(prev => {
+            if (prev.includes(imageId)) {
+                return prev;
+            }
+            return [...prev, imageId];
+        });
+    };
+
+    const handleGenerateSku = async () => {
+        setIsGeneratingSku(true);
+        setError('');
+        try {
+            const params = {};
+            if (formData.category) {
+                params.category = formData.category;
+            } else if (formData.name) {
+                params.name = formData.name;
+            }
+            const { data } = await axiosInstance.get('/products/suggest-sku/', { params });
+            const updatedForm = { ...formData, sku: data.sku };
+            setFormData(updatedForm);
+            const errors = validateValues(updatedForm);
+            setFieldErrors(errors);
+            setInfoMessage('SKU generated automatically.');
+        } catch (skuError) {
+            console.error(skuError);
+            setError('Failed to generate SKU automatically.');
+        } finally {
+            setIsGeneratingSku(false);
+        }
+    };
+
+    const handleSuggestPrice = async () => {
+        setIsSuggestingPrice(true);
+        setError('');
+        try {
+            const params = { purchase_price: formData.purchase_price || 0 };
+            const { data } = await axiosInstance.get('/products/suggest-price/', { params });
+            const updatedForm = { ...formData, sale_price: data.suggested_price };
+            setFormData(updatedForm);
+            const errors = validateValues(updatedForm);
+            setFieldErrors(errors);
+            setInfoMessage(`Sale price updated using a ${data.margin_percent}% margin suggestion.`);
+        } catch (priceError) {
+            console.error(priceError);
+            setError('Failed to suggest a sale price. Please review the inputs.');
+        } finally {
+            setIsSuggestingPrice(false);
+        }
+    };
+
     useEffect(() => {
         return () => {
             if (objectUrlRef.current) {
                 URL.revokeObjectURL(objectUrlRef.current);
             }
+            clearGalleryPreviews();
         };
-    }, []);
+    }, [clearGalleryPreviews]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -235,6 +387,12 @@ function ProductFormPage() {
         if (imageFile) {
             submissionData.append('image', imageFile);
         }
+        galleryFiles.forEach(entry => {
+            submissionData.append('gallery_images', entry.file);
+        });
+        galleryRemovalIds.forEach(idToRemove => {
+            submissionData.append('gallery_remove_ids', idToRemove);
+        });
         const apiCall = isEditing
             ? axiosInstance.put(`/products/${id}/`, submissionData)
             : axiosInstance.post('/products/', submissionData);
@@ -291,7 +449,35 @@ function ProductFormPage() {
                                             <Col md={4}>
                                                 <Form.Group className="mb-3">
                                                     <Form.Label>SKU (Stock Keeping Unit)</Form.Label>
-                                                    <Form.Control type="text" name="sku" value={formData.sku} onChange={handleChange} disabled={isFormDisabled} />
+                                                    <div className="d-flex gap-2">
+                                                        <Form.Control
+                                                            type="text"
+                                                            name="sku"
+                                                            value={formData.sku}
+                                                            onChange={handleChange}
+                                                            disabled={isFormDisabled}
+                                                        />
+                                                        <Button
+                                                            variant="outline-primary"
+                                                            onClick={handleGenerateSku}
+                                                            disabled={isFormDisabled || isGeneratingSku}
+                                                        >
+                                                            {isGeneratingSku ? (
+                                                                <Spinner
+                                                                    as="span"
+                                                                    animation="border"
+                                                                    size="sm"
+                                                                    role="status"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            ) : (
+                                                                'Auto'
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                    <Form.Text className="text-muted">
+                                                        Generate a unique SKU based on the category with one click.
+                                                    </Form.Text>
                                                 </Form.Group>
                                             </Col>
                                         </Row>
@@ -471,8 +657,28 @@ function ProductFormPage() {
                                             </Col>
                                             <Col md={4}>
                                                 <Form.Group className="mb-3">
-                                                    <Form.Label>
-                                                        Sale Price ({formData.currency}) <span className="text-danger">*</span>
+                                                    <Form.Label className="d-flex justify-content-between align-items-center">
+                                                        <span>
+                                                            Sale Price ({formData.currency}) <span className="text-danger">*</span>
+                                                        </span>
+                                                        <Button
+                                                            variant="outline-success"
+                                                            size="sm"
+                                                            onClick={handleSuggestPrice}
+                                                            disabled={isFormDisabled || isSuggestingPrice}
+                                                        >
+                                                            {isSuggestingPrice ? (
+                                                                <Spinner
+                                                                    as="span"
+                                                                    animation="border"
+                                                                    size="sm"
+                                                                    role="status"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            ) : (
+                                                                'AI Suggest'
+                                                            )}
+                                                        </Button>
                                                     </Form.Label>
                                                     <Form.Control
                                                         type="number"
@@ -510,7 +716,7 @@ function ProductFormPage() {
                                             </Col>
                                         </Row>
                                         <Row>
-                                            <Col md={4}>
+                                            <Col md={3}>
                                                 <Form.Group className="mb-3">
                                                     <Form.Label>Minimum Sale Price ({formData.currency})</Form.Label>
                                                     <Form.Control
@@ -528,7 +734,7 @@ function ProductFormPage() {
                                                     </Form.Control.Feedback>
                                                 </Form.Group>
                                             </Col>
-                                            <Col md={4}>
+                                            <Col md={3}>
                                                 <Form.Group className="mb-3">
                                                     <Form.Label id="profit-margin-label">Profit Margin (auto)</Form.Label>
                                                     <InputGroup aria-labelledby="profit-margin-label profit-margin-help">
@@ -550,7 +756,7 @@ function ProductFormPage() {
                                                     </Form.Text>
                                                 </Form.Group>
                                             </Col>
-                                            <Col md={4}>
+                                            <Col md={3}>
                                                 <Form.Group className="mb-3">
                                                     <Form.Label id="final-sale-price-label">
                                                         Final Sale Price (incl. tax/discount) ({formData.currency})
@@ -571,6 +777,19 @@ function ProductFormPage() {
                                                     </InputGroup>
                                                     <Form.Text id="final-sale-price-help" className="text-muted">
                                                         Displayed using the selected currency and current tax/discount values.
+                                                    </Form.Text>
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={3}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Auto Profit ({formData.currency})</Form.Label>
+                                                    <Form.Control
+                                                        type="number"
+                                                        readOnly
+                                                        value={derivedProfit.toFixed(2)}
+                                                    />
+                                                    <Form.Text className="text-muted">
+                                                        Profit shown as Sale price minus Purchase price.
                                                     </Form.Text>
                                                 </Form.Group>
                                             </Col>
@@ -609,21 +828,109 @@ function ProductFormPage() {
                                                 </div>
                                             )}
                                         </Form.Group>
+                                        <Form.Group className="mb-3">
+                                            <Form.Label>Product Gallery</Form.Label>
+                                            <Form.Control
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handleGalleryChange}
+                                                ref={galleryInputRef}
+                                                disabled={isFormDisabled}
+                                            />
+                                            <Form.Text className="text-muted">
+                                                Add multiple images to showcase the product in a gallery.
+                                            </Form.Text>
+                                            <div className="mt-3 d-flex flex-wrap gap-3">
+                                                {existingGallery.map(image => (
+                                                    <div key={`existing-${image.id}`} className="position-relative">
+                                                        <Image
+                                                            src={image.image}
+                                                            thumbnail
+                                                            alt="Existing product gallery"
+                                                            style={{ maxWidth: '120px' }}
+                                                        />
+                                                        <Button
+                                                            variant="outline-danger"
+                                                            size="sm"
+                                                            className="mt-2"
+                                                            onClick={() => handleRemoveExistingGallery(image.id)}
+                                                            disabled={isFormDisabled}
+                                                        >
+                                                            Remove
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                                {galleryFiles.map(entry => (
+                                                    <div key={entry.tempId} className="position-relative">
+                                                        <Image
+                                                            src={entry.previewUrl}
+                                                            thumbnail
+                                                            alt="New product gallery preview"
+                                                            style={{ maxWidth: '120px' }}
+                                                        />
+                                                        <Button
+                                                            variant="outline-danger"
+                                                            size="sm"
+                                                            className="mt-2"
+                                                            onClick={() => handleRemoveGalleryFile(entry.tempId)}
+                                                            disabled={isFormDisabled}
+                                                        >
+                                                            Remove
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                                {existingGallery.length === 0 && galleryFiles.length === 0 && (
+                                                    <span className="text-muted small">No gallery images added yet.</span>
+                                                )}
+                                            </div>
+                                            {(existingGallery.length > 0 || galleryFiles.length > 0) && (
+                                                <Form.Text className="text-muted d-block mt-2">
+                                                    Removed images will be deleted after you save the product.
+                                                </Form.Text>
+                                            )}
+                                        </Form.Group>
                                         <Row>
                                             <Col md={6} lg={4}>
                                                 <Form.Group className="mb-3">
                                                     <Form.Label>Total Stock (read-only)</Form.Label>
-                                                    <Form.Control
-                                                        type="number"
-                                                        step="0.01"
-                                                        name="stock_quantity"
-                                                        value={formData.stock_quantity}
-                                                        readOnly
-                                                        disabled
-                                                    />
-                                                    <Form.Text className="text-muted">
-                                                        Manage inventory levels per warehouse from the Warehouses screen.
-                                                    </Form.Text>
+                                                    <div className="d-flex gap-2 align-items-center">
+                                                        <Form.Control
+                                                            type="number"
+                                                            step="0.01"
+                                                            name="stock_quantity"
+                                                            value={totalStock}
+                                                            readOnly
+                                                            disabled
+                                                        />
+                                                        {isEditing && (
+                                                            <Button
+                                                                variant="outline-secondary"
+                                                                size="sm"
+                                                                onClick={refreshTotalStock}
+                                                                disabled={isFormDisabled || isFetchingTotalStock}
+                                                            >
+                                                                {isFetchingTotalStock ? (
+                                                                    <Spinner
+                                                                        as="span"
+                                                                        animation="border"
+                                                                        size="sm"
+                                                                        role="status"
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                ) : (
+                                                                    'Refresh'
+                                                                )}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    {stockError ? (
+                                                        <Form.Text className="text-danger">{stockError}</Form.Text>
+                                                    ) : (
+                                                        <Form.Text className="text-muted">
+                                                            Manage inventory levels per warehouse from the Warehouses screen.
+                                                        </Form.Text>
+                                                    )}
                                                 </Form.Group>
                                             </Col>
                                         </Row>
