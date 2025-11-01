@@ -23,6 +23,7 @@ from .models import (
     OfferItem,
     Payment,
     Product,
+    ProductImage,
     Purchase,
     PurchaseItem,
     PurchaseReturn,
@@ -465,6 +466,13 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_by', 'customer', 'account_name', 'converted_amount', 'account_converted_amount', 'account_exchange_rate']
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
 class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerializer):
     sku = serializers.CharField(
         max_length=100,
@@ -474,6 +482,7 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
     )
     image = serializers.ImageField(required=False, allow_null=True)
     warehouse_quantities = serializers.SerializerMethodField()
+    gallery = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -500,6 +509,7 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
             'stock_quantity',
             'warehouse_quantities',
             'image',
+            'gallery',
         ]
         read_only_fields = [
             'created_by',
@@ -507,6 +517,7 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
             'warehouse_quantities',
             'profit_margin',
             'final_sale_price',
+            'gallery',
         ]
 
     final_sale_price = serializers.SerializerMethodField()
@@ -560,6 +571,45 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
                 {'sale_price': 'Sale price must be greater than or equal to the minimum sale price.'}
             )
         return super().validate(attrs)
+
+    def _sync_gallery(self, product):
+        request = self.context.get('request')
+        if not request:
+            return
+
+        getlist = getattr(request.FILES, 'getlist', None)
+        if callable(getlist):
+            for image_file in getlist('gallery_images'):
+                if image_file:
+                    ProductImage.objects.create(product=product, image=image_file)
+
+        remove_ids = []
+        data_getlist = getattr(request.data, 'getlist', None)
+        if callable(data_getlist):
+            remove_ids = [
+                int(image_id)
+                for image_id in data_getlist('gallery_remove_ids')
+                if str(image_id).isdigit()
+            ]
+        else:
+            raw_value = request.data.get('gallery_remove_ids')
+            if isinstance(raw_value, (list, tuple)):
+                remove_ids = [int(x) for x in raw_value if str(x).isdigit()]
+            elif str(raw_value).isdigit():
+                remove_ids = [int(raw_value)]
+
+        if remove_ids:
+            ProductImage.objects.filter(product=product, id__in=remove_ids).delete()
+
+    def create(self, validated_data):
+        product = super().create(validated_data)
+        self._sync_gallery(product)
+        return product
+
+    def update(self, instance, validated_data):
+        product = super().update(instance, validated_data)
+        self._sync_gallery(product)
+        return product
 
 
 class WarehouseStockSerializer(serializers.ModelSerializer):

@@ -886,6 +886,24 @@ class Product(models.Model):
         return final_price.quantize(Decimal("0.01")) if final_price else Decimal("0.00")
 
 
+class ProductImage(models.Model):
+    """Additional gallery images linked to a product."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="gallery",
+    )
+    image = models.ImageField(upload_to="product_images/gallery/")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:  # pragma: no cover - human-readable aid only
+        return f"{self.product.name} image ({self.pk})"
+
+
 class WarehouseInventory(models.Model):
     """Quantity of a product stored in a specific warehouse."""
 
