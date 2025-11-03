@@ -1,21 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance';
 import { Card, Button, Spinner, Alert, Row, Col, Table } from 'react-bootstrap';
 import { formatCurrency } from '../utils/format';
 import '../styles/datatable.css';
 import { getBaseApiUrl, getImageInitial, resolveImageUrl } from '../utils/image';
+import { useTranslation } from 'react-i18next';
 
 const BASE_API_URL = getBaseApiUrl();
 
 function OfferDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [offer, setOffer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const fetchOfferData = async () => {
+    const fetchOfferData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axiosInstance.get(`/offers/${id}/`);
@@ -23,25 +25,25 @@ function OfferDetailPage() {
             setError('');
         } catch (error) {
             console.error('Failed to fetch offer data:', error);
-            setError('Could not load offer details.');
+            setError(t('offers.loadError'));
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, t]);
 
     useEffect(() => {
         fetchOfferData();
-    },[id]);
+    }, [fetchOfferData]);
 
     const handleConvertToSale = async () => {
-        if (window.confirm('Are you sure you want to convert this offer to a sale? This action cannot be undone.')) {
+        if (window.confirm(t('offers.convertConfirm'))) {
             try {
                 const response = await axiosInstance.post(`/offers/${id}/convert_to_sale/`);
-                alert('Offer converted to sale successfully.');
+                alert(t('offers.convertSuccess'));
                 navigate(`/sales/${response.data.sale_id}`);
             } catch (err) {
                 console.error('Failed to convert offer to sale:', err);
-                setError('Could not convert the offer. Please try again.');
+                setError(t('offers.convertError'));
             }
         }
     };
@@ -57,36 +59,36 @@ function OfferDetailPage() {
     return (
         <div>
             <Button variant="secondary" onClick={() => navigate('/offers')} className="mb-3">
-                &larr; Back to Offers List
+                {t('offers.backToList')}
             </Button>
             {offer && (
                 <Card>
                     <Card.Header>
-                        <h4>Offer #{offer.id}</h4>
+                        <h4>{t('offers.offerNumber', { id: offer.id })}</h4>
                     </Card.Header>
                     <Card.Body>
                         <Row className="mb-4">
                             <Col md={6}>
-                                <h5>Customer Details:</h5>
-                                <p><strong>Name:</strong> {offer.customer_name}</p>
+                                <h5>{t('offers.customerDetails')}</h5>
+                                <p><strong>{t('offers.customerName')}:</strong> {offer.customer_name}</p>
                             </Col>
                             <Col md={6} className="text-md-end">
-                                <h5>Offer Information:</h5>
-                                <p><strong>Offer Date:</strong> {new Date(offer.offer_date).toLocaleDateString()}</p>
-                                <p><strong>Status:</strong> {offer.status}</p>
+                                <h5>{t('offers.offerInformation')}</h5>
+                                <p><strong>{t('offers.offerDate')}:</strong> {new Date(offer.offer_date).toLocaleDateString()}</p>
+                                <p><strong>{t('offers.status')}:</strong> {offer.status}</p>
                             </Col>
                         </Row>
 
-                        <h5>Items</h5>
+                        <h5>{t('offers.itemsHeading')}</h5>
                         <div className="data-table-container">
                             <Table responsive className="data-table">
                                 <thead>
                                     <tr>
-                                        <th>#</th>
-                                        <th>Product</th>
-                                        <th>Quantity</th>
-                                        <th>Unit Price</th>
-                                        <th>Line Total</th>
+                                        <th>{t('offers.table.index')}</th>
+                                        <th>{t('offers.table.product')}</th>
+                                        <th>{t('offers.table.quantity')}</th>
+                                        <th>{t('offers.table.unitPrice')}</th>
+                                        <th>{t('offers.table.lineTotal')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -104,7 +106,10 @@ function OfferDetailPage() {
                                                     <div className="product-name-cell">
                                                         <div className="product-name-cell__image">
                                                             {productImage ? (
-                                                                <img src={productImage} alt={item.product_name} />
+                                                                <img
+                                                                    src={productImage}
+                                                                    alt={t('offers.imageAlt', { name: item.product_name })}
+                                                                />
                                                             ) : (
                                                                 <span>{imageInitial}</span>
                                                             )}
@@ -129,7 +134,7 @@ function OfferDetailPage() {
                         <Row className="mt-4">
                             <Col md={12} className="text-end">
                                 <h4 className="mb-0">
-                                    <strong>Total:</strong>
+                                    <strong>{t('offers.total')}</strong>
                                     <span className="float-end">{formatCurrency(offer.total_amount)}</span>
                                 </h4>
                             </Col>
@@ -138,7 +143,7 @@ function OfferDetailPage() {
                     <Card.Footer className="text-end">
                         {offer.status === 'pending' && (
                             <Button variant="success" onClick={handleConvertToSale}>
-                                Convert to Sale
+                                {t('offers.convertToSale')}
                             </Button>
                         )}
                     </Card.Footer>
