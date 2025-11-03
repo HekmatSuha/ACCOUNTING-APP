@@ -63,5 +63,29 @@
       "ru": "Rusça",
       "tr": "Türkçe"
     }
+  },
+  "offers": {
+    "backToList": "\u2190 Tekliflere Geri Dön",
+    "offerNumber": "Teklif #{{id}}",
+    "customerDetails": "Müşteri Detayları:",
+    "customerName": "Ad",
+    "offerInformation": "Teklif Bilgileri:",
+    "offerDate": "Teklif Tarihi",
+    "status": "Durum",
+    "itemsHeading": "Kalemler",
+    "table": {
+      "index": "#",
+      "product": "Ürün",
+      "quantity": "Miktar",
+      "unitPrice": "Birim Fiyat",
+      "lineTotal": "Satır Toplamı"
+    },
+    "total": "Toplam:",
+    "convertToSale": "Satışa Dönüştür",
+    "convertConfirm": "Bu teklifi satışa dönüştürmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "convertSuccess": "Teklif başarıyla satışa dönüştürüldü.",
+    "convertError": "Teklif dönüştürülemedi. Lütfen tekrar deneyin.",
+    "loadError": "Teklif detayları yüklenemedi.",
+    "imageAlt": "{{name}} ürünü için görsel"
   }
 }

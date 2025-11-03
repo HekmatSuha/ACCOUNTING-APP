@@ -63,5 +63,29 @@
       "ru": "Русский",
       "tr": "Turkish"
     }
+  },
+  "offers": {
+    "backToList": "\u2190 Back to Offers",
+    "offerNumber": "Offer #{{id}}",
+    "customerDetails": "Customer Details:",
+    "customerName": "Name",
+    "offerInformation": "Offer Information:",
+    "offerDate": "Offer Date",
+    "status": "Status",
+    "itemsHeading": "Items",
+    "table": {
+      "index": "#",
+      "product": "Product",
+      "quantity": "Quantity",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Line Total"
+    },
+    "total": "Total:",
+    "convertToSale": "Convert to Sale",
+    "convertConfirm": "Are you sure you want to convert this offer to a sale? This action cannot be undone.",
+    "convertSuccess": "Offer converted to sale successfully.",
+    "convertError": "Could not convert the offer. Please try again.",
+    "loadError": "Could not load offer details.",
+    "imageAlt": "Product image for {{name}}"
   }
 }
