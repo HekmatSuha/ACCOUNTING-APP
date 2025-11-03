@@ -54,11 +54,22 @@
     },
     "title": "Create your workspace",
     "subtitle": "Set up your company profile to begin tracking revenue and expenses.",
+    "sections": {
+      "profile": {
+        "title": "Profile details",
+        "description": "Tell us about your business so we can personalise your workspace."
+      },
+      "security": {
+        "title": "Sign-in credentials",
+        "description": "Create the details you will use to access your account."
+      }
+    },
     "fields": {
       "companyName": "Company or workspace name",
       "companyNamePlaceholder": "Acme Finance",
       "email": "Email address",
       "emailPlaceholder": "you@example.com",
+      "emailHint": "This email address will also be your username when signing in.",
       "firstName": "First name",
       "firstNamePlaceholder": "Jane",
       "lastName": "Last name",
@@ -70,7 +81,7 @@
     },
     "passwordHint": "Use at least 8 characters, including a number and a symbol.",
     "submit": "Create account",
-    "success": "Account created successfully. You can now sign in.",
+    "success": "Account created successfully. You can now sign in using {{email}} as your username.",
     "error": "Registration failed. Please review your details and try again.",
     "errors": {
       "passwordMismatch": "Passwords do not match."

@@ -54,11 +54,22 @@
     },
     "title": "Çalışma alanınızı oluşturun",
     "subtitle": "Gelir ve giderlerinizi takip etmeye başlamak için şirket profilinizi ayarlayın.",
+    "sections": {
+      "profile": {
+        "title": "Profil detayları",
+        "description": "İşletmenizi bize anlatın, çalışma alanınızı buna göre özelleştirelim."
+      },
+      "security": {
+        "title": "Giriş bilgileri",
+        "description": "Hesabınıza güvenle erişmek için kullanacağınız bilgileri oluşturun."
+      }
+    },
     "fields": {
       "companyName": "Şirket veya çalışma alanı adı",
       "companyNamePlaceholder": "Acme Finans",
       "email": "E-posta adresi",
       "emailPlaceholder": "you@example.com",
+      "emailHint": "Oturum açarken kullanıcı adınız olarak bu e-posta adresini kullanacaksınız.",
       "firstName": "Ad",
       "firstNamePlaceholder": "Ayşe",
       "lastName": "Soyad",
@@ -70,7 +81,7 @@
     },
     "passwordHint": "En az bir rakam ve sembol içeren 8 karakter kullanın.",
     "submit": "Hesap oluştur",
-    "success": "Hesap başarıyla oluşturuldu. Artık giriş yapabilirsiniz.",
+    "success": "Hesap başarıyla oluşturuldu. Artık giriş yapabilirsiniz; kullanıcı adınız olarak {{email}} kullanın.",
     "error": "Kayıt başarısız. Lütfen bilgilerinizi kontrol edip tekrar deneyin.",
     "errors": {
       "passwordMismatch": "Parolalar eşleşmiyor."
