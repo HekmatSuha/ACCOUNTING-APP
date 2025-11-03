@@ -24,6 +24,10 @@
     "companySettings": "Company Settings",
     "logout": "Logout"
   },
+  "common": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
   "login": {
     "hero": {
       "kicker": "Accounting OS",

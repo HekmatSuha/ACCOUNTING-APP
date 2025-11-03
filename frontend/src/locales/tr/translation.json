@@ -24,6 +24,10 @@
     "companySettings": "Şirket Ayarları",
     "logout": "Çıkış Yap"
   },
+  "common": {
+    "showPassword": "Parolayı göster",
+    "hidePassword": "Parolayı gizle"
+  },
   "login": {
     "hero": {
       "kicker": "Accounting OS",
