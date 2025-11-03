@@ -47,13 +47,34 @@
     "footer": "New to the platform? <registerLink>Create an account</registerLink>"
   },
   "register": {
-    "title": "Register",
-    "fields": {
-      "username": "Username",
-      "password": "Password"
+    "hero": {
+      "kicker": "Get started",
+      "title": "Create your workspace",
+      "text": "Launch your accounting workspace in minutes and invite your team when you're ready."
     },
-    "submit": "Register",
-    "error": "Registration failed. This username may already be taken.",
+    "title": "Create your workspace",
+    "subtitle": "Set up your company profile to begin tracking revenue and expenses.",
+    "fields": {
+      "companyName": "Company or workspace name",
+      "companyNamePlaceholder": "Acme Finance",
+      "email": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "firstName": "First name",
+      "firstNamePlaceholder": "Jane",
+      "lastName": "Last name",
+      "lastNamePlaceholder": "Doe",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter your password"
+    },
+    "passwordHint": "Use at least 8 characters, including a number and a symbol.",
+    "submit": "Create account",
+    "success": "Account created successfully. You can now sign in.",
+    "error": "Registration failed. Please review your details and try again.",
+    "errors": {
+      "passwordMismatch": "Passwords do not match."
+    },
     "footer": "Already have an account? <loginLink>Log In</loginLink>"
   },
   "languageSwitcher": {

@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.models import F
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework import serializers
 from decimal import Decimal
 from .exchange_rates import get_exchange_rate
@@ -32,6 +33,8 @@ from .models import (
     SaleItem,
     SaleReturn,
     SaleReturnItem,
+    Subscription,
+    SubscriptionPlan,
     Supplier,
     Warehouse,
     WarehouseInventory,
@@ -144,6 +147,146 @@ class UserSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+
+class PublicAccountRegistrationSerializer(serializers.Serializer):
+    """Allow new users to self-register and provision an account."""
+
+    company_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+
+    def _generate_username(self, email: str) -> str:
+        base = email.split('@')[0].strip()
+        base = base or 'user'
+        candidate = base
+        suffix = 1
+        while User.objects.filter(username=candidate).exists():
+            candidate = f"{base}{suffix}"
+            suffix += 1
+        return candidate
+
+    def _generate_account_name(self, preferred: str, username: str) -> str:
+        base = (preferred or '').strip()
+        if not base:
+            base = f"{username}'s workspace"
+        candidate = base
+        suffix = 2
+        while Account.objects.filter(name=candidate).exists():
+            candidate = f"{base} {suffix}"
+            suffix += 1
+        return candidate
+
+    def validate(self, attrs):
+        email = attrs['email'].lower()
+        attrs['email'] = email
+
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError({'email': 'A user with this email already exists.'})
+
+        first_name = (attrs.get('first_name') or '').strip()
+        last_name = (attrs.get('last_name') or '').strip()
+        attrs['first_name'] = first_name
+        attrs['last_name'] = last_name
+
+        username = self._generate_username(email)
+        user_for_validation = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        validate_password(attrs['password'], user=user_for_validation)
+        attrs['username'] = username
+
+        company_name = (attrs.get('company_name') or '').strip()
+        attrs['company_name'] = company_name
+        attrs['account_name'] = self._generate_account_name(company_name, username)
+
+        return attrs
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        validated_data.pop('confirm_password', None)
+        email = validated_data['email']
+        username = validated_data['username']
+        first_name = validated_data.get('first_name', '')
+        last_name = validated_data.get('last_name', '')
+        account_name = validated_data['account_name']
+
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+            )
+            account = Account.objects.create(name=account_name, owner=user)
+            AccountMembership.objects.create(
+                account=account,
+                user=user,
+                is_owner=True,
+                is_admin=True,
+                is_billing_manager=True,
+            )
+
+            plan_defaults = {
+                'name': 'Starter',
+                'price': Decimal('0'),
+                'user_limit': 5,
+                'billing_interval': SubscriptionPlan.BILLING_INTERVAL_MONTHLY,
+                'currency': 'USD',
+                'features': [],
+            }
+            plan, _ = SubscriptionPlan.objects.get_or_create(code='starter', defaults=plan_defaults)
+
+            subscription = Subscription.objects.create(
+                account=account,
+                plan=plan,
+                status=Subscription.STATUS_ACTIVE,
+                current_period_start=timezone.now(),
+                seats_in_use=1,
+                seat_limit=plan.user_limit,
+                billing_cycle=plan.billing_interval,
+            )
+
+            account.refresh_subscription_usage()
+
+        return {
+            'user': user,
+            'account': account,
+            'subscription': subscription,
+        }
+
+    def to_representation(self, instance):
+        user = instance['user']
+        account = instance['account']
+        subscription = instance['subscription']
+        return {
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            },
+            'account': {
+                'id': account.id,
+                'name': account.name,
+                'slug': account.slug,
+            },
+            'subscription': {
+                'plan': subscription.plan.code if subscription.plan else None,
+                'seat_limit': subscription.seat_limit,
+            },
+        }
 
 
 class AccountUserSerializer(AccountScopedSerializerMixin, serializers.Serializer):
