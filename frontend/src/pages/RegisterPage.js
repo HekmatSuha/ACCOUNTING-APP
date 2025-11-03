@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { Form, Alert, Spinner } from 'react-bootstrap';
+import { Eye, EyeSlash } from 'react-bootstrap-icons';
 import { useTranslation, Trans } from 'react-i18next';
 import './LoginPage.css';
 
@@ -17,6 +18,8 @@ function RegisterPage() {
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -194,14 +197,33 @@ function RegisterPage() {
                 <div className="register-field-row">
                   <Form.Group controlId="password" className="register-form-group">
                     <Form.Label>{t('register.fields.password')}</Form.Label>
-                    <Form.Control
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder={t('register.fields.passwordPlaceholder')}
-                      autoComplete="new-password"
-                      required
-                    />
+                    <div className="password-field">
+                      <Form.Control
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder={t('register.fields.passwordPlaceholder')}
+                        autoComplete="new-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        aria-label={
+                          showPassword
+                            ? t('common.hidePassword', { defaultValue: 'Hide password' })
+                            : t('common.showPassword', { defaultValue: 'Show password' })
+                        }
+                        title={
+                          showPassword
+                            ? t('common.hidePassword', { defaultValue: 'Hide password' })
+                            : t('common.showPassword', { defaultValue: 'Show password' })
+                        }
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? <EyeSlash aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                      </button>
+                    </div>
                     <Form.Text className="register-field-hint">
                       {t('register.passwordHint', {
                         defaultValue:
@@ -211,14 +233,33 @@ function RegisterPage() {
                   </Form.Group>
                   <Form.Group controlId="confirmPassword" className="register-form-group">
                     <Form.Label>{t('register.fields.confirmPassword')}</Form.Label>
-                    <Form.Control
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      placeholder={t('register.fields.confirmPasswordPlaceholder')}
-                      autoComplete="new-password"
-                      required
-                    />
+                    <div className="password-field">
+                      <Form.Control
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        placeholder={t('register.fields.confirmPasswordPlaceholder')}
+                        autoComplete="new-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        aria-label={
+                          showConfirmPassword
+                            ? t('common.hidePassword', { defaultValue: 'Hide password' })
+                            : t('common.showPassword', { defaultValue: 'Show password' })
+                        }
+                        title={
+                          showConfirmPassword
+                            ? t('common.hidePassword', { defaultValue: 'Hide password' })
+                            : t('common.showPassword', { defaultValue: 'Show password' })
+                        }
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      >
+                        {showConfirmPassword ? <EyeSlash aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                      </button>
+                    </div>
                   </Form.Group>
                 </div>
               </div>

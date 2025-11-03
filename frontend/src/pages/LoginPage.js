@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, Alert } from 'react-bootstrap';
+import { Eye, EyeSlash } from 'react-bootstrap-icons';
 import { useTranslation, Trans } from 'react-i18next';
 import './LoginPage.css';
 
@@ -13,6 +14,7 @@ function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [hasError, setHasError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -66,14 +68,33 @@ function LoginPage() {
               </Form.Group>
               <Form.Group controlId="password" className="mb-2">
                 <Form.Label>{t('login.fields.password')}</Form.Label>
-                <Form.Control
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t('login.fields.passwordPlaceholder')}
-                  autoComplete="current-password"
-                  required
-                />
+                <div className="password-field">
+                  <Form.Control
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t('login.fields.passwordPlaceholder')}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    aria-label={
+                      showPassword
+                        ? t('common.hidePassword', { defaultValue: 'Hide password' })
+                        : t('common.showPassword', { defaultValue: 'Show password' })
+                    }
+                    title={
+                      showPassword
+                        ? t('common.hidePassword', { defaultValue: 'Hide password' })
+                        : t('common.showPassword', { defaultValue: 'Show password' })
+                    }
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? <EyeSlash aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                  </button>
+                </div>
                 <p className="text-microcopy auth-microcopy">{t('login.passwordHint')}</p>
               </Form.Group>
               <div className="auth-meta-row">
