@@ -14,6 +14,7 @@ from .views.auth import (
     CurrentUserView,
     InvitationAcceptanceView,
     InvitationDetailView,
+    PublicRegistrationView,
 )
 from .views.banking import BankAccountViewSet
 from .views.common import dashboard_summary
@@ -72,6 +73,7 @@ urlpatterns = [
         TokenRefreshView.as_view(permission_classes=[AllowAny]),
         name='refresh_token',
     ),
+    path('auth/register/', PublicRegistrationView.as_view(), name='public-register'),
     path('dashboard-summary/', dashboard_summary, name='dashboard-summary'),
     path('auth/users/', AccountUserManagementView.as_view(), name='account-users'),
     path('auth/invitations/<str:token>/', InvitationDetailView.as_view(), name='invitation-detail'),

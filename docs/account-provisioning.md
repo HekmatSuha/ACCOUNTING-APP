@@ -2,9 +2,17 @@
 
 ## Account provisioning and user management
 
-Tenant access is now controlled entirely by staff members or account owners. The
-open registration endpoint has been removed and replaced with an invitation
-workflow that honours subscription seat limits.
+Tenant access is primarily controlled by staff members or account owners through
+an invitation workflow that honours subscription seat limits. New workspaces can
+also be provisioned via a public registration endpoint when self-service
+sign-ups are desired.
+
+### Self-service registration
+
+Individuals can create a new workspace by submitting the required account and
+credential details to `POST /api/auth/register/`. The endpoint creates a tenant
+account, assigns the requester as the owner, and provisions a starter
+subscription plan so they can sign in immediately.
 
 ### Creating users as staff or account admins
 

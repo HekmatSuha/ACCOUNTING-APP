@@ -7,6 +7,7 @@ from .auth import (
     CurrentUserView,
     InvitationAcceptanceView,
     InvitationDetailView,
+    PublicRegistrationView,
 )
 from .banking import BankAccountViewSet
 from .common import dashboard_summary
@@ -41,6 +42,7 @@ __all__ = [
     'ChangePasswordView',
     'InvitationDetailView',
     'InvitationAcceptanceView',
+    'PublicRegistrationView',
     'CustomerPaymentViewSet',
     'CustomerViewSet',
     'ExpenseCategoryViewSet',

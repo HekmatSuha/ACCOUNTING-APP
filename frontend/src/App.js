@@ -4,7 +4,8 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import LoginPage from './pages/LoginPage';
-import InviteAcceptPage from './pages/RegisterPage';
+import RegisterPage from './pages/RegisterPage';
+import InviteAcceptPage from './pages/InviteAcceptPage';
 import DashboardPage from './pages/DashboardPage';
 import ProtectedRoute from './pages/ProtectedRoute';
 import AppLayout from './components/AppLayout';
@@ -59,6 +60,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/invite/:token" element={<InviteAcceptPage />} />
         
         {/* Protected routes */}

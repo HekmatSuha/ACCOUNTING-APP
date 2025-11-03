@@ -9,9 +9,25 @@ from ..serializers import (
     AccountUserSerializer,
     InvitationAcceptanceSerializer,
     ChangePasswordSerializer,
+    PublicAccountRegistrationSerializer,
     UserProfileSerializer,
 )
 from ..models import Account, AccountInvitation
+
+
+class PublicRegistrationView(generics.GenericAPIView):
+    """Allow anyone to register and provision a new account."""
+
+    serializer_class = PublicAccountRegistrationSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        payload = dict(serializer.data)
+        payload['detail'] = 'Account created successfully. You can now sign in.'
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class IsStaffOrAccountAdmin(BasePermission):
