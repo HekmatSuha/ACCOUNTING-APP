@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import SaleLineItemsTable from './SaleLineItemsTable';
 
 jest.mock('../ProductSearchSelect', () => (props) => (
@@ -68,9 +68,20 @@ describe('SaleLineItemsTable', () => {
         };
         render(<SaleLineItemsTable {...props} />);
 
-        expect(screen.getByText('Widget')).toBeInTheDocument();
-        expect(screen.getByText('$25')).toBeInTheDocument();
-        expect(screen.getByText('$50')).toBeInTheDocument();
+        const row = screen.getByText('Widget').closest('tr');
+        expect(row).not.toBeNull();
+        if (!row) {
+            throw new Error('Expected row element for the rendered line item.');
+        }
+        const withinRow = within(row);
+
+        expect(withinRow.getByText('Widget')).toBeInTheDocument();
+        expect(withinRow.getByText('$25')).toBeInTheDocument();
+        expect(withinRow.getByText('$50')).toBeInTheDocument();
+        expect(withinRow.getByText('Amount')).toBeInTheDocument();
+        expect(withinRow.getByText('Main Warehouse')).toBeInTheDocument();
+        expect(withinRow.getByText('Stock: 5')).toBeInTheDocument();
+        expect(withinRow.getByText('Note: Urgent')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Edit line item' }));
         expect(props.onEditItem).toHaveBeenCalledWith(0);
