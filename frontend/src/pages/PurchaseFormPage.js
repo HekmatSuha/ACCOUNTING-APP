@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Alert, Badge, Button, Card, Col, Container, Form, Row, Stack, Table } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Container, Form, Row, Stack, Table } from 'react-bootstrap';
 import { PencilSquare, Plus, Trash } from 'react-bootstrap-icons';
 import axiosInstance from '../utils/axiosInstance';
 import '../styles/saleForm.css';
@@ -523,20 +523,17 @@ function PurchaseFormPage() {
                                     <Table hover borderless className="sale-items-table align-middle">
                                         <thead>
                                             <tr>
-                                                <th>Product</th>
-                                                <th>Warehouse</th>
-                                                <th className="text-center">Stock</th>
+                                                <th className="sale-items-table__item-heading">Item Details</th>
                                                 <th className="text-center">Quantity</th>
                                                 <th className="text-end">Unit Cost</th>
                                                 <th className="text-center">Discount</th>
-                                                <th className="text-end">Line Total</th>
                                                 <th className="text-end">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {lineItems.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={8} className="text-center text-muted py-4">
+                                                    <td colSpan={5} className="text-center text-muted py-4">
                                                         Add products using the search above to build this purchase.
                                                     </td>
                                                 </tr>
@@ -554,6 +551,28 @@ function PurchaseFormPage() {
                                                 const imageInitial = getImageInitial(product?.name);
                                                 const metaDetails = [];
 
+                                                if (product?.description) {
+                                                    metaDetails.push(
+                                                        <span key="description">{product.description}</span>
+                                                    );
+                                                }
+
+                                                metaDetails.push(
+                                                    <span key="warehouse" className={warehouse ? undefined : 'text-muted'}>
+                                                        {warehouse ? warehouse.name : 'No warehouse'}
+                                                    </span>
+                                                );
+
+                                                if (availableStock !== null) {
+                                                    metaDetails.push(
+                                                        <span key="stock">Stock: {availableStock}</span>
+                                                    );
+                                                } else if (product) {
+                                                    metaDetails.push(
+                                                        <span key="stock">Stock: —</span>
+                                                    );
+                                                }
+
                                                 if (item.note) {
                                                     metaDetails.push(
                                                         <span key="note">Note: {item.note}</span>
@@ -562,8 +581,11 @@ function PurchaseFormPage() {
 
                                                 return (
                                                     <tr key={`${item.product_id}-${index}`}>
-                                                        <td>
+                                                        <td className="sale-items-table__product-cell">
                                                             <div className="sale-items-table__product product-name-cell">
+                                                                <div className="product-name-cell__index" aria-hidden="true">
+                                                                    {index + 1}
+                                                                </div>
                                                                 <div className="product-name-cell__image">
                                                                     {resolvedImage ? (
                                                                         <img src={resolvedImage} alt={product?.name || 'Product preview'} />
@@ -586,22 +608,17 @@ function PurchaseFormPage() {
                                                                         </div>
                                                                     )}
                                                                 </div>
+                                                                <div className="product-name-cell__amount" aria-label="Line amount">
+                                                                    <span className="product-name-cell__amount-value">
+                                                                        {formatCurrency(lineTotal)}
+                                                                    </span>
+                                                                    <span className="product-name-cell__amount-label">Amount</span>
+                                                                </div>
                                                             </div>
-                                                        </td>
-                                                        <td>{warehouse ? <span>{warehouse.name}</span> : <span className="text-muted">No warehouse</span>}</td>
-                                                        <td className="text-center">
-                                                            {product ? (
-                                                                <Badge bg={availableStock && availableStock > 0 ? 'success' : 'danger'}>
-                                                                    {availableStock !== null ? `${availableStock}` : 'No data'}
-                                                                </Badge>
-                                                            ) : (
-                                                                <span className="text-muted">Select a product</span>
-                                                            )}
                                                         </td>
                                                         <td className="text-center">{Number(item.quantity)}</td>
                                                         <td className="text-end">{formatCurrency(item.unit_price)}</td>
                                                         <td className="text-center">{discountLabel}</td>
-                                                        <td className="text-end">{formatCurrency(lineTotal)}</td>
                                                         <td className="text-end">
                                                             <div className="sale-items-table__actions">
                                                                 <Button
