@@ -1,15 +1,24 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import HttpBackend from 'i18next-http-backend';
 import LanguageDetector from 'i18next-browser-languagedetector';
+
+import enTranslations from './locales/en/translation.json';
+import ruTranslations from './locales/ru/translation.json';
+import trTranslations from './locales/tr/translation.json';
 
 const supportedLngs = ['en', 'ru', 'tr'];
 
+const resources = {
+  en: { translation: enTranslations },
+  ru: { translation: ruTranslations },
+  tr: { translation: trTranslations },
+};
+
 i18n
-  .use(HttpBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
+    resources,
     supportedLngs,
     fallbackLng: 'en',
     load: 'languageOnly',
@@ -19,9 +28,6 @@ i18n
     detection: {
       order: ['querystring', 'localStorage', 'cookie', 'navigator', 'htmlTag'],
       caches: ['localStorage', 'cookie'],
-    },
-    backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
     react: {
       useSuspense: true,
