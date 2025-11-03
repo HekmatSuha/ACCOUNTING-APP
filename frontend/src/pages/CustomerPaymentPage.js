@@ -31,9 +31,9 @@ const buildErrorMessage = (error) => {
 
 const describeOpenBalance = (value) => {
     const numeric = Number(value) || 0;
-    if (numeric > 0) return 'Müşteri size borçlu.';
-    if (numeric < 0) return 'Müşteriye borçlusunuz.';
-    return 'Hesap kapandı.';
+    if (numeric > 0) return 'The customer owes you.';
+    if (numeric < 0) return 'You owe the customer.';
+    return 'Account settled.';
 };
 
 function CustomerPaymentPage() {
@@ -376,12 +376,12 @@ function CustomerPaymentPage() {
     const isSaveDisabled = saving || !isFormReady || isPageLoading;
     const saveButtonLabel = saving
         ? isEditing
-            ? 'Güncelleniyor…'
-            : 'Kaydediliyor…'
+            ? 'Updating…'
+            : 'Saving…'
         : isEditing
-            ? 'Güncelle'
-            : 'Kaydet';
-    const formSubtitle = isEditing ? 'Müşteri Tahsilatı Düzenle' : 'Müşteri Tahsilatı Kaydı';
+            ? 'Update'
+            : 'Save';
+    const formSubtitle = isEditing ? 'Edit Customer Collection' : 'Record Customer Collection';
 
     return (
         <Container fluid className="payment-page">
@@ -399,7 +399,7 @@ function CustomerPaymentPage() {
                     className="payment-page__back-btn"
                     onClick={() => navigate(`/customers/${id}`)}
                 >
-                    Müşteri Sayfası
+                    Customer Page
                 </Button>
             </div>
 
@@ -415,7 +415,7 @@ function CustomerPaymentPage() {
                     <Col lg={8}>
                         <Card className="payment-form-card">
                             <div className="payment-form-card__header">
-                                <div className="payment-form-card__title">GİRİŞ</div>
+                                <div className="payment-form-card__title">ENTRY</div>
                                 <h5 className="payment-form-card__subtitle">{formSubtitle}</h5>
                             </div>
                             <Card.Body>
@@ -423,20 +423,20 @@ function CustomerPaymentPage() {
                                     <Row className="g-3">
                                         <Col md={6}>
                                             <Form.Group controlId="transactionType">
-                                                <Form.Label>İşlem</Form.Label>
+                                                <Form.Label>Transaction</Form.Label>
                                                 <Form.Select
                                                     value={transactionType}
                                                     onChange={(event) => setTransactionType(event.target.value)}
                                                     disabled={fieldDisabled}
                                                 >
-                                                    <option value="collection">Müşteriden Tahsilat</option>
-                                                    <option value="refund">Müşteriye Ödeme</option>
+                                                    <option value="collection">Collection from Customer</option>
+                                                    <option value="refund">Payment to Customer</option>
                                                 </Form.Select>
                                             </Form.Group>
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="paymentDate">
-                                                <Form.Label>Tarih</Form.Label>
+                                                <Form.Label>Date</Form.Label>
                                                 <Form.Control
                                                     type="date"
                                                     value={paymentDate}
@@ -448,27 +448,27 @@ function CustomerPaymentPage() {
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="method">
-                                                <Form.Label>Ödeme Yöntemi</Form.Label>
+                                                <Form.Label>Payment Method</Form.Label>
                                                 <Form.Select
                                                     value={method}
                                                     onChange={(event) => setMethod(event.target.value)}
                                                     disabled={fieldDisabled}
                                                 >
-                                                    <option value="Cash">Nakit</option>
-                                                    <option value="Bank">Banka Transferi</option>
-                                                    <option value="Card">Kart</option>
+                                                    <option value="Cash">Cash</option>
+                                                    <option value="Bank">Bank Transfer</option>
+                                                    <option value="Card">Card</option>
                                                 </Form.Select>
                                             </Form.Group>
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="account">
-                                                <Form.Label>Kasa / Hesap</Form.Label>
+                                                <Form.Label>Cash / Account</Form.Label>
                                                 <Form.Select
                                                     value={account}
                                                     onChange={handleAccountChange}
                                                     disabled={fieldDisabled}
                                                 >
-                                                    <option value="">Hesap seçin</option>
+                                                    <option value="">Select an account</option>
                                                     {accounts.map((acc) => {
                                                         const formattedBalance = formatCurrency(
                                                             acc.balance ?? 0,
@@ -485,14 +485,14 @@ function CustomerPaymentPage() {
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="amount">
-                                                <Form.Label>Tutar ({paymentCurrency || customerCurrency})</Form.Label>
+                                                <Form.Label>Amount ({paymentCurrency || customerCurrency})</Form.Label>
                                                 <Form.Control
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
                                                     value={amount}
                                                     onChange={(event) => setAmount(event.target.value)}
-                                                    placeholder="Ödeme tutarını girin"
+                                                    placeholder="Enter the payment amount"
                                                     disabled={fieldDisabled}
                                                     required
                                                 />
@@ -500,7 +500,7 @@ function CustomerPaymentPage() {
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="paymentCurrency">
-                                                <Form.Label>Para Birimi</Form.Label>
+                                                <Form.Label>Currency</Form.Label>
                                                 <Form.Select
                                                     value={paymentCurrency}
                                                     onChange={(event) => handleCurrencyChange(event.target.value)}
@@ -519,7 +519,9 @@ function CustomerPaymentPage() {
                                             <>
                                                 <Col md={6}>
                                                     <Form.Group controlId="exchangeRate">
-                                                        <Form.Label>Kur ({paymentCurrency} ➜ {customerCurrency})</Form.Label>
+                                                        <Form.Label>
+                                                            Exchange Rate ({paymentCurrency} ➜ {customerCurrency})
+                                                        </Form.Label>
                                                         <Form.Control
                                                             type="number"
                                                             step="0.0001"
@@ -536,7 +538,7 @@ function CustomerPaymentPage() {
                                                 </Col>
                                                 <Col md={6}>
                                                     <div className="payment-form-card__converted">
-                                                        <div className="small text-uppercase text-muted">Müşteri bakiyesine yansıyan</div>
+                                                        <div className="small text-uppercase text-muted">Reflected in customer balance</div>
                                                         <div>{formatCurrency(convertedAmountValue, customerCurrency)}</div>
                                                     </div>
                                                 </Col>
@@ -545,20 +547,20 @@ function CustomerPaymentPage() {
                                         {!requiresExchangeRate && (
                                             <Col md={6}>
                                                 <div className="payment-form-card__converted">
-                                                    <div className="small text-uppercase text-muted">Müşteri bakiyesine yansıyan</div>
+                                                    <div className="small text-uppercase text-muted">Reflected in customer balance</div>
                                                     <div>{formatCurrency(convertedAmountValue, customerCurrency)}</div>
                                                 </div>
                                             </Col>
                                         )}
                                         <Col xs={12}>
                                             <Form.Group controlId="notes">
-                                                <Form.Label>Açıklama</Form.Label>
+                                                <Form.Label>Notes</Form.Label>
                                                 <Form.Control
                                                     as="textarea"
                                                     rows={3}
                                                     value={notes}
                                                     onChange={(event) => setNotes(event.target.value)}
-                                                    placeholder="İsteğe bağlı açıklama ekleyin"
+                                                    placeholder="Add an optional note"
                                                     disabled={fieldDisabled}
                                                 />
                                             </Form.Group>
@@ -566,8 +568,8 @@ function CustomerPaymentPage() {
                                     </Row>
                                     <div className="payment-form-card__note mt-3">
                                         {transactionType === 'collection'
-                                            ? 'Bu kayıt müşteriden tahsilat olarak işlenecek.'
-                                            : 'Bu kayıt müşteriye ödeme olarak işlenecek.'}
+                                            ? 'This entry will be processed as a collection from the customer.'
+                                            : 'This entry will be processed as a payment to the customer.'}
                                     </div>
                                 </Form>
                             </Card.Body>
@@ -576,35 +578,35 @@ function CustomerPaymentPage() {
                     <Col lg={4}>
                         <Card className="payment-side-card">
                             <div className="payment-side-card__header">
-                                <div className="payment-side-card__name">{customerName || 'Müşteri'}</div>
+                                <div className="payment-side-card__name">{customerName || 'Customer'}</div>
                                 <div className="payment-side-card__meta">
-                                    {customerData?.customer?.email || 'E-posta bilgisi yok'}
+                                    {customerData?.customer?.email || 'No email available'}
                                 </div>
                                 <div className="payment-side-card__meta">
-                                    {customerData?.customer?.phone || 'Telefon bilgisi yok'}
+                                    {customerData?.customer?.phone || 'No phone available'}
                                 </div>
                             </div>
                             <div className="payment-summary">
                                 <div className="payment-summary__item">
-                                    <div className="payment-summary__label">Açık Hesap Bakiyesi</div>
+                                    <div className="payment-summary__label">Open Balance</div>
                                     <div className="payment-summary__value">
                                         {formatCurrency(summary?.open_balance || 0, customerCurrency)}
                                     </div>
                                     <div className="payment-summary__hint">{describeOpenBalance(summary?.open_balance)}</div>
                                 </div>
                                 <div className="payment-summary__item">
-                                    <div className="payment-summary__label">Çek / Senet Bakiyesi</div>
+                                    <div className="payment-summary__label">Check / Promissory Note Balance</div>
                                     <div className="payment-summary__value">
                                         {formatCurrency(summary?.check_balance || 0, customerCurrency)}
                                     </div>
-                                    <div className="payment-summary__hint">Kayıtlı çek / senet bakiyesi</div>
+                                    <div className="payment-summary__hint">Registered check / promissory note balance</div>
                                 </div>
                                 <div className="payment-summary__item">
-                                    <div className="payment-summary__label">Banka Bilgileri</div>
+                                    <div className="payment-summary__label">Bank Details</div>
                                     <div className="payment-summary__value">
-                                        {customerData?.customer?.address ? customerData.customer.address : 'Kayıtlı değil'}
+                                        {customerData?.customer?.address ? customerData.customer.address : 'Not provided'}
                                     </div>
-                                    <div className="payment-summary__hint">Banka detaylarını müşteri profiline ekleyebilirsiniz.</div>
+                                    <div className="payment-summary__hint">You can add bank details in the customer profile.</div>
                                 </div>
                             </div>
                         </Card>

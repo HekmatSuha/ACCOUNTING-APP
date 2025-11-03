@@ -31,9 +31,9 @@ const buildErrorMessage = (error) => {
 
 const describeSupplierBalance = (value) => {
     const numeric = Number(value) || 0;
-    if (numeric > 0) return 'Tedarikçiye borçlusunuz.';
-    if (numeric < 0) return 'Tedarikçi size borçlu.';
-    return 'Hesap kapandı.';
+    if (numeric > 0) return 'You owe the supplier.';
+    if (numeric < 0) return 'The supplier owes you.';
+    return 'Account settled.';
 };
 
 const extractMethodFromPayment = (payment) => {
@@ -47,7 +47,10 @@ const extractMethodFromPayment = (payment) => {
     const methodPart = description
         .split(' - ')
         .map((part) => part.trim())
-        .find((part) => part.toLowerCase().startsWith('yöntem:'));
+        .find((part) => {
+            const lower = part.toLowerCase();
+            return lower.startsWith('method:') || lower.startsWith('yöntem:');
+        });
     if (!methodPart) {
         return 'Cash';
     }
@@ -72,10 +75,15 @@ const extractNotesFromPayment = (payment) => {
         .filter(Boolean);
     const filtered = parts.filter((part) => {
         const lower = part.toLowerCase();
-        if (lower === 'tedarikçiye ödeme' || lower === 'tedarikçiden tahsilat') {
+        if (
+            lower === 'tedarikçiye ödeme' ||
+            lower === 'tedarikçiden tahsilat' ||
+            lower === 'payment to supplier' ||
+            lower === 'collection from supplier'
+        ) {
             return false;
         }
-        if (lower.startsWith('yöntem:')) {
+        if (lower.startsWith('yöntem:') || lower.startsWith('method:')) {
             return false;
         }
         return true;
@@ -356,10 +364,10 @@ function SupplierPaymentPage() {
         }
 
         const descriptionParts = [
-            transactionType === 'payment' ? 'Tedarikçiye ödeme' : 'Tedarikçiden tahsilat',
+            transactionType === 'payment' ? 'Payment to supplier' : 'Collection from supplier',
         ];
         if (method) {
-            descriptionParts.push(`Yöntem: ${method}`);
+            descriptionParts.push(`Method: ${method}`);
         }
         if (notes) {
             descriptionParts.push(notes);
@@ -423,12 +431,12 @@ function SupplierPaymentPage() {
     const isSaveDisabled = saving || !isFormReady;
     const saveButtonLabel = saving
         ? isEditing
-            ? 'Güncelleniyor…'
-            : 'Kaydediliyor…'
+            ? 'Updating…'
+            : 'Saving…'
         : isEditing
-            ? 'Güncelle'
-            : 'Kaydet';
-    const formSubtitle = isEditing ? 'Tedarikçi Ödemesini Düzenle' : 'Tedarikçiye Ödeme Kaydı';
+            ? 'Update'
+            : 'Save';
+    const formSubtitle = isEditing ? 'Edit Supplier Payment' : 'Record Supplier Payment';
 
     return (
         <Container fluid className="payment-page">
@@ -446,7 +454,7 @@ function SupplierPaymentPage() {
                     className="payment-page__back-btn"
                     onClick={() => navigate(`/suppliers/${id}`)}
                 >
-                    Tedarikçi Sayfası
+                    Supplier Page
                 </Button>
             </div>
 
@@ -462,7 +470,7 @@ function SupplierPaymentPage() {
                     <Col lg={8}>
                         <Card className="payment-form-card">
                             <div className="payment-form-card__header">
-                                <div className="payment-form-card__title">GİRİŞ</div>
+                                <div className="payment-form-card__title">ENTRY</div>
                                 <h5 className="payment-form-card__subtitle">{formSubtitle}</h5>
                             </div>
                             <Card.Body>
@@ -470,20 +478,20 @@ function SupplierPaymentPage() {
                                     <Row className="g-3">
                                         <Col md={6}>
                                             <Form.Group controlId="transactionType">
-                                                <Form.Label>İşlem</Form.Label>
+                                                <Form.Label>Transaction</Form.Label>
                                                 <Form.Select
                                                     value={transactionType}
                                                     onChange={(event) => setTransactionType(event.target.value)}
                                                     disabled={fieldDisabled}
                                                 >
-                                                    <option value="payment">Tedarikçiye Ödeme</option>
-                                                    <option value="collection">Tedarikçiden Tahsilat</option>
+                                                    <option value="payment">Payment to Supplier</option>
+                                                    <option value="collection">Collection from Supplier</option>
                                                 </Form.Select>
                                             </Form.Group>
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="paymentDate">
-                                                <Form.Label>Tarih</Form.Label>
+                                                <Form.Label>Date</Form.Label>
                                                 <Form.Control
                                                     type="date"
                                                     value={paymentDate}
@@ -495,27 +503,27 @@ function SupplierPaymentPage() {
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="method">
-                                                <Form.Label>Ödeme Yöntemi</Form.Label>
+                                                <Form.Label>Payment Method</Form.Label>
                                                 <Form.Select
                                                     value={method}
                                                     onChange={(event) => setMethod(event.target.value)}
                                                     disabled={fieldDisabled}
                                                 >
-                                                    <option value="Cash">Nakit</option>
-                                                    <option value="Bank">Banka Transferi</option>
-                                                    <option value="Card">Kart</option>
+                                                    <option value="Cash">Cash</option>
+                                                    <option value="Bank">Bank Transfer</option>
+                                                    <option value="Card">Card</option>
                                                 </Form.Select>
                                             </Form.Group>
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="account">
-                                                <Form.Label>Kasa / Hesap</Form.Label>
+                                                <Form.Label>Cash / Account</Form.Label>
                                                 <Form.Select
                                                     value={account}
                                                     onChange={handleAccountChange}
                                                     disabled={fieldDisabled}
                                                 >
-                                                    <option value="">Hesap seçin</option>
+                                                    <option value="">Select an account</option>
                                                     {accounts.map((acc) => {
                                                         const formattedBalance = formatCurrency(
                                                             acc.balance ?? 0,
@@ -532,14 +540,14 @@ function SupplierPaymentPage() {
                                         </Col>
                                         <Col md={6}>
                                             <Form.Group controlId="amount">
-                                                <Form.Label>Tutar ({supplierCurrency})</Form.Label>
+                                                <Form.Label>Amount ({supplierCurrency})</Form.Label>
                                                 <Form.Control
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
                                                     value={amount}
                                                     onChange={(event) => setAmount(event.target.value)}
-                                                    placeholder="Ödeme tutarını girin"
+                                                    placeholder="Enter the payment amount"
                                                     disabled={fieldDisabled}
                                                     required
                                                 />
@@ -547,7 +555,7 @@ function SupplierPaymentPage() {
                                         </Col>
                                         <Col md={6}>
                                             <div className="payment-form-card__converted">
-                                                <div className="small text-uppercase text-muted">Tedarikçi bakiyesine yansıyan</div>
+                                                <div className="small text-uppercase text-muted">Reflected in supplier balance</div>
                                                 <div>{formatCurrency(supplierImpactValue, supplierCurrency)}</div>
                                             </div>
                                         </Col>
@@ -556,7 +564,7 @@ function SupplierPaymentPage() {
                                                 <Col md={6}>
                                                     <Form.Group controlId="accountExchangeRate">
                                                         <Form.Label>
-                                                            Kur ({supplierCurrency} ➜ {accountCurrency})
+                                                            Exchange Rate ({supplierCurrency} ➜ {accountCurrency})
                                                         </Form.Label>
                                                         <Form.Control
                                                             type="number"
@@ -575,7 +583,7 @@ function SupplierPaymentPage() {
                                                 <Col md={6}>
                                                     <div className="payment-form-card__converted">
                                                         <div className="small text-uppercase text-muted">
-                                                            {(selectedAccount?.name || 'Hesap') + ' hareketi'} ({accountCurrency})
+                                                            {`${selectedAccount?.name || 'Account'} movement (${accountCurrency})`}
                                                         </div>
                                                         <div>{formatCurrency(accountImpactValue, accountCurrency)}</div>
                                                     </div>
@@ -586,7 +594,7 @@ function SupplierPaymentPage() {
                                             <Col md={6}>
                                                 <div className="payment-form-card__converted">
                                                     <div className="small text-uppercase text-muted">
-                                                        {(selectedAccount?.name || 'Hesap') + ' hareketi'} ({accountCurrency})
+                                                        {`${selectedAccount?.name || 'Account'} movement (${accountCurrency})`}
                                                     </div>
                                                     <div>{formatCurrency(accountImpactValue, accountCurrency)}</div>
                                                 </div>
@@ -594,13 +602,13 @@ function SupplierPaymentPage() {
                                         )}
                                         <Col xs={12}>
                                             <Form.Group controlId="notes">
-                                                <Form.Label>Açıklama</Form.Label>
+                                                <Form.Label>Notes</Form.Label>
                                                 <Form.Control
                                                     as="textarea"
                                                     rows={3}
                                                     value={notes}
                                                     onChange={(event) => setNotes(event.target.value)}
-                                                    placeholder="İsteğe bağlı açıklama ekleyin"
+                                                    placeholder="Add an optional note"
                                                     disabled={fieldDisabled}
                                                 />
                                             </Form.Group>
@@ -608,8 +616,8 @@ function SupplierPaymentPage() {
                                     </Row>
                                     <div className="payment-form-card__note mt-3">
                                         {transactionType === 'payment'
-                                            ? 'Bu kayıt tedarikçiye yapılan ödeme olarak işlenecek.'
-                                            : 'Bu kayıt tedarikçiden tahsilat olarak işlenecek.'}
+                                            ? 'This entry will be processed as a payment to the supplier.'
+                                            : 'This entry will be processed as a collection from the supplier.'}
                                     </div>
                                 </Form>
                             </Card.Body>
@@ -618,35 +626,35 @@ function SupplierPaymentPage() {
                     <Col lg={4}>
                         <Card className="payment-side-card">
                             <div className="payment-side-card__header">
-                                <div className="payment-side-card__name">{supplierName || 'Tedarikçi'}</div>
+                                <div className="payment-side-card__name">{supplierName || 'Supplier'}</div>
                                 <div className="payment-side-card__meta">
-                                    {supplierData?.supplier?.email || 'E-posta bilgisi yok'}
+                                    {supplierData?.supplier?.email || 'No email available'}
                                 </div>
                                 <div className="payment-side-card__meta">
-                                    {supplierData?.supplier?.phone || 'Telefon bilgisi yok'}
+                                    {supplierData?.supplier?.phone || 'No phone available'}
                                 </div>
                             </div>
                             <div className="payment-summary">
                                 <div className="payment-summary__item">
-                                    <div className="payment-summary__label">Açık Hesap Bakiyesi</div>
+                                    <div className="payment-summary__label">Open Balance</div>
                                     <div className="payment-summary__value">
                                         {formatCurrency(summary?.open_balance || 0, supplierCurrency)}
                                     </div>
                                     <div className="payment-summary__hint">{describeSupplierBalance(summary?.open_balance)}</div>
                                 </div>
                                 <div className="payment-summary__item">
-                                    <div className="payment-summary__label">Çek / Senet Bakiyesi</div>
+                                    <div className="payment-summary__label">Check / Promissory Note Balance</div>
                                     <div className="payment-summary__value">
                                         {formatCurrency(summary?.check_balance || 0, supplierCurrency)}
                                     </div>
-                                    <div className="payment-summary__hint">Kayıtlı çek / senet bakiyesi</div>
+                                    <div className="payment-summary__hint">Registered check / promissory note balance</div>
                                 </div>
                                 <div className="payment-summary__item">
-                                    <div className="payment-summary__label">Adres Bilgileri</div>
+                                    <div className="payment-summary__label">Address Details</div>
                                     <div className="payment-summary__value">
-                                        {supplierData?.supplier?.address ? supplierData.supplier.address : 'Kayıtlı değil'}
+                                        {supplierData?.supplier?.address ? supplierData.supplier.address : 'Not provided'}
                                     </div>
-                                    <div className="payment-summary__hint">Adres ve banka bilgilerini tedarikçi profiline ekleyin.</div>
+                                    <div className="payment-summary__hint">Add address and bank details in the supplier profile.</div>
                                 </div>
                             </div>
                         </Card>
