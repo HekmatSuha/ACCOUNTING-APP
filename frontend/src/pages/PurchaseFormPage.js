@@ -256,6 +256,38 @@ function PurchaseFormPage() {
         setSuccessModalError('');
     }, [resetFormForNewPurchase]);
 
+    const handleProductImageUpdated = useCallback(async (updatedProduct) => {
+        const productId = updatedProduct?.id;
+        if (!productId) {
+            return;
+        }
+
+        try {
+            const response = await axiosInstance.get(`/products/${productId}/`);
+            const freshProduct = response.data;
+            setAllProducts((prev) => {
+                const index = prev.findIndex((product) => product.id === freshProduct.id);
+                if (index === -1) {
+                    return [...prev, freshProduct];
+                }
+                const next = [...prev];
+                next[index] = { ...next[index], ...freshProduct };
+                return next;
+            });
+        } catch (error) {
+            console.error('Failed to refresh product after image upload', error);
+            setAllProducts((prev) => {
+                const index = prev.findIndex((product) => product.id === productId);
+                if (index === -1) {
+                    return updatedProduct ? [...prev, updatedProduct] : prev;
+                }
+                const next = [...prev];
+                next[index] = { ...next[index], ...updatedProduct };
+                return next;
+            });
+        }
+    }, []);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setFormError(null);
@@ -657,6 +689,7 @@ function PurchaseFormPage() {
                 warehouses={warehouses}
                 currency={partner.currency}
                 imageBaseUrl={baseApiUrl}
+                onProductUpdated={handleProductImageUpdated}
             />
             <PurchaseSuccessModal
                 show={showSuccessModal}
