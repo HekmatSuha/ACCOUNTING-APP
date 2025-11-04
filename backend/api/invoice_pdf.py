@@ -20,6 +20,8 @@ from .models import CompanyInfo, Purchase, Sale
 
 FONT_REGULAR = 'DejaVuSans'
 FONT_BOLD = 'DejaVuSans-Bold'
+DEFAULT_FONT_REGULAR = 'Helvetica'
+DEFAULT_FONT_BOLD = 'Helvetica-Bold'
 
 _FONTS_REGISTERED = False
 
@@ -100,6 +102,9 @@ def generate_invoice_pdf(sale: Sale) -> IO[bytes]:
 
     _ensure_custom_fonts()
 
+    font_regular = FONT_REGULAR if _FONTS_REGISTERED else DEFAULT_FONT_REGULAR
+    font_bold = FONT_BOLD if _FONTS_REGISTERED else DEFAULT_FONT_BOLD
+
     # --- Document Setup ---
     doc = SimpleDocTemplate(
         buffer,
@@ -123,18 +128,18 @@ def generate_invoice_pdf(sale: Sale) -> IO[bytes]:
 
     # --- Styles ---
     styles = getSampleStyleSheet()
-    styles['Normal'].fontName = FONT_REGULAR
-    styles.add(ParagraphStyle(name='CompanyName', fontSize=18, fontName=FONT_BOLD))
-    styles.add(ParagraphStyle(name='CompanyInfo', fontSize=10, fontName=FONT_REGULAR))
-    styles.add(ParagraphStyle(name='InvoiceTitle', fontSize=14, fontName=FONT_BOLD, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='InvoiceInfo', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='BillTo', fontSize=10, fontName=FONT_BOLD))
-    styles.add(ParagraphStyle(name='TableHead', fontSize=10, fontName=FONT_BOLD, alignment=TA_CENTER, textColor=colors.whitesmoke))
-    styles.add(ParagraphStyle(name='TableCell', fontSize=10, fontName=FONT_REGULAR))
-    styles.add(ParagraphStyle(name='TableCellRight', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='TotalLabel', fontSize=10, fontName=FONT_BOLD, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='TotalValue', fontSize=10, fontName=FONT_REGULAR, alignment=TA_RIGHT))
-    styles.add(ParagraphStyle(name='GrandTotalLabel', fontSize=12, fontName=FONT_BOLD, alignment=TA_RIGHT))
+    styles['Normal'].fontName = font_regular
+    styles.add(ParagraphStyle(name='CompanyName', fontSize=18, fontName=font_bold))
+    styles.add(ParagraphStyle(name='CompanyInfo', fontSize=10, fontName=font_regular))
+    styles.add(ParagraphStyle(name='InvoiceTitle', fontSize=14, fontName=font_bold, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='InvoiceInfo', fontSize=10, fontName=font_regular, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='BillTo', fontSize=10, fontName=font_bold))
+    styles.add(ParagraphStyle(name='TableHead', fontSize=10, fontName=font_bold, alignment=TA_CENTER, textColor=colors.whitesmoke))
+    styles.add(ParagraphStyle(name='TableCell', fontSize=10, fontName=font_regular))
+    styles.add(ParagraphStyle(name='TableCellRight', fontSize=10, fontName=font_regular, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='TotalLabel', fontSize=10, fontName=font_bold, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='TotalValue', fontSize=10, fontName=font_regular, alignment=TA_RIGHT))
+    styles.add(ParagraphStyle(name='GrandTotalLabel', fontSize=12, fontName=font_bold, alignment=TA_RIGHT))
 
     elements = []
 
