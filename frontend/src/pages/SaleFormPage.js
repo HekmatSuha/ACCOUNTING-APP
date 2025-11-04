@@ -132,6 +132,7 @@ function SaleFormPage({
         isLoading: loadingEntityData,
         error: entityError,
         clearError: clearEntityError,
+        reload: reloadSaleData,
     } = useSaleFormData({
         entityId,
         isSupplierSale,
@@ -318,6 +319,21 @@ function SaleFormPage({
         setShowSuccessModal(false);
         setSuccessModalError('');
     }, [resetFormForNewSale]);
+
+    const handleProductImageUpdated = useCallback(
+        async (updatedProduct) => {
+            if (!updatedProduct?.id) {
+                return;
+            }
+
+            try {
+                await reloadSaleData();
+            } catch (error) {
+                console.error('Failed to reload sale data after product image update', error);
+            }
+        },
+        [reloadSaleData]
+    );
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -581,6 +597,7 @@ function SaleFormPage({
                                 warehouses={warehouses}
                                 currency={customer.currency}
                                 imageBaseUrl={baseApiUrl}
+                                onProductUpdated={handleProductImageUpdated}
                             />
                             <SaleSuccessModal
                                 show={showSuccessModal}

@@ -1,9 +1,10 @@
 // frontend/src/components/PurchaseItemModal.js
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Alert, Badge, Button, Col, Form, Modal, Row, Stack } from 'react-bootstrap';
+import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Stack } from 'react-bootstrap';
 import ProductSearchSelect from './ProductSearchSelect';
+import axiosInstance from '../utils/axiosInstance';
 
 function PurchaseItemModal({
     show,
@@ -14,6 +15,7 @@ function PurchaseItemModal({
     warehouses,
     currency,
     imageBaseUrl,
+    onProductUpdated,
 }) {
     const [formState, setFormState] = useState({
         product_id: '',
@@ -104,11 +106,103 @@ function PurchaseItemModal({
     );
     const availableStock = stockInfo ? Number(stockInfo.quantity) : null;
 
-    const resolvedImage = selectedProduct?.image
-        ? selectedProduct.image.startsWith('http')
-            ? selectedProduct.image
-            : `${imageBaseUrl}${selectedProduct.image}`
-        : null;
+    const resolveImage = useCallback((imagePath) => {
+        if (!imagePath) return null;
+        return imagePath.startsWith('http') ? imagePath : `${imageBaseUrl}${imagePath}`;
+    }, [imageBaseUrl]);
+
+    const resolvedImage = useMemo(
+        () => resolveImage(selectedProduct?.image),
+        [resolveImage, selectedProduct?.image]
+    );
+
+    const fileInputRef = useRef(null);
+    const objectUrlRef = useRef(null);
+    const [previewImage, setPreviewImage] = useState(resolvedImage);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+    const updatePreviewImage = useCallback((src, { isObjectUrl = false } = {}) => {
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
+
+        if (isObjectUrl && src) {
+            objectUrlRef.current = src;
+        }
+
+        setPreviewImage(src || null);
+    }, []);
+
+    useEffect(() => {
+        if (!show) {
+            return;
+        }
+
+        if (isUploadingImage) {
+            return;
+        }
+
+        updatePreviewImage(resolvedImage);
+    }, [isUploadingImage, resolvedImage, show, updatePreviewImage]);
+
+    useEffect(() => () => {
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
+    }, []);
+
+    const handleImageClick = () => {
+        if (!selectedProduct || isUploadingImage) {
+            return;
+        }
+        fileInputRef.current?.click();
+    };
+
+    const handleImageKeyDown = (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleImageClick();
+        }
+    };
+
+    const handleImageSelected = async (event) => {
+        const file = event.target.files?.[0];
+
+        if (!file || !selectedProduct) {
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        updatePreviewImage(objectUrl, { isObjectUrl: true });
+        setIsUploadingImage(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const { data } = await axiosInstance.patch(`/products/${selectedProduct.id}/`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            const refreshedImage = resolveImage(data?.image);
+            updatePreviewImage(refreshedImage);
+
+            if (typeof onProductUpdated === 'function') {
+                onProductUpdated(data);
+            }
+        } catch (error) {
+            console.error('Failed to upload product image', error);
+            updatePreviewImage(resolvedImage);
+        } finally {
+            setIsUploadingImage(false);
+            if (fileInputRef.current) {
+                // eslint-disable-next-line no-param-reassign
+                fileInputRef.current.value = '';
+            }
+        }
+    };
 
     const canSave = Boolean(
         formState.product_id &&
@@ -135,11 +229,48 @@ function PurchaseItemModal({
             <Modal.Body>
                 <Stack gap={4}>
                     <div className="sale-form__modal-product">
-                        <div className="sale-form__modal-image">
-                            {resolvedImage ? (
-                                <img src={resolvedImage} alt={selectedProduct?.name || 'Product preview'} />
+                        <div
+                            className="sale-form__modal-image"
+                            role="button"
+                            tabIndex={0}
+                            onClick={handleImageClick}
+                            onKeyDown={handleImageKeyDown}
+                            style={{
+                                cursor: !selectedProduct || isUploadingImage ? 'not-allowed' : 'pointer',
+                                opacity: isUploadingImage ? 0.6 : 1,
+                                position: 'relative',
+                            }}
+                            aria-disabled={!selectedProduct || isUploadingImage}
+                        >
+                            {previewImage ? (
+                                <img src={previewImage} alt={selectedProduct?.name || 'Product preview'} />
                             ) : (
-                                <span>No image</span>
+                                <span>{selectedProduct ? 'Click to add image' : 'No image'}</span>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageSelected}
+                                disabled={!selectedProduct || isUploadingImage}
+                                style={{ display: 'none' }}
+                            />
+                            {isUploadingImage && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        borderRadius: '0.5rem',
+                                    }}
+                                >
+                                    <Spinner animation="border" role="status" size="sm" />
+                                    <span>Uploading...</span>
+                                </div>
                             )}
                         </div>
                         <div className="sale-form__modal-info">
@@ -313,11 +444,13 @@ PurchaseItemModal.propTypes = {
     ).isRequired,
     currency: PropTypes.string.isRequired,
     imageBaseUrl: PropTypes.string,
+    onProductUpdated: PropTypes.func,
 };
 
 PurchaseItemModal.defaultProps = {
     initialItem: null,
     imageBaseUrl: '',
+    onProductUpdated: null,
 };
 
 export default PurchaseItemModal;
