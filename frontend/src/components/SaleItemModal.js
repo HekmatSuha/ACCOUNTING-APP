@@ -15,7 +15,7 @@ function SaleItemModal({
     warehouses,
     currency,
     imageBaseUrl,
-    priceField,
+    priceField = 'sale_price',
     onProductUpdated,
 }) {
     const [formState, setFormState] = useState({
