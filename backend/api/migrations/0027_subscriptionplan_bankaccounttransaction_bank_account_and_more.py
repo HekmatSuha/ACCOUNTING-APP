@@ -22,6 +22,46 @@ def copy_bank_account_relationships(apps, schema_editor):
             obj.save(update_fields=[field_name])
 
 
+def drop_account_not_null_constraint(apps, schema_editor):
+    """Drop NOT NULL constraint on account columns when supported."""
+
+    if schema_editor.connection.vendor != "postgresql":
+        return
+
+    schema_editor.execute(
+        "ALTER TABLE api_bankaccounttransaction ALTER COLUMN account_id DROP NOT NULL;"
+    )
+
+
+def restore_account_not_null_constraint(apps, schema_editor):
+    """Restore NOT NULL constraint on account columns when supported."""
+
+    if schema_editor.connection.vendor != "postgresql":
+        return
+
+    schema_editor.execute(
+        "ALTER TABLE api_bankaccounttransaction ALTER COLUMN account_id SET NOT NULL;"
+    )
+
+
+def clear_account_references(apps, schema_editor):
+    """Null out legacy account references for databases that support it."""
+
+    if schema_editor.connection.vendor != "postgresql":
+        return
+
+    tables = [
+        "api_bankaccounttransaction",
+        "api_expense",
+        "api_payment",
+        "api_purchase",
+    ]
+    for table in tables:
+        schema_editor.execute(f"UPDATE {table} SET account_id = NULL;")
+
+    schema_editor.execute("SET CONSTRAINTS ALL IMMEDIATE;")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -265,30 +305,11 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.RunPython(copy_bank_account_relationships, migrations.RunPython.noop),
-        migrations.RunSQL(
-            "ALTER TABLE api_bankaccounttransaction ALTER COLUMN account_id DROP NOT NULL;",
-            "ALTER TABLE api_bankaccounttransaction ALTER COLUMN account_id SET NOT NULL;",
+        migrations.RunPython(
+            drop_account_not_null_constraint,
+            restore_account_not_null_constraint,
         ),
-        migrations.RunSQL(
-            "UPDATE api_bankaccounttransaction SET account_id = NULL;",
-            migrations.RunSQL.noop,
-        ),
-        migrations.RunSQL(
-            "UPDATE api_expense SET account_id = NULL;",
-            migrations.RunSQL.noop,
-        ),
-        migrations.RunSQL(
-            "UPDATE api_payment SET account_id = NULL;",
-            migrations.RunSQL.noop,
-        ),
-        migrations.RunSQL(
-            "UPDATE api_purchase SET account_id = NULL;",
-            migrations.RunSQL.noop,
-        ),
-        migrations.RunSQL(
-            "SET CONSTRAINTS ALL IMMEDIATE;",
-            migrations.RunSQL.noop,
-        ),
+        migrations.RunPython(clear_account_references, migrations.RunPython.noop),
         migrations.AlterField(
             model_name="bankaccounttransaction",
             name="account",
