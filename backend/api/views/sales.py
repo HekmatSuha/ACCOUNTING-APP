@@ -113,9 +113,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         pdf_buffer = generate_invoice_pdf(sale)
         filename = f"invoice_{sale.invoice_number or sale.id}.pdf"
 
-        response = FileResponse(pdf_buffer, content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="{filename}"'
-        response['Content-Length'] = str(len(pdf_buffer.getbuffer()))
+        response = FileResponse(pdf_buffer, as_attachment=False, filename=filename)
         return response
 
 
