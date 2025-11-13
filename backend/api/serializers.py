@@ -668,7 +668,11 @@ class ProductSerializer(AccountScopedSerializerMixin, serializers.ModelSerialize
     def validate_sku(self, value):
         if not value:
             return None
-        account = self.get_account()
+        account = getattr(self.instance, 'account', None)
+        if account is None:
+            account = self.context.get('account')
+        if account is None:
+            account = self.get_account()
         if not account:
             return value
         qs = Product.objects.filter(account=account, sku=value)
